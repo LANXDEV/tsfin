@@ -2,16 +2,10 @@
 /__pycache__/
 **/__pycache__
 **/__pycache__/
-/**/old/
-/tools/misc/auxfiles/
-/**/side-tools/
-/**/ReportFiles/
-/**/Reports/**.xlsx
 *~
 *.swp
 *.swo
 *.log
-lanxadconfig.conf
 *.egg-info
 *.egg
 *cscope.out
