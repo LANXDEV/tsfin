@@ -6,7 +6,8 @@ TODO: Implement an equivalent of this class in QuantLib and use it directly insi
 """
 
 import QuantLib as ql
-from lanxad.base.basetools import to_ql_date, conditional_vectorize
+from tsfin.base.qlconverters import to_ql_date
+from tsfin.base.basetools import conditional_vectorize
 
 
 class HybridYieldCurveTimeSeries:

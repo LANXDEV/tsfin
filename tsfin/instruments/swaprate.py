@@ -4,10 +4,9 @@ A class for modelling interest rate swaps.
 from functools import wraps
 import numpy as np
 import QuantLib as ql
-from lanxad.instruments.depositrate import DepositRate
-from lanxad.base.basetools import conditional_vectorize
-from lanxad.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_index
-from lanxad.constants import CALENDAR, INDEX, DAY_COUNTER, TENOR_PERIOD
+from tsfin.instruments.depositrate import DepositRate
+from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_index, to_ql_business_convention
+from tsfin.constants import CALENDAR, INDEX, DAY_COUNTER, TENOR_PERIOD, BUSINESS_CONVENTION
 
 
 class SwapRate(DepositRate):
@@ -23,8 +22,7 @@ class SwapRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.quotes.ts_values /= 100  # TODO: Put this in a separate function.
-        self.business_convention = ql.Unadjusted  # TODO: This needs to be parametrized.
+        self.business_convention = to_ql_business_convention(self.attributes[BUSINESS_CONVENTION])
         self.calendar = to_ql_calendar(self.attributes[CALENDAR])
         self._tenor = ql.PeriodParser.parse(self.attributes[TENOR_PERIOD])
         self.index = to_ql_index(self.attributes[INDEX])(ql.Period(3, ql.Months))  # TODO: needs to be parametrized.

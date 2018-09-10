@@ -29,7 +29,7 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
     index_curves: dict, optional
         Dictionary with ``{index_name: index_yield_curve_time_series}``, where `index_name` is the name of the 'index'
         (e.g.: libor3m, CDI), in the INDEX attribute of a time series. `index_yield_curve_time_series` is a
-        :py:obj:`YieldCurveTimeSeries` representing the yiled curve of the index. This is currently
+        :py:obj:`YieldCurveTimeSeries` representing the yield curve of the index. This is currently
         needed only for floating rate bonds. Default is None.
 
     Returns
@@ -256,5 +256,4 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
     optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
     end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
     model.calibrate(swaption_helpers, optimization_method, end_criteria)
-
     return model

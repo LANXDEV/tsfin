@@ -10,7 +10,7 @@ from tsfin.base import Instrument, conditional_vectorize, to_ql_date, to_ql_freq
     to_ql_compounding, to_ql_day_counter, to_ql_currency
 from tsfin.constants import BASE_CURRENCY, COUNTER_CURRENCY, BASE_RATE_COMPOUNDING, BASE_RATE_DAY_COUNTER, \
     BASE_RATE_FREQUENCY, COUNTER_RATE_COMPOUNDING, COUNTER_RATE_DAY_COUNTER, COUNTER_RATE_FREQUENCY, CALENDAR, \
-    MATURITY_DATE, MULTIPLY_QUOTES_BY, SETTLEMENT_DAYS
+    MATURITY_DATE, SETTLEMENT_DAYS
 
 
 def usdbrl_next_maturity(date):
@@ -179,7 +179,6 @@ class CurrencyFuture(Instrument):
         self.base_currency = to_ql_currency(self.ts_attributes[BASE_CURRENCY])
         self.counter_currency = to_ql_currency(self.ts_attributes[COUNTER_CURRENCY])
         self.maturity_date = to_ql_date(self.ts_attributes[MATURITY_DATE])
-        self.timeseries.quotes.ts_values *= self.ts_attributes.get(MULTIPLY_QUOTES_BY, 1)
         self.quotes = self.timeseries.price.ts_values
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.base_rate_day_counter = to_ql_day_counter(self.ts_attributes[BASE_RATE_DAY_COUNTER])

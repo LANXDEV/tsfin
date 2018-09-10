@@ -1,10 +1,16 @@
-from lanxad.base.timeseries import TimeSeries
-from lanxad.fixedincome.callablebond import CallableBond
-from lanxad.fixedincome import SimpleBond
+"""
+A trader model that trades any instrument with no spreads, costs, or fees.
+
+WARNING: THIS CLASS IS NOT WORKING.
+
+TODO: Finish this class and test it.
+"""
+from tsio import TimeSeries
+from tsfin.instruments.bonds.callablefixedratebond import CallableFixedRateBond
+from tsfin.instruments.bonds.fixedratebond import FixedRateBond
 
 
-class PerfectTrader(object):
-
+class PerfectTrader:
     def __init__(self, default_security_objects=None):
         if default_security_objects is None:
             self.default_security_objects = [None]
@@ -39,7 +45,7 @@ class PerfectTrader(object):
         for security_name in securities_to_get_rid_of:
             # Doing this first because security_objects can be different in Trader Class and Portfolio Class
             price = self.get_price(the_date, security_name, security_objects)
-            the_trade = trade(-old_portfolio.positions[the_date][security_name], price)
+            the_trade = self.trade(-old_portfolio.positions[the_date][security_name], price)
             old_portfolio.add_trade(the_date, security_name, the_trade)
 
         portfolio_value, _ = old_portfolio.valuate(the_date, security_objects)
@@ -52,7 +58,7 @@ class PerfectTrader(object):
             new_security_nmv = trade_item[1] * portfolio_value
             new_security_price = self.get_price(the_date, new_security_name, security_objects)
             new_security_qty = new_security_nmv / new_security_price
-            new_trade = trade(new_security_qty - old_portfolio.positions[the_date].get(new_security_name, 0),
+            new_trade = self.trade(new_security_qty - old_portfolio.positions[the_date].get(new_security_name, 0),
                               new_security_price)
             old_portfolio.add_trade(the_date, new_security_name, new_trade)
 
@@ -69,7 +75,7 @@ class PerfectTrader(object):
         security = next((obj for obj in security_objects if security_name == getattr(obj, 'ts_name', None) or
                             security_name == getattr(obj, 'name', None)), [None])
 
-        if isinstance(security, SimpleBond) or isinstance(security, CallableBond):
+        if isinstance(security, FixedRateBond) or isinstance(security, CallableFixedRateBond):
             clean_price = security.clean_prices.get_value(date=the_date)
             price = security.dirty_price_from_clean_price(clean_price, the_date) / security.attributes['PAR']
             # TODO: Add a convenient attribute to Bond objects (e.g.: price-to-value factor)

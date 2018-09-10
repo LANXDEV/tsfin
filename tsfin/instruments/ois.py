@@ -3,9 +3,9 @@ A class for modelling OIS (Overnight Indexed Swap) rates.
 """
 import numpy as np
 import QuantLib as ql
-from lanxad.instruments.depositrate import DepositRate
-from lanxad.base.qlconverters import to_ql_date, to_ql_overnight_index
-from lanxad.constants import INDEX, TENOR_PERIOD, SETTLEMENT_DAYS, PAYMENT_LAG
+from tsfin.instruments.depositrate import DepositRate
+from tsfin.base.qlconverters import to_ql_date, to_ql_overnight_index
+from tsfin.constants import INDEX, TENOR_PERIOD, SETTLEMENT_DAYS, PAYMENT_LAG
 
 
 class OISRate(DepositRate):
@@ -18,7 +18,6 @@ class OISRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.quotes.ts_values /= 100  # TODO: Put this in a separate function
         self.overnight_index = to_ql_overnight_index(self.attributes[INDEX])
         self._tenor = ql.PeriodParser.parse(self.attributes[TENOR_PERIOD])
         self.settlement_days = int(self.attributes[SETTLEMENT_DAYS])

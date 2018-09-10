@@ -7,8 +7,9 @@ from functools import wraps
 import numpy as np
 import QuantLib as ql
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, to_ql_calendar, \
-    to_ql_compounding, to_ql_day_counter
-from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, DAY_COUNTER, COMPOUNDING, FREQUENCY
+    to_ql_compounding, to_ql_day_counter, to_ql_business_convention
+from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, DAY_COUNTER, COMPOUNDING, FREQUENCY, \
+    BUSINESS_CONVENTION, FIXING_DAYS
 
 
 def default_arguments(f):
@@ -75,7 +76,6 @@ class FraDDI(Instrument):
     def __init__(self, timeseries, first_cc):
         super().__init__(timeseries)
         self.first_cc = first_cc
-        self.quotes = self.timeseries.price.ts_values
         self.calendar = to_ql_calendar(self.attributes[CALENDAR])
         try:
             self._tenor = ql.PeriodParser.parse(self.attributes[TENOR_PERIOD])
@@ -85,8 +85,8 @@ class FraDDI(Instrument):
         self.day_counter = to_ql_day_counter(self.attributes[DAY_COUNTER])
         self.compounding = to_ql_compounding(self.attributes[COMPOUNDING])
         self.frequency = to_ql_frequency(self.attributes[FREQUENCY])
-        self.business_convention = ql.Unadjusted  # TODO: This needs to be parametrized.
-        self.fixing_days = 0  # TODO: This needs to be parametrized.
+        self.business_convention = to_ql_business_convention(self.attributes[BUSINESS_CONVENTION])
+        self.fixing_days = int(self.attributes[FIXING_DAYS])
 
     def reference_date(self, date):
         """ Check maturity of the shortest leg of the contract.

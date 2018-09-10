@@ -7,11 +7,11 @@ from operator import attrgetter
 import numpy as np
 import pandas as pd
 import QuantLib as ql
-from lanxad.base.timeseries import TimeSeries
-from lanxad.base.timeseriescollection import TimeSeriesCollection
-from lanxad.instruments.depositrate import DepositRate
-from lanxad.curves.yieldcurve import YieldCurveTimeSeries
-from lanxad.base.basetools import to_ql_date, to_list, find_le, find_gt
+from tsio import TimeSeries, TimeSeriesCollection
+from tsfin.instruments.depositrate import DepositRate
+from tsfin.curves.yieldcurve import YieldCurveTimeSeries
+from tsfin.base.qlconverters import to_ql_date
+from tsfin.base.basetools import to_list, find_le, find_gt
 
 # namedtuple representing a 'dated value' for the currency curve:
 ExtCurrencyHelper = namedtuple('ExtCurrencyHelper', ['ts_name', 'maturity_date', 'helper'])

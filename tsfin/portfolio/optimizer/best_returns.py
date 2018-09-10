@@ -1,3 +1,10 @@
+"""
+A portfolio optimizer model that selects instruments that have had the best returns in the past.
+
+WARNING: THIS CLASS IS NOT WORKING.
+
+TODO: Finish this class and test it.
+"""
 from operator import itemgetter
 
 

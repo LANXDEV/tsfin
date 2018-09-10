@@ -1,3 +1,6 @@
+"""
+Model for a fund, which may have portfolios, portfolio optimizers, and traders.
+"""
 import pandas as pd
 
 
@@ -58,11 +61,3 @@ class SimpleFund(object):
                                in date_list}
 
         return yield_to_worst_dict
-
-
-
-
-
-
-
-

@@ -1,10 +1,17 @@
+"""
+A portfolio optimizer for building bond indexes.
+
+WARNING: THIS CLASS IS NOT WORKING.
+
+TODO: Finish this class and test it.
+"""
 import random
 
 import numpy as np
 import pandas as pd
 
-from lanxad.base import TimeSeriesCollection
-from lanxad.portfolio import ptools as ptools
+from tsio import TimeSeriesCollection
+from tsfin.portfolio import ptools as ptools
 
 
 class BondIndex(object):

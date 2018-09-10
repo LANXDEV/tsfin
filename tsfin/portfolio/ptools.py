@@ -1,6 +1,9 @@
+"""
+Tools for the portfolio, trading, and back-testing framework.
+"""
 # Routines based on the Portfolio class.
 import pandas as pd
-from lanxad.tools import create_folder
+from tsio.tools import create_folder
 from pprint import pprint
 
 
@@ -30,7 +33,6 @@ def export_summary(portfolio, name, path, the_dates, other_args=None, function_l
         else:
             # If there are no options
             func_name = func_and_options
-            agg_attribute = None
         print("Portfolio: exporting {0}'s summary to file {1}".format(func_name, func_and_options+'_' + name))
         file_name = path + func_and_options + '_' + name + '.xlsx'
         result_dict[func_and_options] = {dt: getattr(portfolio, func_name)(date=dt,

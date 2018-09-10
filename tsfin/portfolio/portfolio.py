@@ -2,9 +2,8 @@ from bisect import bisect_left, bisect_right
 import numpy as np
 import pandas as pd
 import collections
-from lanxad.base.timeseries import TimeSeries
-from lanxad.base.basetools import to_ql_date
-from lanxad.base.basetools import find_previous as get_value
+from tsio.tools import at_index
+from tsfin.base.qlconverters import to_ql_date
 
 trade = collections.namedtuple('trade', 'qty price')
 
@@ -19,7 +18,7 @@ def find_gt(date, sorted_dates):
     i = bisect_right(sorted_dates, date)
     if i != len(sorted_dates):
         return sorted_dates[i]
-    raise ValueError('Could not find leftmost value greater than date')
+    raise ValueError('Could not find leftmost value greater than date.')
 
 
 def find_lt(date, sorted_dates):
@@ -28,7 +27,7 @@ def find_lt(date, sorted_dates):
     if i:
         # print('returning {}'.format(sorted_dates[i-1]))
         return sorted_dates[i - 1]
-    raise ValueError('Could not find rightmost value less than date')
+    raise ValueError('Could not find rightmost value less than date.')
 
 
 class Portfolio:
@@ -322,36 +321,6 @@ class Portfolio:
     def percentage_of_amount_outstanding(self, date, security_objects=None, **kwargs):
         pass
 
-    def oas(self, date, security_objects=None, **kwargs):
-        # TODO: Need to change all the methods to be able to receive  model parameters, yield curves, etc. as arguments.
-        import QuantLib as ql
-        from lanxad.tsio import tsio
-        from lanxad.fixedincome.fitools import calibrate_short_rate_model
-        from lanxad.tools import generate_yield_curves
-        if security_objects is None:
-            security_objects = self.security_objects
-        self.carry_to(date, security_objects)
-        result_dict = dict()
-        value, value_dict = self.value(date, security_objects)
-        yield_curve_timeseries = kwargs['yield_curve_timeseries']
-        model_params = kwargs['model_params'][to_ql_date(date)]
-        for security_name in self.positions[date].keys():
-            try:
-                unit_result = self.get_security(security_name,
-                                            security_objects).oas(yield_curve_timeseries=yield_curve_timeseries,
-                                                                  model=ql.HullWhite,
-                                                                  model_params=model_params, date=date)
-                if np.isnan(unit_result):
-                    print("Security {0} is returning null oas {1}, replacing by "
-                          "zero..".format(security_name, date))
-                    unit_result = 0
-            except AttributeError as e:
-                unit_result = 0
-            result_dict[security_name] = unit_result
-
-        result = sum(value_dict[name] * result_dict[name] / value for name in self.positions[date])
-        return result, result_dict
-
     def liquidity_index(self, date, security_objects=None):
-        # total_liquidity_index = total_amt_outstd * number_of_securities
+        # total_liquidity_index = total_amt_outstd * number_of_securities.
         pass

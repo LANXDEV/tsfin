@@ -1,11 +1,18 @@
+"""
+A trader model that trades instruments following a pre-defined cost mapping.
+
+WARNING: THIS CLASS IS NOT WORKING.
+
+TODO: Finish this class and test it.
+"""
 import pandas as pd
 import scipy.optimize as optimize
-from lanxad.base.timeseries import TimeSeries
-from lanxad.fixedincome.callablebond import CallableBond
-from lanxad.fixedincome import SimpleBond
+from tsio import TimeSeries
+from tsfin.instruments.bonds.callablefixedratebond import CallableFixedRateBond
+from tsfin.instruments.bonds.fixedratebond import FixedRateBond
 
 
-class CostTrader(object):
+class CostTrader:
 
     def __init__(self, cost_dict, default_security_objects=None):
         if default_security_objects is None:
@@ -46,7 +53,7 @@ class CostTrader(object):
             else:
                 new_security_trading_price = self.get_price(the_date, new_security_name, self.cost_dict, 'BUY',
                                                             security_objects)
-            new_trade = trade(new_security_qty - old_security_qty, new_security_trading_price)
+            new_trade = self.trade(new_security_qty - old_security_qty, new_security_trading_price)
             old_portfolio.add_trade(the_date, new_security_name, new_trade)
 
     def _objective_function(self, final_nav, the_date, objective_portfolio_dict, old_portfolio, security_objects):
@@ -63,7 +70,7 @@ class CostTrader(object):
         for security_name in securities_to_get_rid_of:
             # Getting rid of the securities that should not be in the portfolio anymore.
             price = self.get_price(the_date, security_name, self.cost_dict, 'SELL', security_objects)
-            the_trade = trade(-old_portfolio.positions[the_date][security_name], price)
+            the_trade = self.trade(-old_portfolio.positions[the_date][security_name], price)
             old_portfolio.add_trade(the_date, security_name, the_trade)
 
     def get_price(self, the_date, security_name, cost_dict=None, transaction_type=None, security_objects=None):
@@ -74,7 +81,7 @@ class CostTrader(object):
         security = next((obj for obj in security_objects if security_name == getattr(obj, 'ts_name', None) or
                          security_name == getattr(obj, 'name', None)), [None])
 
-        if isinstance(security, SimpleBond) or isinstance(security, CallableBond):
+        if isinstance(security, FixedRateBond) or isinstance(security, CallableFixedRateBond):
             clean_price = security.clean_prices.get_value(date=the_date)
             par = security.attributes['PAR']
             price = security.dirty_price_from_clean_price(clean_price, the_date) / par

@@ -5,8 +5,9 @@ YieldCurveTimeSeries, a class to handle a time series of yield curves.
 from collections import namedtuple, Counter
 from operator import attrgetter
 import QuantLib as ql
-from lanxad.constants import ISSUE_DATE_ATTRIBUTES
-from lanxad.base.basetools import to_ql_date, to_list, conditional_vectorize, find_le, find_gt
+from tsfin.constants import ISSUE_DATE_ATTRIBUTES
+from tsfin.base.qlconverters import to_ql_date
+from tsfin.base.basetools import to_list, conditional_vectorize, find_le, find_gt
 
 # The default issue_date is used if it is impossible to decide the issue date of a given TimeSeries.
 DEFAULT_ISSUE_DATE = ql.Date.minDate()
@@ -48,7 +49,7 @@ class YieldCurveTimeSeries:
         self.other_rate_helper_args = other_rate_helper_args
 
         self.issue_dates = dict()
-        # TODO: Remove issue_dates inspection from this class and add an issue_date attribute to all instrument
+        # TODO: Remove issue_dates inspection from this class and add an issue_date attribute to all instrument.
         # classes.
         # Saving the issue dates.
         for ts in ts_collection:
