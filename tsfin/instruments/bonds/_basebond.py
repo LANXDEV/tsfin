@@ -102,7 +102,7 @@ def transform_ts_values(timeseries):
         date_series = pd.Series(index=timeseries.quotes.ts_values.index, data=timeseries.quotes.ts_values.index)
         timeseries.quotes.ts_values = face_amount - timeseries.quotes.ts_values * \
         date_series.apply(lambda x: day_counter.yearFraction(calendar.advance(to_ql_date(x), settlement_days, ql.Days),
-                                                              maturity_date))
+                                                             maturity_date))
         timeseries.set_attribute(QUOTE_TYPE, CLEAN_PRICE)
 
 
@@ -240,7 +240,7 @@ class _BaseBond(TimeSeries):
         self.date_generation = to_ql_date_generation(self.ts_attributes[DATE_GENERATION])
         self.month_end = False  # TODO: Add support for this variable.
 
-        self.schedule = ql.Schedule(self.first_accrual_date, self.maturity_date, self.coupom_frequency, self.calendar,
+        self.schedule = ql.Schedule(self.first_accrual_date, self.maturity_date, self.coupon_frequency, self.calendar,
                                     self.business_convention, self.business_convention, self.date_generation,
                                     self.month_end)
 
