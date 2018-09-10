@@ -6,26 +6,25 @@ TODO: Propose implementation of these classes in QuantLib.
 from functools import wraps
 import numpy as np
 import QuantLib as ql
-from lanxad.base.instrument import Instrument
-from lanxad.base.basetools import conditional_vectorize, to_ql_date
-from lanxad.constants import BASE_CURRENCY, COUNTER_CURRENCY, BASE_RATE_COMPOUNDING, BASE_RATE_DAY_COUNTER, \
+from tsfin.base import Instrument, conditional_vectorize, to_ql_date, to_ql_frequency, to_ql_calendar, \
+    to_ql_compounding, to_ql_day_counter, to_ql_currency
+from tsfin.constants import BASE_CURRENCY, COUNTER_CURRENCY, BASE_RATE_COMPOUNDING, BASE_RATE_DAY_COUNTER, \
     BASE_RATE_FREQUENCY, COUNTER_RATE_COMPOUNDING, COUNTER_RATE_DAY_COUNTER, COUNTER_RATE_FREQUENCY, CALENDAR, \
-    MATURITY_DATE, MULTIPLY_QUOTES_BY
-from lanxad.base.qlconverters import to_ql_frequency, to_ql_calendar, to_ql_compounding, to_ql_day_counter, \
-    to_ql_currency
+    MATURITY_DATE, MULTIPLY_QUOTES_BY, SETTLEMENT_DAYS
 
 
-def usd_brl_maturity_on_the_run(date):
-    """Next USDBRL future maturity (USDBRL future contracts dealt by BMF in Brazil).
+def usdbrl_next_maturity(date):
+    """ Next maturity of BM&F (Brazil) USDBRL future contracts.
 
     Parameters
     ----------
-    date: date-like
+    date: QuantLib.Date
+        Reference date.
 
     Returns
     -------
     QuantLib.Date
-
+        Maturity date of closest-to-maturity contract.
     """
     date = to_ql_date(date)
     calendar = ql.Brazil()
@@ -95,16 +94,16 @@ def default_arguments_currency_future(f):
             kwargs['last'] = False
         # If last True, use last available date and value for yield calculation.
         if kwargs.get('last', None) is True:
-            kwargs['date'] = getattr(self, 'quotes').last_valid_index()
-            kwargs['quote'] = getattr(self, 'quotes')[kwargs['date']]
+            kwargs['date'] = getattr(self, 'quotes').ts_values.last_valid_index()
+            kwargs['quote'] = getattr(self, 'quotes').ts_values[kwargs['date']]
             return f(self, **kwargs)
         # If not, use all the available dates and values.
         if 'date' not in kwargs.keys():
-            kwargs['date'] = getattr(self, 'quotes').index
+            kwargs['date'] = getattr(self, 'quotes').ts_values.index
             if 'quote' not in kwargs.keys():
-                kwargs['quote'] = getattr(self, 'quotes').values
+                kwargs['quote'] = getattr(self, 'quotes').ts_values.values
         elif 'quote' not in kwargs.keys():
-            kwargs['quote'] = getattr(self, 'price').get_value(date=kwargs['date'])
+            kwargs['quote'] = getattr(self, 'quotes').get_value(date=kwargs['date'])
         return f(self, *args, **kwargs)
     new_f._decorated_by_default_arguments_ = True
     return new_f
@@ -189,14 +188,14 @@ class CurrencyFuture(Instrument):
         self.counter_rate_compounding = to_ql_compounding(self.ts_attributes[COUNTER_RATE_COMPOUNDING])
         self.base_rate_frequency = to_ql_frequency(self.ts_attributes[BASE_RATE_FREQUENCY])
         self.counter_rate_frequency = to_ql_frequency(self.ts_attributes[COUNTER_RATE_FREQUENCY])
-        self.settlement_days = 2
+        self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
 
         self.base_currency_future = BaseCurrencyFuture(self.base_currency, self.counter_currency, self.maturity_date,
                                                        self.calendar, self.base_rate_day_counter,
                                                        self.base_rate_compounding, self.base_rate_frequency,
                                                        self.counter_rate_day_counter,
                                                        self.counter_rate_compounding,
-                                                       self.counter_rate_frequency)
+                                                       self.counter_rate_frequency, self.settlement_days)
 
     def is_expired(self, date, *args, **kwargs):
         """Check if the contract is expired.
@@ -258,7 +257,7 @@ class CurrencyFuture(Instrument):
         scalar
             Cash amount received/paid by the holder of a contract between `start_date` and `date`.
         """
-        # TODO: Implement.
+        # TODO: Implement this.
         raise NotImplementedError("This method is not yet implemented.")
 
     def value(self, last, date, quote, last_available_data=False, *args, **kwargs):
@@ -456,10 +455,12 @@ class BaseCurrencyFuture:
         Compounding convention of the counter currency interest rate.
     counter_rate_frequency: QuantLib.Frequency
         Compounding frequency of the counter currency interest rate.
+    settlement_days: int
+        Settlement days for the contract.
     """
     def __init__(self, base_currency, counter_currency, maturity, calendar, base_rate_day_counter,
                  base_rate_compounding, base_rate_frequency, counter_rate_day_counter, counter_rate_compounding,
-                 counter_rate_frequency):
+                 counter_rate_frequency, settlement_days):
         self.base_currency = base_currency
         self.counter_currency = counter_currency
         self.maturity = maturity
@@ -470,7 +471,7 @@ class BaseCurrencyFuture:
         self.counter_rate_day_counter = counter_rate_day_counter
         self.counter_rate_compounding = counter_rate_compounding
         self.counter_rate_frequency = counter_rate_frequency
-        self.settlement_days = 2  # TODO: Needs parametrization.
+        self.settlement_days = settlement_days
 
     @default_arguments_base_currency_future
     def counter_rate(self, spot, base_rate, quote, date, counter_rate_day_counter, counter_rate_compounding,
@@ -617,21 +618,3 @@ class CurrencyFutureHelper(BaseCurrencyFuture):
                          counter_rate_compounding, counter_rate_frequency)
         self.date = date
         self.quote = quote
-
-
-def usdbrl_next_maturity(date):
-    """ Next maturity of BM&F (Brazil) USDBRL future contracts.
-
-    Parameters
-    ----------
-    date: QuantLib.Date
-        Reference date.
-
-    Returns
-    -------
-    QuantLib.Date
-        Maturity date of closest-to-maturity contract.
-    """
-    date = to_ql_date(date)
-    calendar = ql.Brazil()
-    return calendar.advance(calendar.endOfMonth(calendar.advance(date, 1, ql.Days)), 1, ql.Days)

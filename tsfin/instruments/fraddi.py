@@ -6,11 +6,9 @@ TODO: Propose implementation of this class in QuantLib.
 from functools import wraps
 import numpy as np
 import QuantLib as ql
-from lanxad.base.instrument import Instrument
-from lanxad.base.basetools import conditional_vectorize, to_datetime
-from lanxad.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_calendar, \
+from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, to_ql_calendar, \
     to_ql_compounding, to_ql_day_counter
-from lanxad.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, DAY_COUNTER, COMPOUNDING, FREQUENCY
+from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, DAY_COUNTER, COMPOUNDING, FREQUENCY
 
 
 def default_arguments(f):
@@ -44,8 +42,9 @@ def default_arguments(f):
     @wraps(f)
     def new_f(self, **kwargs):
         if kwargs.get('last', None) is True:
-            kwargs['date'] = getattr(self, 'quotes').last_valid_index()
-            kwargs['quote'] = getattr(self, 'quotes')[kwargs['dates']]
+            quotes = self.quotes
+            kwargs['date'] = quotes.ts_values.last_valid_index()
+            kwargs['quote'] = quotes.ts_values[kwargs['dates']]
             return f(self, **kwargs)
         if 'date' not in kwargs.keys():
             kwargs['date'] = getattr(self, 'quotes').ts_values.index
@@ -75,7 +74,6 @@ class FraDDI(Instrument):
     """
     def __init__(self, timeseries, first_cc):
         super().__init__(timeseries)
-        self.quotes.ts_values /= 100  # TODO: Put this in a separate function.
         self.first_cc = first_cc
         self.quotes = self.timeseries.price.ts_values
         self.calendar = to_ql_calendar(self.attributes[CALENDAR])

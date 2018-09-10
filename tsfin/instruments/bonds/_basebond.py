@@ -101,7 +101,7 @@ def transform_ts_values(timeseries):
         settlement_days = int(timeseries.get_attribute(SETTLEMENT_DAYS))
         date_series = pd.Series(index=timeseries.quotes.ts_values.index, data=timeseries.quotes.ts_values.index)
         timeseries.quotes.ts_values = face_amount - timeseries.quotes.ts_values * \
-         date_series.apply(lambda x: day_counter.yearFraction(calendar.advance(to_ql_date(x), settlement_days, ql.Days),
+        date_series.apply(lambda x: day_counter.yearFraction(calendar.advance(to_ql_date(x), settlement_days, ql.Days),
                                                               maturity_date))
         timeseries.set_attribute(QUOTE_TYPE, CLEAN_PRICE)
 

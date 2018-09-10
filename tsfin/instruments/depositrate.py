@@ -3,28 +3,11 @@ DepositRate class, to represent deposit rates.
 """
 import numpy as np
 import QuantLib as ql
-from lanxad.constants import MULTIPLY_QUOTES_BY, CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
-    COMPOUNDING, FREQUENCY, DAY_COUNTER
-from lanxad.base.timeseries import default_arguments
-from lanxad.base.instrument import Instrument
-from lanxad.base.basetools import conditional_vectorize, to_datetime
-from lanxad.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_business_convention, to_ql_calendar, \
-    to_ql_compounding, to_ql_day_counter
-
-
-def transform_ts_values(timeseries):
-    """ Transform inplace ``ts_values`` of the quotes sub-TimeSeries into tractable format.
-
-    Typically, this is used to divide interest rate quotes by 100.
-
-    Parameters
-    ----------
-    timeseries: TimeSeries
-        The object whose ``quotes.ts_values`` will be converted to clean prices.
-    """
-    multiply_quotes_by = timeseries.get_attribute(MULTIPLY_QUOTES_BY)
-    if multiply_quotes_by:
-        timeseries.ts_values *= float(multiply_quotes_by)
+from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
+    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS
+from tsfin.base.instrument import default_arguments
+from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
+    to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter
 
 
 class DepositRate(Instrument):
@@ -47,7 +30,7 @@ class DepositRate(Instrument):
         self.compounding = to_ql_compounding(self.ts_attributes[COMPOUNDING])
         self.frequency = to_ql_frequency(self.ts_attributes[FREQUENCY])
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
-        self.fixing_days = 0  # TODO: This needs to be parametrized.
+        self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
 
     def is_expired(self, date, *args, **kwargs):
         """Check if the deposit rate is expired.
