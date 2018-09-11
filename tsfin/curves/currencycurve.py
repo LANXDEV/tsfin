@@ -58,7 +58,7 @@ class CurrencyCurveTimeSeries:
                 named_dated_helpers[maturity_date] = ndhelper
 
         # Retrieving spot value.
-        spot_value = self.spot.get_value(date=date, last_available=False, default=np.nan)
+        spot_value = self.spot.get_values(index=date, last_available=False, fill_value=np.nan)
 
         return spot_value, named_dated_helpers
 
@@ -234,7 +234,7 @@ class CurrencyCurveTimeSeries:
             maturity_date = ts.maturity_date
             deposit_rate.ts_values = pd.Series(index=dates,
                                                data=ts.counter_rate(quote=ts.quotes.values,
-                                                                    spot=self.spot.get_value(date=dates),
+                                                                    spot=self.spot.get_values(index=dates),
                                    base_rate=base_rate_curve_time_series.zero_rate_to_date(date=dates,
                                                                                  to_date=maturity_date,
                                                                                  compounding=ts.base_rate_compounding,
@@ -271,7 +271,7 @@ class CurrencyCurveTimeSeries:
             maturity_date = ts.maturity_date
             deposit_rate.ts_values = pd.Series(index=dates,
                                                data=ts.base_rate(quote=ts.quotes.values,
-                                                                 spot=self.spot.get_value(date=dates),
+                                                                 spot=self.spot.get_values(index=dates),
                         counter_rate=counter_rate_curve_time_series.zero_rate_to_date(date=dates,
                                                                                    to_date=maturity_date,
                                                                                    compounding=ts.base_rate_compounding,

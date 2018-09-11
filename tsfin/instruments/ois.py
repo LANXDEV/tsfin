@@ -41,7 +41,7 @@ class OISRate(DepositRate):
         # Returns None if impossible to obtain a rate helper from this time series
         if self.is_expired(date):
             return None
-        rate = self.get_value(date=date, last_available=last_available, default=np.nan)
+        rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
         date = to_ql_date(date)

@@ -22,11 +22,11 @@ class SwapRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.business_convention = to_ql_business_convention(self.attributes[BUSINESS_CONVENTION])
-        self.calendar = to_ql_calendar(self.attributes[CALENDAR])
-        self._tenor = ql.PeriodParser.parse(self.attributes[TENOR_PERIOD])
-        self.index = to_ql_index(self.attributes[INDEX])(ql.Period(3, ql.Months))  # TODO: needs to be parametrized.
-        self.day_counter = to_ql_day_counter(self.attributes[DAY_COUNTER])
+        self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        self.index = to_ql_index(self.ts_attributes[INDEX])(ql.Period(3, ql.Months))  # TODO: needs to be parametrized.
+        self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
@@ -59,7 +59,7 @@ class SwapRate(DepositRate):
             Rate helper for yield curve construction.
         """
         # Returns None if impossible to obtain a rate helper from this time series
-        rate = self.get_value(date=date, last_available=last_available, default=np.nan)
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
         return ql.SwapRateHelper(rate, self._tenor, self.calendar, self.frequency, self.business_convention,

@@ -103,7 +103,7 @@ def default_arguments_currency_future(f):
             if 'quote' not in kwargs.keys():
                 kwargs['quote'] = getattr(self, 'quotes').ts_values.values
         elif 'quote' not in kwargs.keys():
-            kwargs['quote'] = getattr(self, 'quotes').get_value(date=kwargs['date'])
+            kwargs['quote'] = getattr(self, 'quotes').get_values(index=kwargs['date'])
         return f(self, *args, **kwargs)
     new_f._decorated_by_default_arguments_ = True
     return new_f
@@ -412,7 +412,7 @@ class CurrencyFuture(Instrument):
         """
         if self.is_expired(date):
             return None
-        quote = self.price.get_value(date=date, last_available=last_available, default=np.nan)
+        quote = self.price.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(quote):
             return None
         date = to_ql_date(date)

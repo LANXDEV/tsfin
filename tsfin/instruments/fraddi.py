@@ -52,7 +52,7 @@ def default_arguments(f):
             if 'quote' not in kwargs.keys():
                 kwargs['quote'] = getattr(self, 'quotes').ts_values.values
         elif 'quote' not in kwargs.keys():
-            kwargs['quote'] = getattr(self, 'quotes').get_value(date=kwargs['date'])
+            kwargs['quote'] = getattr(self, 'quotes').get_values(index=kwargs['date'])
         return f(self, **kwargs)
     new_f._decorated_by_default_arguments_ = True
     return new_f
@@ -178,8 +178,8 @@ class FraDDI(Instrument):
         # Returns None if impossible to obtain a rate helper from this time series.
         if self.is_expired(date):
             return None
-        rate = self.price.get_value(date=date, last_available=last_available, default=np.nan)
-        first_cc_rate = self.first_cc.get_value(date=date, last_available=last_available, default=np.nan)
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        first_cc_rate = self.first_cc.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
         if np.isnan(first_cc_rate):

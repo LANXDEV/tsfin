@@ -22,7 +22,7 @@ class YieldCurveTimeSeries:
                  **other_rate_helper_args):
         """Time series of QuantLib YieldTermStructures objects.
 
-        The QuantLib YieldtermStructure objects are stored in the dict self.yield_curves and are 'lazy' created and
+        The QuantLib YieldTermStructure objects are stored in the dict self.yield_curves and are 'lazy' created and
         stored when requested.
 
         Parameters
@@ -121,6 +121,7 @@ class YieldCurveTimeSeries:
         dates = to_list(dates)
 
         for date in dates:
+            print("Calculating for date...")
             qldate = to_ql_date(date)
             ql.Settings.instance().evaluationDate = qldate
 
@@ -132,7 +133,7 @@ class YieldCurveTimeSeries:
 
             # Get dates and discounts
             node_dates = yield_curve.dates()
-            node_rates = [yield_curve.zeroRate(date, self.day_counter, ql.Continuous)]
+            node_rates = [yield_curve.zeroRate(date, self.day_counter, ql.Continuous).rate() for date in node_dates]
 
             # Freezing the curve so that nothing is bothered by changing the singleton (global variable) evaluationDate.
             yield_curve = ql.MonotonicCubicZeroCurve(node_dates, node_rates,

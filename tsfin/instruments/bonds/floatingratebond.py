@@ -39,7 +39,7 @@ def set_floating_rate_index(f):
         forecast_curve.linkTo(reference_curve.yield_curve(date))
         for dt in getattr(self, 'fixing_dates'):
             if dt <= date:
-                index.addFixing(dt, index_timeseries.get_value(date=dt))
+                index.addFixing(dt, index_timeseries.get_values(index=dt))
         result = f(self, **kwargs)
         ql.IndexManager.instance().clearHistory(index.name())
         return result

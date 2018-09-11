@@ -5,7 +5,7 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 import QuantLib as ql
-from tsio import TimeSeries
+from tsfin.base.instrument import Instrument
 from tsfin.constants import BOND_TYPE, QUOTE_TYPE, CURRENCY, YIELD_QUOTE_COMPOUNDING, \
     YIELD_QUOTE_FREQUENCY, ISSUE_DATE, FIRST_ACCRUAL_DATE, MATURITY_DATE, CALENDAR, \
     BUSINESS_CONVENTION, DATE_GENERATION, SETTLEMENT_DAYS, FACE_AMOUNT, COUPONS, DAY_COUNTER, REDEMPTION, DISCOUNT, \
@@ -75,7 +75,7 @@ def default_arguments(f):
             if 'quote' not in kwargs.keys():
                 kwargs['quote'] = getattr(self, 'quotes').ts_values.values
         elif 'quote' not in kwargs.keys():
-            kwargs['quote'] = getattr(self, 'quotes').get_value(date=kwargs['date'])
+            kwargs['quote'] = getattr(self, 'quotes').get_values(index=kwargs['date'])
         return f(self, **kwargs)
     new_f._decorated_by_default_arguments_ = True
     return new_f
@@ -205,7 +205,7 @@ def create_call_component(call_date, call_price, main_bond_schedule, calendar, b
                             call_price, issue_date)
 
 
-class _BaseBond(TimeSeries):
+class _BaseBond(Instrument):
     """ Base class for bonds.
 
     Parameters
@@ -393,21 +393,21 @@ class _BaseBond(TimeSeries):
         """
         if self.is_expired(date):
             return None
-        if self.quotes().last_valid_index() is None:
+        if self.quotes.ts_values.last_valid_index() is None:
             return None
-        if self.quotes().last_valid_index() <= to_datetime(date) - timedelta(max_inactive_days):
+        if self.quotes.ts_values.last_valid_index() <= to_datetime(date) - timedelta(max_inactive_days):
             # To avoid returning bond helper for bonds that have been called, exchanged, etc...
             # print("Returning none..")
             return None
-        quote = self.price.get_value(date=date, last_available=last_available, default=np.nan)
+        quote = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(quote):
             return None
         date = to_ql_date(date)
         if reference_date_for_worst_date is not None:
             reference_date_for_worst_date = to_ql_date(reference_date_for_worst_date)
-            reference_quote_for_worst_date = self.price.get_value(date=reference_date_for_worst_date,
-                                                                  last_available=last_available,
-                                                                  default=np.nan)
+            reference_quote_for_worst_date = self.price.get_values(index=reference_date_for_worst_date,
+                                                                   last_available=last_available,
+                                                                   fill_value=np.nan)
         else:
             reference_date_for_worst_date = date
             reference_quote_for_worst_date = quote
@@ -624,7 +624,7 @@ class _BaseBond(TimeSeries):
             The dirty value of the bond as of `date`.
         """
         if last_available:
-            quote = self.price.get_value(date=date, last_available=last_available)
+            quote = self.price.get_values(index=date, last_available=last_available)
             return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
         if date > self.quotes().last_valid_index():
             return np.nan
@@ -662,7 +662,7 @@ class _BaseBond(TimeSeries):
         if start_date < first_available_date:
             start_date = first_available_date
         if start_quote is None:
-            start_quote = self.price.get_value(date=start_date)
+            start_quote = self.price.get_values(index=start_date)
         if date < start_date:
             return np.nan
         start_value = self.value(quote=start_quote, date=start_date)

@@ -132,7 +132,7 @@ class DepositRate(Instrument):
         start_date = to_ql_date(start_date)
         date = to_ql_date(date)
         fixing_dates, maturity_dates = self._get_fixing_maturity_dates(start_date, date)
-        fixings = self.timeseries.get_value(date=[to_datetime(fixing_date) for fixing_date in fixing_dates])
+        fixings = self.timeseries.get_values(index=[to_datetime(fixing_date) for fixing_date in fixing_dates])
         return np.prod([ql.InterestRate(fixing, self.day_counter, self.compounding,
                                         self.frequency).compoundFactor(fixing_date, maturity_date, start_date, date)
                        for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)]) - 1
@@ -155,7 +155,7 @@ class DepositRate(Instrument):
         # Returns None if impossible to obtain a rate helper from this time series
         if self.is_expired(date):
             return None
-        rate = self.get_value(date=date, last_available=last_available, default=np.nan)
+        rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
         # print("{0} is returning a rate helper with rate {1}".format(self.ts_name, rate))
         if np.isnan(rate):
             return None
