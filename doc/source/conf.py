@@ -21,7 +21,7 @@ import sys
 
 # -- Project information -----------------------------------------------------
 
-project = 'Time Series Finance'
+project = 'T.S. Finance'
 copyright = '2018, Lanx Capital'
 author = 'Lanx Capital'
 
