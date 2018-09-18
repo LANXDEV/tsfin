@@ -1,14 +1,20 @@
-.. LanxAD documentation master file, created by
-   sphinx-quickstart on Sat Apr 14 21:20:04 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
+Time Series Finance Documentation
+=================================
 
-LanxAD Documentation
-====================
+Description
+-----------
+
+This is the documentation page of the Time Series Finance project. For installation instructions, see the `project's
+GitHub page <https://github.com/LANXDEV/tsfin>`_.
+
+This project is a Python library implementing models for financial instruments and curves. It is built on top of
+`Time Series I/O <https://github.com/LANXDEV/tsio>`_ and `QuantLib (for Python) <https://www.quantlib.org/>`_.
+
+Contents
+--------
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
 
    classes/TimeSeries
    classes/TimeSeriesCollection

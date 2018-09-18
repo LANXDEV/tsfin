@@ -9,4 +9,4 @@
 *.egg-info
 *.egg
 *cscope.out
-doc/build
+/doc/build
