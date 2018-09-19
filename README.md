@@ -18,6 +18,7 @@ pip install git+https://github.com/LANXDEV/tsfin/
 ```
 
 ## Dependencies
+
 - [NumPy](https://www.numpy.org): 1.14.2 or higher
 - [pandas](https://pandas.pydata.org/): 0.22.0 or higher
 - [QuantLib-Python](https://www.quantlib.org/install/windows-python.shtml): 1.12 or higher
