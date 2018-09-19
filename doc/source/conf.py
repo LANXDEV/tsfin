@@ -97,7 +97,7 @@ html_theme = 'alabaster'
 #
 html_theme_options = {
                       "github_user": "LANXDEV",
-                      "github_repo": "lanxad",
+                      "github_repo": "tsfin",
                       "github_button": "true",
                       "fixed_sidebar": "true",
                       }
