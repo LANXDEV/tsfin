@@ -2,9 +2,9 @@
 
 This project implements classes for financial instruments and curves. It is built on top of
 [Time Series I/O](https://github.com/LANXDEV/tsio) and [QuantLib-Python](https://www.quantlib.org/). The objects in this
-project are all based on the Time Series model, in the sense of the [Time Series I/O project](https://github
-.com/LANXDEV/tsio), and provide similar features in addition to standard financial calculations.
-The classes and tools defined here might be of great help in building financial applications.
+project are all based on the Time Series model, in the sense of the [Time Series I/O project](https://github.com/LANXDEV/tsio),
+and provide similar features in addition to standard financial calculations. The classes and tools defined here might be
+ of great help in building financial applications.
 
 ## Requirements
 - A running MongoDB instance
