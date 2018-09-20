@@ -1,0 +1,447 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Currency Curve &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Hybrid Yield Curve" href="tsfin.curves.hybridyieldcurve.html" />
+    <link rel="prev" title="Yield Curve" href="tsfin.curves.yieldcurve.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tsfin.curves.yieldcurve.html" title="previous chapter">Yield Curve</a></li>
+      <li>Next: <a href="tsfin.curves.hybridyieldcurve.html" title="next chapter">Hybrid Yield Curve</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tsfin.curves.currencycurve">
+<span id="currency-curve"></span><h1>Currency Curve<a class="headerlink" href="#module-tsfin.curves.currencycurve" title="Permalink to this headline">¶</a></h1>
+<p>Classes to model currency exchange rate curves, and build the yield curves of their base and counter currencies.
+Maybe in the future should be added to QuantLib.</p>
+<dl class="class">
+<dt id="tsfin.curves.currencycurve.CurrencyCurve">
+<em class="property">class </em><code class="descname">CurrencyCurve</code><span class="sig-paren">(</span><em>reference_date</em>, <em>spot</em>, <em>helpers</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurve.base_rate_curve">
+<code class="descname">base_rate_curve</code><span class="sig-paren">(</span><em>counter_rate_curve=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurve.base_rate_curve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurve.base_rate_curve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Yield term structure object of the base currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>counter_rate_curve</strong> (<em>QuantLib.YieldTermStructure</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Yield curve of base currency interest rates, implied by the currency curve and counter currency interest
+rates curve.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">QuantLib.YieldTermStructure</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurve.counter_rate_curve">
+<code class="descname">counter_rate_curve</code><span class="sig-paren">(</span><em>base_rate_curve=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurve.counter_rate_curve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurve.counter_rate_curve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Yield term structure object of the counter currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>base_rate_curve</strong> (<em>QuantLib.YieldTermStructure</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Yield curve of counter currency interest rates, implied by the currency curve and base currency interest
+rates curve.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">QuantLib.YieldTermStructure</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurve.dates">
+<code class="descname">dates</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurve.dates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurve.dates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Date nodes of the currency curve.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Date nodes of the currency curve.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list of QuantLib.Date</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurve.exchange_rate_to_date">
+<code class="descname">exchange_rate_to_date</code><span class="sig-paren">(</span><em>date</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurve.exchange_rate_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurve.exchange_rate_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exchange rate to a given date, using linear interpolation between nodes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The exchange rate implied by the currency curve, using linear interpolation between nodes.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">scalar</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurve.spot_rate">
+<code class="descname">spot_rate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurve.spot_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurve.spot_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exchange rate at the reference date (spot rate).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Spot rate.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">scalar</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries">
+<em class="property">class </em><code class="descname">CurrencyCurveTimeSeries</code><span class="sig-paren">(</span><em>spot_timeseries</em>, <em>currency_futures</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.base_rate_curve">
+<code class="descname">base_rate_curve</code><span class="sig-paren">(</span><em>date</em>, <em>counter_rate_curve</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.base_rate_curve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.base_rate_curve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a yield curve for base currency interest rate at a given date.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – The reference date for the yield curve.</li>
+<li><strong>counter_rate_curve</strong> (<em>QuantLib.YieldTermStructure</em>) – The yield curve of counter currency interest rate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Yield curve of the base currency interest rates.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">QuantLib.YieldTermStructure</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.base_rate_curve_time_series">
+<code class="descname">base_rate_curve_time_series</code><span class="sig-paren">(</span><em>counter_rate_curve_time_series</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.base_rate_curve_time_series"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.base_rate_curve_time_series" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a yield curve time series of the base currency interest rate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>counter_rate_curve_time_series</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">YieldCurveTimeSeries</span></code>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Yield curve time series object of the base currency interest rate.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">py:obj:YieldCurveTimeSeries</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.base_rate_to_date">
+<code class="descname">base_rate_to_date</code><span class="sig-paren">(</span><em>date</em>, <em>to_date</em>, <em>counter_rate</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.base_rate_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.base_rate_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get interest rate of the base currency at a given date, to a given date.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date for the currency curve.</li>
+<li><strong>to_date</strong> (<em>QuantLib.Date</em>) – Maturity date of the interest rate.</li>
+<li><strong>counter_rate</strong> (<em>scalar</em>) – Interest rate of the counter currency to <cite>to_date</cite>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Interest rate of the base currency to <cite>to_date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.counter_rate_curve">
+<code class="descname">counter_rate_curve</code><span class="sig-paren">(</span><em>date</em>, <em>base_rate_curve</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.counter_rate_curve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.counter_rate_curve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a yield curve for counter currency interest rate at a given date.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – The reference date for the yield curve.</li>
+<li><strong>base_rate_curve</strong> (<em>QuantLib.YieldTermStructure</em>) – The yield curve of base currency interest rate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Yield curve of the counter currency interest rates.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">QuantLib.YieldTermStructure</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.counter_rate_curve_time_series">
+<code class="descname">counter_rate_curve_time_series</code><span class="sig-paren">(</span><em>base_rate_curve_time_series</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.counter_rate_curve_time_series"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.counter_rate_curve_time_series" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a yield curve time series of the counter currency interest rate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>base_rate_curve_time_series</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">YieldCurveTimeSeries</span></code>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Yield curve time series object of the counter currency interest rate.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">py:obj:YieldCurveTimeSeries</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.counter_rate_to_date">
+<code class="descname">counter_rate_to_date</code><span class="sig-paren">(</span><em>date</em>, <em>to_date</em>, <em>base_rate</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.counter_rate_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.counter_rate_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get interest rate of the counter currency at a given date, to a given date.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date for the currency curve.</li>
+<li><strong>to_date</strong> (<em>QuantLib.Date</em>) – Maturity date of the interest rate.</li>
+<li><strong>base_rate</strong> (<em>scalar</em>) – Interest rate of the base currency to <cite>to_date</cite>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Interest rate of the counter currency to <cite>to_date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.currency_curve">
+<code class="descname">currency_curve</code><span class="sig-paren">(</span><em>date</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.currency_curve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.currency_curve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the currency curve object at a given date.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – The date of the currency curve.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The currency curve at <cite>date</cite>.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">py:obj:CurrencyCurve</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.exchange_rate_to_date">
+<code class="descname">exchange_rate_to_date</code><span class="sig-paren">(</span><em>date</em>, <em>to_date</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.exchange_rate_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.exchange_rate_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get exchange rate implied by the curve at a given date, to a given date, with linear interpolation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date of the currency curve.</li>
+<li><strong>to_date</strong> (<em>QuantLib.Date</em>) – Maturity date for the future exchange rate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Exchange rate to <cite>to_date</cite>, at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.CurrencyCurveTimeSeries.update_curves">
+<code class="descname">update_curves</code><span class="sig-paren">(</span><em>dates</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/currencycurve.html#CurrencyCurveTimeSeries.update_curves"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.currencycurve.CurrencyCurveTimeSeries.update_curves" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update <code class="docutils literal notranslate"><span class="pre">self.currency_curves</span></code> with the currency curves of each date in <cite>dates</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dates</strong> (<em>list of QuantLib.Dates</em>) – </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tsfin.curves.currencycurve.ExtCurrencyHelper">
+<em class="property">class </em><code class="descname">ExtCurrencyHelper</code><span class="sig-paren">(</span><em>ts_name</em>, <em>maturity_date</em>, <em>helper</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.curves.currencycurve.ExtCurrencyHelper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.ExtCurrencyHelper.count">
+<code class="descname">count</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span> &#x2192; integer -- return number of occurrences of value<a class="headerlink" href="#tsfin.curves.currencycurve.ExtCurrencyHelper.count" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tsfin.curves.currencycurve.ExtCurrencyHelper.helper">
+<code class="descname">helper</code><a class="headerlink" href="#tsfin.curves.currencycurve.ExtCurrencyHelper.helper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.currencycurve.ExtCurrencyHelper.index">
+<code class="descname">index</code><span class="sig-paren">(</span><em>value</em><span class="optional">[</span>, <em>start</em><span class="optional">[</span>, <em>stop</em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> &#x2192; integer -- return first index of value.<a class="headerlink" href="#tsfin.curves.currencycurve.ExtCurrencyHelper.index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raises ValueError if the value is not present.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tsfin.curves.currencycurve.ExtCurrencyHelper.maturity_date">
+<code class="descname">maturity_date</code><a class="headerlink" href="#tsfin.curves.currencycurve.ExtCurrencyHelper.maturity_date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tsfin.curves.currencycurve.ExtCurrencyHelper.ts_name">
+<code class="descname">ts_name</code><a class="headerlink" href="#tsfin.curves.currencycurve.ExtCurrencyHelper.ts_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/tsfin/tsfin.curves.currencycurve.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,510 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.curves.yieldcurve &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.curves.yieldcurve</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">YieldCurveTimeSeries, a class to handle a time series of yield curves.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span><span class="p">,</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="k">import</span> <span class="n">attrgetter</span>
+<span class="kn">import</span> <span class="nn">QuantLib</span> <span class="k">as</span> <span class="nn">ql</span>
+<span class="kn">from</span> <span class="nn">tsfin.constants</span> <span class="k">import</span> <span class="n">ISSUE_DATE_ATTRIBUTES</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.qlconverters</span> <span class="k">import</span> <span class="n">to_ql_date</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.basetools</span> <span class="k">import</span> <span class="n">to_list</span><span class="p">,</span> <span class="n">conditional_vectorize</span><span class="p">,</span> <span class="n">find_le</span><span class="p">,</span> <span class="n">find_gt</span>
+
+<span class="c1"># The default issue_date is used if it is impossible to decide the issue date of a given TimeSeries.</span>
+<span class="n">DEFAULT_ISSUE_DATE</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">Date</span><span class="o">.</span><span class="n">minDate</span><span class="p">()</span>
+
+<span class="c1"># ExtRateHelpers are a namedtuples containing QuantLib RateHelpers objects and other meta-information.</span>
+<span class="n">ExtRateHelper</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ExtRateHelper&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;ts_name&#39;</span><span class="p">,</span> <span class="s1">&#39;issue_date&#39;</span><span class="p">,</span> <span class="s1">&#39;tenor&#39;</span><span class="p">,</span> <span class="s1">&#39;maturity_date&#39;</span><span class="p">,</span> <span class="s1">&#39;helper&#39;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="YieldCurveTimeSeries"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries">[docs]</a><span class="k">class</span> <span class="nc">YieldCurveTimeSeries</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span> <span class="n">calendar</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">keep_only_on_the_run_month</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">other_rate_helper_args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Time series of QuantLib YieldTermStructures objects.</span>
+
+<span class="sd">        The QuantLib YieldTermStructure objects are stored in the dict self.yield_curves and are &#39;lazy&#39; created and</span>
+<span class="sd">        stored when requested.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ts_collection: :py:obj:`TimeSeriesCollection`</span>
+<span class="sd">            Collection of instruments for building the yield curves.</span>
+<span class="sd">        calendar: QuantLib.Calendar</span>
+<span class="sd">            Calendar for the yield curves.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter</span>
+<span class="sd">            Day counter for the yield curves.</span>
+<span class="sd">        keep_only_on_the_run_month: bool, optional</span>
+<span class="sd">            Whether to use only one instrument per month for the yield curves. Defaults to False.</span>
+<span class="sd">        ignore_errors: bool, optional</span>
+<span class="sd">            Use last available yield curve if building a yield curve fails at a given date. Defaults to False.</span>
+<span class="sd">        **other_rate_helper_args: key=value pairs, optional</span>
+<span class="sd">            Additional arguments to pass to ``rate_helper`` methods of the instruments in `ts_collection`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ts_collection</span> <span class="o">=</span> <span class="n">ts_collection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span> <span class="o">=</span> <span class="n">calendar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span> <span class="o">=</span> <span class="n">day_counter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_only_on_the_run_month</span> <span class="o">=</span> <span class="n">keep_only_on_the_run_month</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yield_curves</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ignore_errors</span> <span class="o">=</span> <span class="n">ignore_errors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">other_rate_helper_args</span> <span class="o">=</span> <span class="n">other_rate_helper_args</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">issue_dates</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="c1"># TODO: Remove issue_dates inspection from this class and add an issue_date attribute to all instrument.</span>
+        <span class="c1"># classes.</span>
+        <span class="c1"># Saving the issue dates.</span>
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_collection</span><span class="p">:</span>
+            <span class="n">issue_date</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">issue_attribute</span> <span class="ow">in</span> <span class="n">ISSUE_DATE_ATTRIBUTES</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">issue_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="n">issue_attribute</span><span class="p">))</span>
+                    <span class="k">break</span>
+                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">issue_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># If impossible to decide the issue_date, it remains equal to &quot;None&quot; as we initialized above.</span>
+                <span class="c1"># Then set it to 2000-01-01.</span>
+                <span class="n">issue_date</span> <span class="o">=</span> <span class="n">DEFAULT_ISSUE_DATE</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">issue_dates</span><span class="p">[</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">issue_date</span>
+
+    <span class="k">def</span> <span class="nf">_get_helpers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">):</span>
+        <span class="n">helpers</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">ql_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ts_collection</span><span class="p">:</span>
+            <span class="n">ts_name</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_name</span>
+            <span class="n">issue_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">issue_dates</span><span class="p">[</span><span class="n">ts_name</span><span class="p">]</span>
+            <span class="n">helper</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">rate_helper</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">other_rate_helper_args</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">helper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">tenor</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">tenor</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+                <span class="n">maturity_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">ql_date</span><span class="p">,</span> <span class="n">tenor</span><span class="p">)</span>
+                <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">                TODO: Wrap this ``ExtRateHelper`` inside a (properly named) class or namedtuple and always</span>
+<span class="sd">                return these objects from the instrument classes. This prevents this method from calling ``ts.tenor``</span>
+<span class="sd">                and recalculating the ``maturity_date``, because these were already calculated inside each instrument&#39;s</span>
+<span class="sd">                ``rate_helper`` method.</span>
+<span class="sd">                &#39;&#39;&#39;</span>
+                <span class="n">helper</span> <span class="o">=</span> <span class="n">ExtRateHelper</span><span class="p">(</span><span class="n">ts_name</span><span class="o">=</span><span class="n">ts_name</span><span class="p">,</span> <span class="n">issue_date</span><span class="o">=</span><span class="n">issue_date</span><span class="p">,</span> <span class="n">tenor</span><span class="o">=</span><span class="n">tenor</span><span class="p">,</span>
+                                       <span class="n">maturity_date</span><span class="o">=</span><span class="n">maturity_date</span><span class="p">,</span> <span class="n">helper</span><span class="o">=</span><span class="n">helper</span><span class="p">)</span>
+                <span class="c1"># Remove Helpers with the same maturity date (or tenor), keeping the last issued one - This is to avoid</span>
+                <span class="c1"># error in QuantLib when trying to instantiate a yield curve with two helpers with same maturity</span>
+                <span class="c1"># date or tenor.</span>
+                <span class="n">existing_helper</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">maturity_date</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">existing_helper</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">helpers</span><span class="p">[</span><span class="n">maturity_date</span><span class="p">]</span> <span class="o">=</span> <span class="n">helper</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">helpers</span><span class="p">[</span><span class="n">maturity_date</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">((</span><span class="n">helper</span><span class="p">,</span> <span class="n">existing_helper</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="n">attrgetter</span><span class="p">(</span><span class="s1">&#39;issue_date&#39;</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">keep_only_on_the_run_month</span><span class="p">:</span>
+            <span class="c1"># If self.keep_only_on_the_run_month is True, then filter the returned helpers so that for each month there</span>
+            <span class="c1"># is not more than one helper. This may be used to avoid distortions in curves being generated by a large</span>
+            <span class="c1"># amount of TimeSeries.</span>
+            <span class="n">monthed_helpers</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">maturity_date</span><span class="p">,</span> <span class="n">helper</span> <span class="ow">in</span> <span class="n">helpers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">month_year</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_date_to_month_year</span><span class="p">(</span><span class="n">maturity_date</span><span class="p">)</span>
+                <span class="n">existing_helper</span> <span class="o">=</span> <span class="n">monthed_helpers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">month_year</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">existing_helper</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">monthed_helpers</span><span class="p">[</span><span class="n">month_year</span><span class="p">]</span> <span class="o">=</span> <span class="n">helper</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">monthed_helpers</span><span class="p">[</span><span class="n">month_year</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">((</span><span class="n">helper</span><span class="p">,</span> <span class="n">existing_helper</span><span class="p">),</span>
+                                                      <span class="n">key</span><span class="o">=</span><span class="n">attrgetter</span><span class="p">(</span><span class="s1">&#39;issue_date&#39;</span><span class="p">))</span>
+            <span class="n">helpers</span> <span class="o">=</span> <span class="p">{</span><span class="n">ndhelper</span><span class="o">.</span><span class="n">maturity_date</span><span class="p">:</span> <span class="n">ndhelper</span> <span class="k">for</span> <span class="n">ndhelper</span> <span class="ow">in</span> <span class="n">monthed_helpers</span><span class="o">.</span><span class="n">values</span><span class="p">()}</span>
+
+        <span class="k">return</span> <span class="n">helpers</span>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.update_curves"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.update_curves">[docs]</a>    <span class="k">def</span> <span class="nf">update_curves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dates</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Update ``self.yield_curves`` with the yield curves of each date in `dates`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dates: list of QuantLib.Dates</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">to_list</span><span class="p">(</span><span class="n">dates</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">date</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating for date...&quot;</span><span class="p">)</span>
+            <span class="n">qldate</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+            <span class="n">ql</span><span class="o">.</span><span class="n">Settings</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">evaluationDate</span> <span class="o">=</span> <span class="n">qldate</span>
+
+            <span class="n">helpers_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_helpers</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+
+            <span class="c1"># Instantiate the curve</span>
+            <span class="n">helpers</span> <span class="o">=</span> <span class="p">[</span><span class="n">ndhelper</span><span class="o">.</span><span class="n">helper</span> <span class="k">for</span> <span class="n">ndhelper</span> <span class="ow">in</span> <span class="n">helpers_dict</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+            <span class="n">yield_curve</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">PiecewiseLinearZero</span><span class="p">(</span><span class="n">qldate</span><span class="p">,</span> <span class="n">helpers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">)</span>  <span class="c1"># Just bootstraping the nodes</span>
+
+            <span class="c1"># Get dates and discounts</span>
+            <span class="n">node_dates</span> <span class="o">=</span> <span class="n">yield_curve</span><span class="o">.</span><span class="n">dates</span><span class="p">()</span>
+            <span class="n">node_rates</span> <span class="o">=</span> <span class="p">[</span><span class="n">yield_curve</span><span class="o">.</span><span class="n">zeroRate</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Continuous</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span> <span class="k">for</span> <span class="n">date</span> <span class="ow">in</span> <span class="n">node_dates</span><span class="p">]</span>
+
+            <span class="c1"># Freezing the curve so that nothing is bothered by changing the singleton (global variable) evaluationDate.</span>
+            <span class="n">yield_curve</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">MonotonicCubicZeroCurve</span><span class="p">(</span><span class="n">node_dates</span><span class="p">,</span> <span class="n">node_rates</span><span class="p">,</span>
+                                                     <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span>
+                                                     <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="p">,</span>
+                                                     <span class="n">ql</span><span class="o">.</span><span class="n">MonotonicCubic</span><span class="p">(),</span>
+                                                     <span class="n">ql</span><span class="o">.</span><span class="n">Continuous</span><span class="p">,</span>
+                                                     <span class="p">)</span>
+            <span class="n">yield_curve</span><span class="o">.</span><span class="n">enableExtrapolation</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">yield_curves</span><span class="p">[</span><span class="n">date</span><span class="p">]</span> <span class="o">=</span> <span class="n">yield_curve</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_all_curves</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ts_collection</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_collection</span><span class="p">)):</span>
+            <span class="n">index</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ts_collection</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">counted_dates</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">possible_dates</span> <span class="o">=</span> <span class="p">[</span><span class="n">date</span> <span class="k">for</span> <span class="n">date</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">counted_dates</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_curves</span><span class="p">(</span><span class="n">possible_dates</span><span class="p">)</span>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.yield_curve"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.yield_curve">[docs]</a>    <span class="k">def</span> <span class="nf">yield_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the QuantLib yield curve object at a given date.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            The date of the yield curve.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.YieldTermStructure</span>
+<span class="sd">            The yield curve at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Try to return the yield curves if it is stored in self.yield_curves.</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curves</span><span class="p">[</span><span class="n">date</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="c1"># If the required yield curve is not in self.yield_curves,</span>
+            <span class="c1"># then create it and return it, updating self.yield_curves along the way.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignore_errors</span><span class="p">:</span>
+                <span class="c1"># If ignore_errors is set to True, return latest available curve if there is any error in calculating</span>
+                <span class="c1">#  the curve in the desired &#39;date&#39;.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">update_curves</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error in creating curve in </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">date</span><span class="p">))</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                    <span class="n">curve_dates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">yield_curves</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="c1"># Try to find latest date less than &#39;date&#39;.</span>
+                        <span class="n">latest_available_date</span> <span class="o">=</span> <span class="n">find_le</span><span class="p">(</span><span class="n">curve_dates</span><span class="p">,</span> <span class="n">date</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                        <span class="c1"># No latest date less than &#39;date&#39;, try to find earliest date higher than &#39;date&#39; instead.</span>
+                        <span class="n">latest_available_date</span> <span class="o">=</span> <span class="n">find_gt</span><span class="p">(</span><span class="n">curve_dates</span><span class="p">,</span> <span class="n">date</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">latest_available_date</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_curves</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curves</span><span class="p">[</span><span class="n">date</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.spreaded_curve"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.spreaded_curve">[docs]</a>    <span class="k">def</span> <span class="nf">spreaded_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">spread</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get yield curve at a date, added to a spread.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            The date of the spreaded yield curve.</span>
+<span class="sd">        spread: scalar</span>
+<span class="sd">            The spread to be added to the yield curve rates.</span>
+<span class="sd">        compounding: QuantLib.Compounding</span>
+<span class="sd">            The compounding convention of the spread.</span>
+<span class="sd">        frequency: QuantLib.Frequency</span>
+<span class="sd">            The frequency convention of the spread.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.ZeroSpreadedTermStructure</span>
+<span class="sd">            The spreaded yield curve.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Check if this is working.</span>
+        <span class="n">curve_handle</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">YieldTermStructureHandle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">))</span>
+        <span class="n">spread_handle</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">QuoteHandle</span><span class="p">(</span><span class="n">spread</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">ZeroSpreadedTermStructure</span><span class="p">(</span><span class="n">curve_handle</span><span class="p">,</span> <span class="n">spread_handle</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.yield_curve_handle"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.yield_curve_handle">[docs]</a>    <span class="k">def</span> <span class="nf">yield_curve_handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Handle for a yield curve at a given date.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Date of the yield curve.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.YieldTermStructureHandle</span>
+<span class="sd">            A handle to the yield term structure object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">YieldTermStructureHandle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.yield_curve_relinkable_handle"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.yield_curve_relinkable_handle">[docs]</a>    <span class="k">def</span> <span class="nf">yield_curve_relinkable_handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; A relinkable handle for a yield curve at a given date.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: Date of the yield curve.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.RelinkableYieldTermStructureHandle</span>
+<span class="sd">            A relinkable handle to the yield term structure object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">RelinkableYieldTermStructureHandle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.discount_to_date"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.discount_to_date">[docs]</a>    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;to_date&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">discount_to_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">to_date</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            The date of the yield curve.</span>
+<span class="sd">        to_date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            The maturity for the discount rate.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            The discount rate for `to_date` implied by the yield curve at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">to_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">to_date</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">discount</span><span class="p">(</span><span class="n">to_date</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.zero_rate_to_date"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.zero_rate_to_date">[docs]</a>    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;to_date&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">zero_rate_to_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">to_date</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            Date of the yield curve.</span>
+<span class="sd">        to_date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            Maturity of the rate.</span>
+<span class="sd">        compounding: QuantLib.Compounding</span>
+<span class="sd">            Compounding convention for the rate.</span>
+<span class="sd">        frequency: QuantLib.Frequency</span>
+<span class="sd">            Frequency convention for the rate.</span>
+<span class="sd">        extrapolate: bool, optional</span>
+<span class="sd">            Whether to enable extrapolation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Zero rate for `to_date`, implied by the yield curve at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">to_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">to_date</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">zeroRate</span><span class="p">(</span><span class="n">to_date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.zero_rate_to_time"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.zero_rate_to_time">[docs]</a>    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;to_time&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">zero_rate_to_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">to_time</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            Date of the yield curve.</span>
+<span class="sd">        to_time: scalar, (c-vectorized)</span>
+<span class="sd">            Tenor in years of the zero rate.</span>
+<span class="sd">        compounding: QuantLib.Compounding</span>
+<span class="sd">            Compounding convention for the rate.</span>
+<span class="sd">        frequency: QuantLib.Frequency</span>
+<span class="sd">            Frequency convention for the rate.</span>
+<span class="sd">        extrapolate: bool, optional</span>
+<span class="sd">            Whether to enable extrapolation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Zero rate for `to_time`, implied by the yield curve at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">zeroRate</span><span class="p">(</span><span class="n">to_time</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.forward_rate_date_to_date"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.forward_rate_date_to_date">[docs]</a>    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;to_date1&#39;</span><span class="p">,</span> <span class="s1">&#39;to_date2&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">forward_rate_date_to_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">to_date1</span><span class="p">,</span> <span class="n">to_date2</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            Date of the yield curve.</span>
+<span class="sd">        to_date1: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            First maturity for the fra.</span>
+<span class="sd">        to_date2: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            Second maturity for the fra.</span>
+<span class="sd">        compounding: QuantLib.Compounding</span>
+<span class="sd">            Compounding convention for the rate.</span>
+<span class="sd">        frequency: QuantLib.Frequency</span>
+<span class="sd">            Frequency convention for the rate.</span>
+<span class="sd">        extrapolate: bool, optional</span>
+<span class="sd">            Whether to enable extrapolation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Forward rate between `to_date1` and `to_date2`, implied by the yield curve at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">to_date1</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">to_date1</span><span class="p">)</span>
+        <span class="n">to_date2</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">to_date2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">forwardRate</span><span class="p">(</span><span class="n">to_date1</span><span class="p">,</span> <span class="n">to_date2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span>
+                                                  <span class="n">extrapolate</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.forward_rate_date_to_time"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.forward_rate_date_to_time">[docs]</a>    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;to_date&#39;</span><span class="p">,</span> <span class="s1">&#39;to_time&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">forward_rate_date_to_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">to_date</span><span class="p">,</span> <span class="n">to_time</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            Date of the yield curve.</span>
+<span class="sd">        to_date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            First maturity for the fra.</span>
+<span class="sd">        to_time: scalar, (c-vectorized)</span>
+<span class="sd">            Time in years after `to_date` for the fra.</span>
+<span class="sd">        compounding: QuantLib.Compounding</span>
+<span class="sd">            Compounding convention for the rate.</span>
+<span class="sd">        frequency: QuantLib.Frequency</span>
+<span class="sd">            Frequency convention for the rate.</span>
+<span class="sd">        extrapolate: bool, optional</span>
+<span class="sd">            Whether to enable extrapolation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Forward rate between `to_date` and `to_time`, implied by the yield curve at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">to_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">to_date</span><span class="p">)</span>
+        <span class="n">to_date2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">to_date</span><span class="p">,</span> <span class="n">to_time</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">forwardRate</span><span class="p">(</span><span class="n">to_date</span><span class="p">,</span> <span class="n">to_date2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span>
+                                                  <span class="n">extrapolate</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="YieldCurveTimeSeries.forward_rate_time_to_time"><a class="viewcode-back" href="../../../tsfin/tsfin.curves.yieldcurve.html#tsfin.curves.yieldcurve.YieldCurveTimeSeries.forward_rate_time_to_time">[docs]</a>    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;to_time1&#39;</span><span class="p">,</span> <span class="s1">&#39;to_time2&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">forward_rate_time_to_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">to_time1</span><span class="p">,</span> <span class="n">to_time2</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date, (c-vectorized)</span>
+<span class="sd">            Date of the yield curve.</span>
+<span class="sd">        to_time1: scalar, (c-vectorized)</span>
+<span class="sd">            First time in years for the fra.</span>
+<span class="sd">        to_time2: scalar, (c-vectorized)</span>
+<span class="sd">            Second time in years for the fra.</span>
+<span class="sd">        compounding: QuantLib.Compounding</span>
+<span class="sd">            Compounding convention for the rate.</span>
+<span class="sd">        frequency: QuantLib.Frequency</span>
+<span class="sd">            Frequency convention for the rate.</span>
+<span class="sd">        extrapolate: bool, optional</span>
+<span class="sd">            Whether to enable extrapolation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Forward rate between `to_time1` and `to_time2`, implied by the yield curve at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">forwardRate</span><span class="p">(</span><span class="n">to_time1</span><span class="p">,</span> <span class="n">to_time2</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">extrapolate</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_date_to_month_year</span><span class="p">(</span><span class="n">dt_object</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">dt_object</span><span class="o">.</span><span class="n">month</span><span class="p">())</span> <span class="o">+</span> <span class="s1">&#39;-&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">dt_object</span><span class="o">.</span><span class="n">year</span><span class="p">())</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

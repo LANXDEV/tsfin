@@ -1,0 +1,279 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Hybrid Yield Curve &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Currency Curve" href="tsfin.curves.currencycurve.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tsfin.curves.currencycurve.html" title="previous chapter">Currency Curve</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tsfin.curves.hybridyieldcurve">
+<span id="hybrid-yield-curve"></span><h1>Hybrid Yield Curve<a class="headerlink" href="#module-tsfin.curves.hybridyieldcurve" title="Permalink to this headline">¶</a></h1>
+<p>A temporary class to handle sums multiple curves. For example, you need this to calculate a fra of a (Treasury + CDS)
+yield curve.</p>
+<p>TODO: Implement an equivalent of this class in QuantLib and use it directly inside the YieldCurveTimeSeries class.</p>
+<dl class="class">
+<dt id="tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries">
+<em class="property">class </em><code class="descname">HybridYieldCurveTimeSeries</code><span class="sig-paren">(</span><em>yield_curves</em>, <em>weights=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/hybridyieldcurve.html#HybridYieldCurveTimeSeries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.discount_to_date">
+<code class="descname">discount_to_date</code><span class="sig-paren">(</span><em>date</em>, <em>to_date</em>, <em>extrapolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/hybridyieldcurve.html#HybridYieldCurveTimeSeries.discount_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.discount_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Date of the yield curve.</li>
+<li><strong>to_date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Maturity for the discount rate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Discount rate for <cite>to_date</cite> implied by the yield curve at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.discount_to_time">
+<code class="descname">discount_to_time</code><span class="sig-paren">(</span><em>date</em>, <em>to_time</em>, <em>extrapolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/hybridyieldcurve.html#HybridYieldCurveTimeSeries.discount_to_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.discount_to_time" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Date of the yield curve.</li>
+<li><strong>to_time</strong> (<em>scalar</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Time to maturity for the discount rate.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Discount rate to <cite>to_time</cite> implied by the yield curve at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.forward_rate_date_to_date">
+<code class="descname">forward_rate_date_to_date</code><span class="sig-paren">(</span><em>date</em>, <em>to_date1</em>, <em>to_date2</em>, <em>compounding</em>, <em>frequency</em>, <em>extrapolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/hybridyieldcurve.html#HybridYieldCurveTimeSeries.forward_rate_date_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.forward_rate_date_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Date of the yield curve.</li>
+<li><strong>to_date1</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – First maturity for the fra.</li>
+<li><strong>to_date2</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Second maturity for the fra.</li>
+<li><strong>compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention for the rate.</li>
+<li><strong>frequency</strong> (<em>QuantLib.Frequency</em>) – Frequency convention for the rate.</li>
+<li><strong>extrapolate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to enable extrapolation.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Forward rate between <cite>to_date1</cite> and <cite>to_date2</cite>, implied by the yield curve at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.forward_rate_time_to_time">
+<code class="descname">forward_rate_time_to_time</code><span class="sig-paren">(</span><em>date</em>, <em>to_time1</em>, <em>to_time2</em>, <em>compounding</em>, <em>frequency</em>, <em>extrapolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/hybridyieldcurve.html#HybridYieldCurveTimeSeries.forward_rate_time_to_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.forward_rate_time_to_time" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Date of the yield curve.</li>
+<li><strong>to_time1</strong> (<em>scalar</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – First time in years for the fra.</li>
+<li><strong>to_time2</strong> (<em>scalar</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Second time in years for the fra.</li>
+<li><strong>compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention for the rate.</li>
+<li><strong>frequency</strong> (<em>QuantLib.Frequency</em>) – Frequency convention for the rate.</li>
+<li><strong>extrapolate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to enable extrapolation.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Forward rate between <cite>to_time1</cite> and <cite>to_time2</cite>, implied by the yield curve at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.zero_rate_to_date">
+<code class="descname">zero_rate_to_date</code><span class="sig-paren">(</span><em>date</em>, <em>to_date</em>, <em>compounding</em>, <em>frequency</em>, <em>extrapolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/hybridyieldcurve.html#HybridYieldCurveTimeSeries.zero_rate_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.zero_rate_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Date of the yield curve.</li>
+<li><strong>to_date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Maturity of the rate.</li>
+<li><strong>compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention for the rate.</li>
+<li><strong>frequency</strong> (<em>QuantLib.Frequency</em>) – Frequency convention for the rate.</li>
+<li><strong>extrapolate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to enable extrapolation.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Zero rate for <cite>to_date</cite>, implied by the yield curve at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.zero_rate_to_time">
+<code class="descname">zero_rate_to_time</code><span class="sig-paren">(</span><em>date</em>, <em>to_time</em>, <em>compounding</em>, <em>frequency</em>, <em>extrapolate=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/curves/hybridyieldcurve.html#HybridYieldCurveTimeSeries.zero_rate_to_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.curves.hybridyieldcurve.HybridYieldCurveTimeSeries.zero_rate_to_time" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Date of the yield curve.</li>
+<li><strong>to_time</strong> (<em>scalar</em><em>, </em><em>(</em><em>c-vectorized</em><em>)</em>) – Tenor in years of the zero rate.</li>
+<li><strong>compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention for the rate.</li>
+<li><strong>frequency</strong> (<em>QuantLib.Frequency</em>) – Frequency convention for the rate.</li>
+<li><strong>extrapolate</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to enable extrapolation.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Zero rate for <cite>to_time</cite>, implied by the yield curve at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/tsfin/tsfin.curves.hybridyieldcurve.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

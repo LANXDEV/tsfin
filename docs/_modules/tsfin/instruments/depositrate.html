@@ -1,0 +1,286 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.instruments.depositrate &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.instruments.depositrate</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">DepositRate class, to represent deposit rates.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">QuantLib</span> <span class="k">as</span> <span class="nn">ql</span>
+<span class="kn">from</span> <span class="nn">tsfin.constants</span> <span class="k">import</span> <span class="n">CALENDAR</span><span class="p">,</span> <span class="n">TENOR_PERIOD</span><span class="p">,</span> <span class="n">MATURITY_DATE</span><span class="p">,</span> <span class="n">BUSINESS_CONVENTION</span><span class="p">,</span> \
+    <span class="n">COMPOUNDING</span><span class="p">,</span> <span class="n">FREQUENCY</span><span class="p">,</span> <span class="n">DAY_COUNTER</span><span class="p">,</span> <span class="n">FIXING_DAYS</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.instrument</span> <span class="k">import</span> <span class="n">default_arguments</span>
+<span class="kn">from</span> <span class="nn">tsfin.base</span> <span class="k">import</span> <span class="n">Instrument</span><span class="p">,</span> <span class="n">conditional_vectorize</span><span class="p">,</span> <span class="n">to_datetime</span><span class="p">,</span> <span class="n">to_ql_date</span><span class="p">,</span> <span class="n">to_ql_frequency</span><span class="p">,</span> \
+    <span class="n">to_ql_business_convention</span><span class="p">,</span> <span class="n">to_ql_calendar</span><span class="p">,</span> <span class="n">to_ql_compounding</span><span class="p">,</span> <span class="n">to_ql_day_counter</span>
+
+
+<div class="viewcode-block" id="DepositRate"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.depositrate.html#tsfin.instruments.cupomcambial.DepositRate">[docs]</a><span class="k">class</span> <span class="nc">DepositRate</span><span class="p">(</span><span class="n">Instrument</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class to model deposit rates.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    timeseries: :py:obj:`TimeSeries`</span>
+<span class="sd">        TimeSeries representing the deposit rate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeseries</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">timeseries</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span> <span class="o">=</span> <span class="n">to_ql_calendar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">CALENDAR</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tenor</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">PeriodParser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">TENOR_PERIOD</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="c1"># If the deposit rate has no tenor, it must have a maturity.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_maturity</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">to_datetime</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">MATURITY_DATE</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span> <span class="o">=</span> <span class="n">to_ql_day_counter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">DAY_COUNTER</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compounding</span> <span class="o">=</span> <span class="n">to_ql_compounding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">COMPOUNDING</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frequency</span> <span class="o">=</span> <span class="n">to_ql_frequency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">FREQUENCY</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">business_convention</span> <span class="o">=</span> <span class="n">to_ql_business_convention</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">BUSINESS_CONVENTION</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fixing_days</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">FIXING_DAYS</span><span class="p">])</span>
+
+<div class="viewcode-block" id="DepositRate.is_expired"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.depositrate.html#tsfin.instruments.cupomcambial.DepositRate.is_expired">[docs]</a>    <span class="k">def</span> <span class="nf">is_expired</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if the deposit rate is expired.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Reference date.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            Whether the instrument is expired at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">date</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maturity</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="DepositRate.value"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.depositrate.html#tsfin.instruments.cupomcambial.DepositRate.value">[docs]</a>    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns zero.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_fixing_maturity_dates</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">):</span>
+        <span class="n">start_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">adjust</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span>
+        <span class="n">end_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">adjust</span><span class="p">(</span><span class="n">end_date</span><span class="p">)</span>
+        <span class="n">fixing_dates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">maturity_dates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">fixing_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">adjust</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span>
+        <span class="n">maturity_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">fixing_date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tenor</span><span class="p">(</span><span class="n">start_date</span><span class="p">))</span>
+        <span class="k">while</span> <span class="n">maturity_date</span> <span class="o">&lt;</span> <span class="n">end_date</span><span class="p">:</span>
+            <span class="n">fixing_dates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fixing_date</span><span class="p">)</span>
+            <span class="n">maturity_dates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">maturity_date</span><span class="p">)</span>
+            <span class="n">fixing_date</span> <span class="o">=</span> <span class="n">maturity_date</span>
+            <span class="n">maturity_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">fixing_date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tenor</span><span class="p">(</span><span class="n">start_date</span><span class="p">))</span>
+        <span class="n">fixing_dates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fixing_date</span><span class="p">)</span>
+        <span class="n">maturity_dates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">end_date</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fixing_dates</span><span class="p">,</span> <span class="n">maturity_dates</span>
+
+<div class="viewcode-block" id="DepositRate.tenor"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.depositrate.html#tsfin.instruments.cupomcambial.DepositRate.tenor">[docs]</a>    <span class="k">def</span> <span class="nf">tenor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get tenor of the deposit rate.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Reference date.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.Period</span>
+<span class="sd">            The tenor (period) to maturity of the deposit rate.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># If the object has a tenor attribute, return it.</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tenor</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tenor</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">):</span>
+            <span class="c1"># If no tenor, then it must have a maturity. Use it to calculate the tenor.</span>
+            <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_expired</span><span class="p">(</span><span class="n">date</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The requested date is equal or higher than the instrument&#39;s maturity: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="c1"># TODO: Check if the below calculation yields correct results when creating deposit rate helpers.</span>
+            <span class="c1"># return ql.Period(self.maturity - date, ql.Days)</span>
+            <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Period</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">businessDaysBetween</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">maturity</span><span class="p">),</span> <span class="n">ql</span><span class="o">.</span><span class="n">Days</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DepositRate.performance"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.depositrate.html#tsfin.instruments.cupomcambial.DepositRate.performance">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performance of investment in the interest rate, taking tenor into account.</span>
+
+<span class="sd">        If the period between start_date and date is larger the the deposit rate&#39;s tenor, considers the investment</span>
+<span class="sd">        is rolled at the prevailing rate at each maturity.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        start_date: QuantLib.Date</span>
+<span class="sd">            Start date of the investment period.</span>
+<span class="sd">        date: QuantLib.Date, c-vectorized</span>
+<span class="sd">            End date of the investment period.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Performance of the investment.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">first_available_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span><span class="o">.</span><span class="n">first_valid_index</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">start_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start_date</span> <span class="o">=</span> <span class="n">first_available_date</span>
+        <span class="k">if</span> <span class="n">start_date</span> <span class="o">&lt;</span> <span class="n">first_available_date</span><span class="p">:</span>
+            <span class="n">start_date</span> <span class="o">=</span> <span class="n">first_available_date</span>
+        <span class="k">if</span> <span class="n">date</span> <span class="o">&lt;</span> <span class="n">start_date</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">start_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">start_date</span><span class="p">)</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">fixing_dates</span><span class="p">,</span> <span class="n">maturity_dates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_fixing_maturity_dates</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span> <span class="n">date</span><span class="p">)</span>
+        <span class="n">fixings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeseries</span><span class="o">.</span><span class="n">get_values</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">fixing_date</span><span class="p">)</span> <span class="k">for</span> <span class="n">fixing_date</span> <span class="ow">in</span> <span class="n">fixing_dates</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">([</span><span class="n">ql</span><span class="o">.</span><span class="n">InterestRate</span><span class="p">(</span><span class="n">fixing</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compounding</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">frequency</span><span class="p">)</span><span class="o">.</span><span class="n">compoundFactor</span><span class="p">(</span><span class="n">fixing_date</span><span class="p">,</span> <span class="n">maturity_date</span><span class="p">,</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">date</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">fixing</span><span class="p">,</span> <span class="n">fixing_date</span><span class="p">,</span> <span class="n">maturity_date</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fixings</span><span class="p">,</span> <span class="n">fixing_dates</span><span class="p">,</span> <span class="n">maturity_dates</span><span class="p">)])</span> <span class="o">-</span> <span class="mi">1</span></div>
+
+<div class="viewcode-block" id="DepositRate.rate_helper"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.depositrate.html#tsfin.instruments.cupomcambial.DepositRate.rate_helper">[docs]</a>    <span class="k">def</span> <span class="nf">rate_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">last_available</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">other_args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Helper for yield curve construction.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Reference date.</span>
+<span class="sd">        last_available: bool, optional</span>
+<span class="sd">            Whether to use last available quotes if missing data.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.RateHelper</span>
+<span class="sd">            Rate helper for yield curve construction.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Returns None if impossible to obtain a rate helper from this time series</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_expired</span><span class="p">(</span><span class="n">date</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_values</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">date</span><span class="p">,</span> <span class="n">last_available</span><span class="o">=</span><span class="n">last_available</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="c1"># print(&quot;{0} is returning a rate helper with rate {1}&quot;.format(self.ts_name, rate))</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">rate</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">tenor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tenor</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="c1"># Return none if the deposit rate can&#39;t retrieve a tenor (i.e. is expired).</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># Convert rate to simple compounding because DepositRateHelper expects simple rates.</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="o">.</span><span class="n">yearFraction</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">tenor</span><span class="p">))</span>
+        <span class="n">rate</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">InterestRate</span><span class="p">(</span><span class="n">rate</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compounding</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">frequency</span><span class="p">)</span><span class="o">.</span><span class="n">equivalentRate</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Simple</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Annual</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">DepositRateHelper</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">QuoteHandle</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">SimpleQuote</span><span class="p">(</span><span class="n">rate</span><span class="p">)),</span> <span class="n">tenor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixing_days</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">business_convention</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

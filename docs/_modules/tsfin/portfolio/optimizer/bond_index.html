@@ -1,0 +1,650 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.portfolio.optimizer.bond_index &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.portfolio.optimizer.bond_index</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">A portfolio optimizer for building bond indexes.</span>
+
+<span class="sd">WARNING: THIS CLASS IS NOT WORKING.</span>
+
+<span class="sd">TODO: Finish this class and test it.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">tsio</span> <span class="k">import</span> <span class="n">TimeSeriesCollection</span>
+<span class="kn">from</span> <span class="nn">tsfin.portfolio</span> <span class="k">import</span> <span class="n">ptools</span> <span class="k">as</span> <span class="n">ptools</span>
+
+
+<div class="viewcode-block" id="BondIndex"><a class="viewcode-back" href="../../../../tsfin/tsfin.portfolio.optimizer.bond_index.html#tsfin.portfolio.optimizer.bond_index.BondIndex">[docs]</a><span class="k">class</span> <span class="nc">BondIndex</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">return_calculator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;A portfolio selector for bond indexes</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">options</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">return_calculator</span> <span class="o">=</span> <span class="n">return_calculator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span> <span class="o">=</span> <span class="s1">&#39;UNNALOCATED_SYMBOL&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">concentration_rules</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="c1"># now checking the options</span>
+        <span class="k">if</span> <span class="s1">&#39;MAX_MATURITY&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_maturity</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;MAX_MATURITY&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_maturity</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DateOffset</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;MIN_MATURITY&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">min_maturity</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;MIN_MATURITY&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">min_maturity</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DateOffset</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;MIN_ELIGIBLE_MATURITY&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="c1"># Bonds with maturity closer than &#39;MIN_ELIGIBLE_MATURITY&#39; will not enter the portfolio if they are not</span>
+            <span class="c1"># already in.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">min_eligible_maturity</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;MIN_ELIGIBLE_MATURITY&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">min_eligible_maturity</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="s1">&#39;SELL_DEFAULTED&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sell_defaulted</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;SELL_DEFAULTED&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sell_defaulted</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="s1">&#39;CORPORATE_MIN_OUTSTANDING&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">corp_min_outstanding</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;CORPORATE_MIN_OUTSTANDING&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">corp_min_outstanding</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="s1">&#39;GOVT_MIN_OUTSTANDING&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">govt_min_outstanding</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;GOVT_MIN_OUTSTANDING&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">govt_min_outstanding</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="s1">&#39;CORP_WEIGHT&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">corp_weight</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;CORP_WEIGHT&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">corp_weight</span> <span class="o">=</span> <span class="mf">0.8</span>
+        <span class="k">if</span> <span class="s1">&#39;GOVT_WEIGHT&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">govt_weight</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;GOVT_WEIGHT&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">govt_weight</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">corp_weight</span>
+        <span class="k">if</span> <span class="s1">&#39;MAX_TOLERANCE_AMONG_PORTFOLIOS&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_portfolios</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;MAX_TOLERANCE_AMONG_PORTFOLIOS&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_portfolios</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="s1">&#39;MAX_TOLERANCE_AMONG_SECURITIES&#39;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_securities</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s1">&#39;MAX_TOLERANCE_AMONG_SECURITIES&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_securities</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="c1"># Now checking the concentration rules</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s1">&#39;CONCENTRATION_RULES&#39;</span> <span class="ow">in</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="c1"># Building concentration_rules dict</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="s1">&#39;CONCENTRATION_RULES&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="c1"># Remove the first two words, which are CONCENTRATION and RULES</span>
+                    <span class="n">arguments</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">))[</span><span class="mi">2</span><span class="p">:]</span>
+                    <span class="n">current_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration_rules</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arguments</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">arguments</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="n">converted_arg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+                            <span class="k">except</span><span class="p">:</span>
+                                <span class="n">converted_arg</span> <span class="o">=</span> <span class="n">arg</span>
+                            <span class="k">if</span> <span class="n">converted_arg</span> <span class="ow">in</span> <span class="n">current_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                                <span class="k">pass</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">current_dict</span><span class="p">[</span><span class="n">converted_arg</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+                            <span class="n">current_dict</span> <span class="o">=</span> <span class="n">current_dict</span><span class="p">[</span><span class="n">converted_arg</span><span class="p">]</span>
+                    <span class="n">last_arg</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">last_arg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">last_arg</span><span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">pass</span>
+                    <span class="n">current_dict</span><span class="p">[</span><span class="n">last_arg</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Successfully instantiated BondIndex Class with options:&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;max maturity: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_maturity</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;min maturity: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_maturity</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;min eligible maturity: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_eligible_maturity</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;sell defaulted : &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sell_defaulted</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;min govt outstanding: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">govt_min_outstanding</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;corp weight: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">corp_weight</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;govt weight: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">govt_weight</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;rebalancing tolerance between portfolios: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_portfolios</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;rebalancing tolerance between securities: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_securities</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Concentration rules:&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">concentration_rules</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BondIndex.optimize"><a class="viewcode-back" href="../../../../tsfin/tsfin.portfolio.optimizer.bond_index.html#tsfin.portfolio.optimizer.bond_index.BondIndex.optimize">[docs]</a>    <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ts_list</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">portfolio</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;BondIndex: optimizing for date &#39;</span> <span class="o">+</span> <span class="n">the_date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">))</span>
+        <span class="c1"># 1st Elimination: Get only Bonds</span>
+        <span class="n">ts_collection</span> <span class="o">=</span> <span class="n">TimeSeriesCollection</span><span class="p">()</span>
+        <span class="n">ts_collection</span><span class="o">.</span><span class="n">collection</span> <span class="o">=</span> <span class="n">ts_list</span>
+        <span class="n">available_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_collection</span> <span class="k">if</span>
+                                <span class="nb">all</span><span class="p">((</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;TYPE&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;BOND&#39;</span><span class="p">,</span>
+                                     <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;FIELD&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;PX_LAST&#39;</span><span class="p">))]</span>
+        <span class="c1"># 2nd Elimination:</span>
+        <span class="c1"># Applying max/min maturity filters,</span>
+        <span class="c1"># Only bonds with equity TODO: Verify if the bonds have the BOND_TO_EQY TICKER in DB</span>
+        <span class="c1"># Only Bonds with &#39;amount issued&#39; information TODO: Verify in DB</span>
+        <span class="c1"># Only bonds that have not defaulted until &#39;the_date&#39;</span>
+        <span class="c1">#</span>
+        <span class="n">govt_and_quasi_govt_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">available_securities</span> <span class="k">if</span>
+                                          <span class="nb">all</span><span class="p">((</span><span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="n">the_date</span><span class="p">,</span>
+                                               <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span>
+                                                   <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&lt;</span> <span class="n">the_date</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_maturity</span><span class="p">,</span>
+                                               <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span>
+                                                   <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">the_date</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_maturity</span><span class="p">,</span>
+                                               <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;AMOUNT_ISSUED&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">_consider_defaulted</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;DEFAULT_DATE&#39;</span><span class="p">),</span>
+                                                                       <span class="n">the_date</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">,</span>
+                                               <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;SUBTYPE_2&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;SOVEREIGN&#39;</span><span class="p">,</span> <span class="s1">&#39;QUASI_SOVEREIGN&#39;</span><span class="p">],</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">_get_bond_current_outstanding</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">)</span> <span class="o">&gt;=</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">govt_min_outstanding</span><span class="p">,</span>
+                                               <span class="p">))]</span>
+        <span class="n">corp_available_securities</span> <span class="o">=</span> <span class="p">[(</span><span class="n">ts</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_in_list</span><span class="p">(</span><span class="s1">&#39;(&#39;</span> <span class="o">+</span> <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;BOND_TO_EQY_TICKER&#39;</span><span class="p">)</span> <span class="o">+</span>
+                                                           <span class="s1">&#39;)(CUR_MKT_CAP)&#39;</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">))</span>
+                                     <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">available_securities</span> <span class="k">if</span>
+                                     <span class="nb">all</span><span class="p">((</span><span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="n">the_date</span><span class="p">,</span>
+                                          <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&lt;</span> <span class="n">the_date</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_maturity</span><span class="p">,</span>
+                                          <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">the_date</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_maturity</span><span class="p">,</span>
+                                          <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;BOND_TO_EQY_TICKER&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+                                          <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;AMOUNT_ISSUED&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">_consider_defaulted</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;DEFAULT_DATE&#39;</span><span class="p">),</span> <span class="n">the_date</span><span class="p">)</span> <span class="ow">is</span>
+                                          <span class="kc">False</span><span class="p">,</span>
+                                          <span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;SUBTYPE_2&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;CORPORATE&#39;</span><span class="p">,</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">_get_bond_current_outstanding</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">)</span> <span class="o">&gt;=</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">corp_min_outstanding</span><span class="p">,</span>
+                                          <span class="p">))]</span>  <span class="c1"># Elimination (2nd)</span>
+        <span class="c1"># 3rd Elimination:</span>
+        <span class="c1"># Only bonds which corresponding equity has (CUR_MKT_CAP) time series in DB</span>
+        <span class="n">corp_available_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_pair</span> <span class="k">for</span> <span class="n">ts_pair</span> <span class="ow">in</span> <span class="n">corp_available_securities</span> <span class="k">if</span> <span class="n">ts_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span>
+                                     <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">]]]</span>
+        <span class="c1"># 4th Elimination:</span>
+        <span class="c1"># Only bonds which corresponding equity (CUR_MKT_CAP) time series ins not empty</span>
+        <span class="n">corp_available_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_pair</span> <span class="k">for</span> <span class="n">ts_pair</span> <span class="ow">in</span> <span class="n">corp_available_securities</span> <span class="k">if</span> <span class="n">ts_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">empty</span>
+                                     <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">]</span>
+        <span class="c1"># 5th Elimination:</span>
+        <span class="c1"># Only bonds which have price and cur_mkt_cap since before the_date</span>
+        <span class="c1"># Only bonds which have price and cur_mkt_cap until before the_date</span>
+        <span class="n">corp_available_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_pair</span> <span class="k">for</span> <span class="n">ts_pair</span> <span class="ow">in</span> <span class="n">corp_available_securities</span> <span class="k">if</span>
+                                     <span class="nb">all</span><span class="p">((</span>
+                                         <span class="n">ts_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">the_date</span><span class="p">,</span>
+                                         <span class="n">ts_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">first_valid_index</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">the_date</span><span class="p">,</span>
+                                         <span class="n">ts_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">the_date</span><span class="p">,</span>
+                                         <span class="n">ts_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">first_valid_index</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">the_date</span><span class="p">,</span>
+                                     <span class="p">))</span>
+                                     <span class="p">]</span>
+
+        <span class="n">govt_and_quasi_govt_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">govt_and_quasi_govt_securities</span> <span class="k">if</span>
+                                          <span class="nb">all</span><span class="p">((</span>
+                                              <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">the_date</span><span class="p">,</span>
+                                              <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">first_valid_index</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">the_date</span><span class="p">,</span>
+                                              <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">the_date</span><span class="p">,</span>
+                                              <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">first_valid_index</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">the_date</span><span class="p">,</span>
+                                          <span class="p">))</span>
+                                          <span class="p">]</span>
+        <span class="c1"># 6th Elimination:</span>
+        <span class="c1"># If self.min_eligible_maturity is not None, then do not add NEW timeseries that mature before this date</span>
+        <span class="c1"># Using 0.00001 to check wether the security was already in portfolio to account for rounding</span>
+        <span class="c1"># problems</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_eligible_maturity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">corp_available_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_pair</span> <span class="k">for</span> <span class="n">ts_pair</span> <span class="ow">in</span> <span class="n">corp_available_securities</span> <span class="k">if</span>
+                                         <span class="nb">any</span><span class="p">((</span><span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ts_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">the_date</span> <span class="o">+</span>
+                                              <span class="bp">self</span><span class="o">.</span><span class="n">min_eligible_maturity</span><span class="p">,</span>
+                                              <span class="n">portfolio</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">the_date</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ts_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mf">0.00001</span>
+                                              <span class="p">))</span>
+                                         <span class="p">]</span>
+
+            <span class="n">govt_and_quasi_govt_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">govt_and_quasi_govt_securities</span> <span class="k">if</span>
+                                              <span class="nb">any</span><span class="p">((</span><span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;MATURITY&#39;</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">the_date</span> <span class="o">+</span>
+                                              <span class="bp">self</span><span class="o">.</span><span class="n">min_eligible_maturity</span><span class="p">,</span>
+                                              <span class="n">portfolio</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">the_date</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mf">0.00001</span>
+                                              <span class="p">))</span>
+                                         <span class="p">]</span>
+        <span class="n">optimized_govt_portfolio</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">optimized_corp_portfolio</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">corp_weight</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">corp_concentration_rules</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration_rules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;CORP&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">optimized_corp_portfolio</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recursive_distribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">corp_weight</span><span class="p">,</span> <span class="n">corp_available_securities</span><span class="p">,</span>
+                                                                     <span class="n">the_date</span><span class="p">,</span>
+                                                                     <span class="s1">&#39;STOCK_MARKET_CAP&#39;</span><span class="p">,</span> <span class="n">corp_concentration_rules</span><span class="p">,</span>
+                                                                     <span class="n">ts_collection</span><span class="p">,</span> <span class="n">optimized_corp_portfolio</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">govt_weight</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">govt_concentration_rules</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concentration_rules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;GOVT&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">optimized_govt_portfolio</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recursive_distribute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">govt_weight</span><span class="p">,</span> <span class="n">govt_and_quasi_govt_securities</span><span class="p">,</span>
+                                                                     <span class="n">the_date</span><span class="p">,</span> <span class="s1">&#39;BOND_MARKET_OUTSTANDING&#39;</span><span class="p">,</span>
+                                                                     <span class="n">govt_concentration_rules</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span>
+                                                                     <span class="n">optimized_govt_portfolio</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">optimized_corp_portfolio</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">optimized_govt_portfolio</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="n">final_target_portfolio_dict</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">optimized_corp_portfolio</span><span class="p">,</span> <span class="o">**</span><span class="n">optimized_govt_portfolio</span><span class="p">}</span>
+        <span class="c1"># print(&#39;This is the optimized portfolio on &#39; + str(the_date))</span>
+        <span class="c1"># pprint(final_target_portfolio_dict)</span>
+        <span class="c1"># if the_date == pd.to_datetime(&#39;2013-12-31&#39;):</span>
+        <span class="c1">#     input(&#39;ok?&#39;)</span>
+
+        <span class="c1"># Checking if we should actually change the portfolio, regarding the minimum divergence for rebalancing</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">actual_portfolio</span> <span class="o">=</span> <span class="n">ptools</span><span class="o">.</span><span class="n">positions_percent</span><span class="p">(</span><span class="n">portfolio</span><span class="o">=</span><span class="n">portfolio</span><span class="p">,</span> <span class="n">the_date</span><span class="o">=</span><span class="n">the_date</span><span class="p">,</span>
+                                                               <span class="n">security_objects</span><span class="o">=</span><span class="n">ts_list</span><span class="p">)</span>
+        <span class="n">corp_weight_in_actual_portfolio</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">actual_portfolio</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">ts_collection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;SUBTYPE_2&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;CORPORATE&#39;</span><span class="p">)</span>
+        <span class="n">govt_weight_in_actual_portfolio</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">actual_portfolio</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">ts_collection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;SUBTYPE_2&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;SOVEREIGN&#39;</span><span class="p">,</span> <span class="s1">&#39;QUASI-SOVEREIGN&#39;</span><span class="p">])</span>
+        <span class="n">corp_diff_from_target</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">corp_weight</span> <span class="o">-</span> <span class="n">corp_weight_in_actual_portfolio</span><span class="p">)</span>
+        <span class="n">govt_diff_from_target</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">govt_weight</span> <span class="o">-</span> <span class="n">govt_weight_in_actual_portfolio</span><span class="p">)</span>
+        <span class="c1"># pprint(actual_portfolio)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">corp_diff_from_target</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_portfolios</span> <span class="ow">or</span> <span class="n">govt_diff_from_target</span> <span class="o">&gt;=</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_portfolios</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">final_target_portfolio_dict</span>
+        <span class="n">diff_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">all_securities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">actual_portfolio</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">final_target_portfolio_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="k">for</span> <span class="n">security</span> <span class="ow">in</span> <span class="n">all_securities</span><span class="p">:</span>
+            <span class="n">diff_dict</span><span class="p">[</span><span class="n">security</span><span class="p">]</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">final_target_portfolio_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">security</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">actual_portfolio</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">security</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">diff_dict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_tolerance_among_securities</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">final_target_portfolio_dict</span>
+        <span class="c1"># Else, if limits were not reached, then send a no-trading instruction</span>
+        <span class="k">return</span> <span class="s1">&#39;no_trade&#39;</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_in_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ts_name</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">):</span>
+        <span class="n">security</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">ts_collection</span> <span class="k">if</span> <span class="n">ts_name</span> <span class="o">==</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;ts_name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span>
+                         <span class="n">ts_name</span> <span class="o">==</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span> <span class="p">[</span><span class="kc">None</span><span class="p">])</span>
+        <span class="c1"># print(&quot;returning&quot; + str(security))</span>
+        <span class="k">return</span> <span class="n">security</span>
+
+    <span class="k">def</span> <span class="nf">_consider_defaulted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default_date</span><span class="p">,</span> <span class="n">the_date</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sell_defaulted</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">default_date</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">the_date</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">_get_bond_current_outstanding</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bond</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">):</span>
+        <span class="n">amount_outstanding_ts_name</span> <span class="o">=</span> <span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;PX_LAST&#39;</span><span class="p">,</span> <span class="s1">&#39;AMOUNT_OUTSTANDING_HISTORY&#39;</span><span class="p">)</span>
+        <span class="n">amt_outstd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_in_list</span><span class="p">(</span><span class="n">amount_outstanding_ts_name</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">amount</span> <span class="o">=</span> <span class="n">amt_outstd</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">the_date</span><span class="p">,</span> <span class="n">last_available</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">amount</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">amount</span><span class="p">):</span>
+            <span class="n">amount</span> <span class="o">=</span> <span class="n">bond</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;AMOUNT_ISSUED&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Checking for errors!!</span>
+        <span class="k">if</span> <span class="n">amount</span> <span class="ow">in</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">]]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;We have a problem in calculating the current outstanding...&#39;</span> <span class="o">+</span> <span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">amount</span>
+
+    <span class="k">def</span> <span class="nf">_recursive_distribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">final_proportion</span><span class="p">,</span> <span class="n">available_securities</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">distribution_type</span><span class="p">,</span>
+                              <span class="n">concentration_rules</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">excluded_names</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">target_portfolio_dict</span><span class="p">:</span>
+            <span class="n">target_portfolio_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">excluded_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">excluded_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">total_proportion</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="nb">sum</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">excluded_names</span><span class="p">))</span>
+        <span class="c1"># print(&#39;This is the total_proportion: {}&#39;.format(total_proportion))</span>
+        <span class="c1"># print(&quot;this is what i have to allocate:{}&quot;.format(total_proportion))</span>
+        <span class="c1"># First we calculate</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">available_securities</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">current_available_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_pair</span> <span class="k">for</span> <span class="n">ts_pair</span> <span class="ow">in</span> <span class="n">available_securities</span> <span class="k">if</span> <span class="n">ts_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_name</span> <span class="ow">not</span> <span class="ow">in</span>
+                                            <span class="n">excluded_names</span><span class="p">]</span>
+            <span class="n">current_available_securities_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_pair</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_name</span> <span class="k">for</span> <span class="n">ts_pair</span> <span class="ow">in</span> <span class="n">current_available_securities</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">current_available_securities</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">available_securities</span> <span class="k">if</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded_names</span><span class="p">]</span>
+            <span class="n">current_available_securities_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_name</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">current_available_securities</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">distribution_type</span> <span class="o">==</span> <span class="s1">&#39;STOCK_MARKET_CAP&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_distribute_by_stock_market_cap</span><span class="p">(</span><span class="n">the_date</span><span class="p">,</span> <span class="n">current_available_securities</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span>
+                                                 <span class="n">ts_collection</span><span class="p">,</span> <span class="n">total_proportion</span><span class="p">)</span>
+            <span class="c1"># print(&#39;Recursive Distribute has distributed in STOCK_MARKET_CAP mode, this how it looks:&#39;)</span>
+            <span class="c1"># pprint(target_portfolio_dict)</span>
+            <span class="c1"># print(&#39;This is the sum: {}&#39;.format(sum(x[1] for x in target_portfolio_dict.items())))</span>
+
+            <span class="n">exclude_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exclude_and_unconcentrate</span><span class="p">(</span><span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span>
+                                                           <span class="n">ts_collection</span><span class="p">,</span> <span class="n">excluded_names</span><span class="p">,</span> <span class="n">the_date</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">exclude_list</span> <span class="o">==</span> <span class="s1">&#39;OK&#39;</span><span class="p">:</span>
+                <span class="c1"># print(&#39;Recursive Distribute has received OK, returning...&#39;)</span>
+                <span class="c1"># print(exclude_list)</span>
+                <span class="c1"># print(&#39;returning....&#39;)</span>
+                <span class="k">for</span> <span class="n">ts_name</span><span class="p">,</span> <span class="n">ts_qty</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">ts_name</span> <span class="ow">in</span> <span class="n">current_available_securities_names</span><span class="p">:</span>
+                        <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">ts_name</span><span class="p">]</span> <span class="o">*=</span> <span class="n">final_proportion</span>
+                <span class="k">return</span> <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">exclude_list</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1">#  means that exclude_list is not None, going to recursion</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recursive_distribute</span><span class="p">(</span><span class="n">final_proportion</span><span class="p">,</span> <span class="n">available_securities</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">distribution_type</span><span class="p">,</span>
+                                                  <span class="n">concentration_rules</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span>
+                                                  <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">excluded_names</span><span class="o">=</span><span class="n">exclude_list</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">distribution_type</span> <span class="o">==</span> <span class="s1">&#39;BOND_MARKET_OUTSTANDING&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_distribute_by_bond_market_outstanding</span><span class="p">(</span><span class="n">the_date</span><span class="p">,</span> <span class="n">current_available_securities</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span>
+                                                        <span class="n">ts_collection</span><span class="p">,</span> <span class="n">total_proportion</span><span class="p">)</span>
+            <span class="c1"># print(&#39;Recursive Distribute has distributed in BOND_MARKET_OUTSTANDING mode, this how it looks:&#39;)</span>
+            <span class="c1"># pprint(target_portfolio_dict)</span>
+            <span class="c1"># print(&#39;This is the sum: {}&#39;.format(sum(x[1] for x in target_portfolio_dict.items())))</span>
+            <span class="n">exclude_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exclude_and_unconcentrate</span><span class="p">(</span><span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span>
+                                                           <span class="n">ts_collection</span><span class="p">,</span> <span class="n">excluded_names</span><span class="p">,</span> <span class="n">the_date</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">exclude_list</span> <span class="o">==</span> <span class="n">excluded_names</span><span class="p">:</span>
+                <span class="c1"># print(&#39;Recursive Distribute has received same exclude_list from exclude_names:&#39;)</span>
+                <span class="c1"># print(exclude_list)</span>
+                <span class="c1"># print(&#39;returning....&#39;)</span>
+                <span class="k">for</span> <span class="n">ts_name</span><span class="p">,</span> <span class="n">ts_qty</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">ts_name</span> <span class="ow">in</span> <span class="n">current_available_securities_names</span><span class="p">:</span>
+                        <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">ts_name</span><span class="p">]</span> <span class="o">*=</span> <span class="n">final_proportion</span>
+                <span class="k">return</span> <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">exclude_list</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Going to recursion</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recursive_distribute</span><span class="p">(</span><span class="n">final_proportion</span><span class="p">,</span> <span class="n">available_securities</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span>
+                                                  <span class="n">distribution_type</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span>
+                                                  <span class="n">ts_collection</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">excluded_names</span><span class="o">=</span><span class="n">exclude_list</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;This distribution_type is not currently supported by BondIndex: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">distribution_type</span>
+                                                                                                          <span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_distribute_by_stock_market_cap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">available_securities</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span>
+                                        <span class="n">ts_collection</span><span class="p">,</span> <span class="n">total_proportion</span><span class="p">):</span>
+        <span class="n">stock_bond_relational</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Relating equity ticker and bonds</span>
+        <span class="k">for</span> <span class="n">bond</span><span class="p">,</span> <span class="n">stock</span> <span class="ow">in</span> <span class="n">available_securities</span><span class="p">:</span>
+            <span class="n">bond_outstanding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bond_current_outstanding</span><span class="p">(</span><span class="n">bond</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">)</span>
+            <span class="n">stock_bond_relational</span><span class="p">[</span><span class="n">stock</span><span class="o">.</span><span class="n">ts_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">stock_bond_relational</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">stock</span><span class="o">.</span><span class="n">ts_name</span><span class="p">,</span> <span class="p">[])</span> <span class="o">+</span> <span class="p">[(</span><span class="n">bond</span><span class="p">,</span>
+                                                                                                 <span class="n">bond_outstanding</span><span class="p">)]</span>
+        <span class="c1"># Removing duplicates to form a stock &#39;set&#39;</span>
+        <span class="n">set_of_stocks</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">ts_pair</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">ts_pair</span> <span class="ow">in</span> <span class="n">available_securities</span><span class="p">])</span>
+        <span class="c1"># Grouping stocks and their market caps</span>
+        <span class="n">stocks_with_market_cap</span> <span class="o">=</span> <span class="p">[(</span><span class="n">stock</span><span class="p">,</span> <span class="n">stock</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">the_date</span><span class="p">))</span> <span class="k">for</span> <span class="n">stock</span> <span class="ow">in</span> <span class="n">set_of_stocks</span><span class="p">]</span>
+        <span class="c1"># Calculating full market cap</span>
+        <span class="n">full_market_cap</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">stocks_with_market_cap</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">stock</span><span class="p">,</span> <span class="n">market_cap</span> <span class="ow">in</span> <span class="n">stocks_with_market_cap</span><span class="p">:</span>
+            <span class="n">stock_fraction</span> <span class="o">=</span> <span class="n">market_cap</span> <span class="o">/</span> <span class="n">full_market_cap</span>
+            <span class="n">bond_total_issued</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">stock_bond_relational</span><span class="p">[</span><span class="n">stock</span><span class="o">.</span><span class="n">ts_name</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">bond</span><span class="p">,</span> <span class="n">bond_issued</span> <span class="ow">in</span> <span class="n">stock_bond_relational</span><span class="p">[</span><span class="n">stock</span><span class="o">.</span><span class="n">ts_name</span><span class="p">]:</span>
+                <span class="n">bond_fraction</span> <span class="o">=</span> <span class="n">bond_issued</span> <span class="o">/</span> <span class="n">bond_total_issued</span>
+                <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">stock_fraction</span> <span class="o">*</span> <span class="n">bond_fraction</span> <span class="o">*</span> <span class="n">total_proportion</span>
+
+    <span class="k">def</span> <span class="nf">_distribute_by_bond_market_outstanding</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">available_securities</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span>
+                                               <span class="n">ts_collection</span><span class="p">,</span> <span class="n">total_proportion</span><span class="p">):</span>
+        <span class="n">bonds_with_outstanding</span> <span class="o">=</span> <span class="p">[(</span><span class="n">bond</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bond_current_outstanding</span><span class="p">(</span><span class="n">bond</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">))</span> <span class="k">for</span> <span class="n">bond</span>
+                                  <span class="ow">in</span> <span class="n">available_securities</span><span class="p">]</span>
+        <span class="n">total_outstanding</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bonds_with_outstanding</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">bond</span><span class="p">,</span> <span class="n">bond_outstanding</span> <span class="ow">in</span> <span class="n">bonds_with_outstanding</span><span class="p">:</span>
+            <span class="c1"># print(&#39;This is the bond:{0}&#39;.format(bond.ts_name))</span>
+            <span class="c1"># print(&#39;This is the bond outstanding {}&#39;.format(bond_outstanding))</span>
+            <span class="n">bond_fraction</span> <span class="o">=</span> <span class="n">bond_outstanding</span> <span class="o">/</span> <span class="n">total_outstanding</span>
+            <span class="c1"># print(&#39;This is the bonds fraction: {}&#39;.format(bond_fraction))</span>
+            <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">bond_fraction</span> <span class="o">*</span> <span class="n">total_proportion</span>
+
+    <span class="k">def</span> <span class="nf">_exclude_and_unconcentrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span> <span class="n">excluded_list</span><span class="p">,</span>
+                                  <span class="n">the_date</span><span class="p">):</span>
+        <span class="n">excluded_list</span> <span class="o">=</span> <span class="n">excluded_list</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># Necessary to avoid changing the external list</span>
+        <span class="k">if</span> <span class="s1">&#39;ISSUER-OUTSTANDING&#39;</span> <span class="ow">in</span> <span class="n">concentration_rules</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exclude_and_unconcentrate_by_issuer_and_bond</span><span class="p">(</span><span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span>
+                                                                       <span class="n">ts_collection</span><span class="p">,</span> <span class="n">excluded_list</span><span class="p">,</span> <span class="n">the_date</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s1">&#39;OUTSTANDING&#39;</span> <span class="ow">in</span> <span class="n">concentration_rules</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exclude_and_unconcentrate_by_bond</span><span class="p">(</span><span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span>
+                                                           <span class="n">excluded_list</span><span class="p">,</span> <span class="n">the_date</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;OK&#39;</span>
+
+    <span class="k">def</span> <span class="nf">_exclude_and_unconcentrate_by_issuer_and_bond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span>
+                                                      <span class="n">source_excluded_list</span><span class="p">,</span> <span class="n">the_date</span><span class="p">):</span>
+        <span class="c1"># print(&#39;exclude_and_unconcentrate_by_issuer is running...&#39;)</span>
+        <span class="n">excluded_list</span> <span class="o">=</span> <span class="n">source_excluded_list</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">max_concentration_per_issuer</span> <span class="o">=</span> <span class="n">concentration_rules</span><span class="p">[</span><span class="s1">&#39;ISSUER-OUTSTANDING&#39;</span><span class="p">][</span><span class="s1">&#39;ISSUER&#39;</span><span class="p">]</span>
+        <span class="n">max_concentration_per_outstanding</span> <span class="o">=</span> <span class="n">concentration_rules</span><span class="p">[</span><span class="s1">&#39;ISSUER-OUTSTANDING&#39;</span><span class="p">][</span><span class="s1">&#39;OUTSTANDING&#39;</span><span class="p">]</span>
+        <span class="n">issuer_concentration_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">non_blocked_issuer_concentration_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">issuer_bond_names</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">non_blocked_issuer_bond_names</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">issuer_concentration_field</span> <span class="o">=</span> <span class="s1">&#39;BOND_TO_EQY_TICKER&#39;</span>
+        <span class="k">for</span> <span class="n">bond_name</span><span class="p">,</span> <span class="n">bond_percent</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">bond_name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">:</span>
+                <span class="n">issuer</span> <span class="o">=</span> <span class="n">ts_collection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">bond_name</span><span class="p">)</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="n">issuer_concentration_field</span><span class="p">)</span>
+                <span class="n">issuer_concentration_dict</span><span class="p">[</span><span class="n">issuer</span><span class="p">]</span> <span class="o">=</span> <span class="n">issuer_concentration_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">issuer</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">bond_percent</span>
+                <span class="n">issuer_bond_names</span><span class="p">[</span><span class="n">issuer</span><span class="p">]</span> <span class="o">=</span> <span class="n">issuer_bond_names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">issuer</span><span class="p">,</span> <span class="p">[])</span> <span class="o">+</span> <span class="p">[</span><span class="n">bond_name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">bond_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded_list</span><span class="p">:</span>
+                    <span class="n">non_blocked_issuer_concentration_dict</span><span class="p">[</span><span class="n">issuer</span><span class="p">]</span> <span class="o">=</span> <span class="n">non_blocked_issuer_concentration_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">issuer</span><span class="p">,</span>
+                                                                                                                 <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> \
+                                                                      <span class="n">bond_percent</span>
+                    <span class="n">non_blocked_issuer_bond_names</span><span class="p">[</span><span class="n">issuer</span><span class="p">]</span> <span class="o">=</span> <span class="n">non_blocked_issuer_bond_names</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">issuer</span><span class="p">,</span> <span class="p">[])</span> <span class="o">+</span> <span class="p">[</span><span class="n">bond_name</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">issuer</span><span class="p">,</span> <span class="n">issuer_concentration</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">issuer_concentration_dict</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">issuer_concentration</span> <span class="o">&gt;</span> <span class="n">max_concentration_per_issuer</span> <span class="o">+</span> <span class="mf">0.00000001</span><span class="p">:</span>
+                <span class="c1"># print(&#39;Found a problem with {}&#39;.format(issuer))</span>
+                <span class="c1"># print(&#39;This is the concentration_dict:&#39;)</span>
+                <span class="c1"># pprint(issuer_concentration_dict)</span>
+                <span class="c1"># Removing excluded bonds from the issuer adjustment</span>
+                <span class="n">this_issuer_total_qty_blocked_bonds</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span>
+                                                          <span class="n">issuer_bond_names</span><span class="p">[</span><span class="n">issuer</span><span class="p">]</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">excluded_list</span><span class="p">)</span>
+                <span class="n">non_blocked_max_concentration_per_issuer</span> <span class="o">=</span> <span class="n">max_concentration_per_issuer</span> <span class="o">-</span> \
+                                                           <span class="n">this_issuer_total_qty_blocked_bonds</span>
+                <span class="n">non_blocked_issuer_concentration</span> <span class="o">=</span> <span class="n">non_blocked_issuer_concentration_dict</span><span class="p">[</span><span class="n">issuer</span><span class="p">]</span>
+                <span class="n">issuer_multiplication_factor</span> <span class="o">=</span> <span class="n">non_blocked_max_concentration_per_issuer</span> <span class="o">/</span> \
+                                               <span class="n">non_blocked_issuer_concentration</span>
+                <span class="c1"># print(&#39;Multiplying every available bond by: {}&#39;.format(issuer_multiplication_factor))</span>
+
+                <span class="k">for</span> <span class="n">bond_name</span> <span class="ow">in</span> <span class="n">non_blocked_issuer_bond_names</span><span class="p">[</span><span class="n">issuer</span><span class="p">]:</span>
+                    <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">bond_name</span><span class="p">]</span> <span class="o">*=</span> <span class="n">issuer_multiplication_factor</span>
+                    <span class="n">excluded_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bond_name</span><span class="p">)</span>
+                <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">non_blocked_issuer_concentration</span> <span class="o">-</span> \
+                                                     <span class="n">non_blocked_max_concentration_per_issuer</span>
+                <span class="n">disp_bonds_in_portfolio_for_this_issuer</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_collection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">non_blocked_issuer_bond_names</span><span class="p">[</span>
+                    <span class="n">issuer</span><span class="p">]]</span>
+                <span class="k">for</span> <span class="n">bond</span> <span class="ow">in</span> <span class="n">disp_bonds_in_portfolio_for_this_issuer</span><span class="p">:</span>
+                    <span class="n">bond_name</span> <span class="o">=</span> <span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span>
+                    <span class="n">bond_percent</span> <span class="o">=</span> <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span><span class="p">]</span>
+                    <span class="n">this_bond_outstanding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bond_current_outstanding</span><span class="p">(</span><span class="n">bond</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">)</span>
+                    <span class="n">this_bond_outstanding_category</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">max_concentration_per_outstanding</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span>
+                                                         <span class="n">this_bond_outstanding</span><span class="p">)</span>
+                    <span class="n">this_bond_outstanding_limit</span> <span class="o">=</span> <span class="n">max_concentration_per_outstanding</span><span class="p">[</span><span class="n">this_bond_outstanding_category</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">bond_percent</span> <span class="o">&gt;</span> <span class="n">this_bond_outstanding_limit</span> <span class="o">+</span> <span class="mf">0.00000001</span><span class="p">:</span>
+                        <span class="c1"># print(&#39;Correcting a bond!!!: {0}. {1}&#39;.format(bond_name, bond_percent))</span>
+                        <span class="n">new_concentration_rules</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+                        <span class="n">new_concentration_rules</span><span class="p">[</span><span class="s1">&#39;OUTSTANDING&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">concentration_rules</span><span class="p">[</span><span class="s1">&#39;ISSUER-OUTSTANDING&#39;</span><span class="p">][</span>
+                            <span class="s1">&#39;OUTSTANDING&#39;</span><span class="p">]</span>
+                        <span class="n">disp_bonds_in_portfolio_for_this_issuer_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">ts_name</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span>
+                                                                         <span class="n">disp_bonds_in_portfolio_for_this_issuer</span><span class="p">]</span>
+                        <span class="n">partial_excluded_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span>
+                                                  <span class="n">disp_bonds_in_portfolio_for_this_issuer_names</span><span class="p">]</span>
+                        <span class="n">partial_excluded_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_recursive_distribute</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span>
+                                                   <span class="n">available_securities</span><span class="o">=</span><span class="n">disp_bonds_in_portfolio_for_this_issuer</span><span class="p">,</span>
+                                                   <span class="n">the_date</span><span class="o">=</span><span class="n">the_date</span><span class="p">,</span> <span class="n">distribution_type</span><span class="o">=</span><span class="s1">&#39;BOND_MARKET_OUTSTANDING&#39;</span><span class="p">,</span>
+                                                   <span class="n">concentration_rules</span><span class="o">=</span><span class="n">new_concentration_rules</span><span class="p">,</span>
+                                                   <span class="n">ts_collection</span><span class="o">=</span><span class="n">ts_collection</span><span class="p">,</span>
+                                                   <span class="n">target_portfolio_dict</span><span class="o">=</span><span class="n">target_portfolio_dict</span><span class="p">,</span>
+                                                   <span class="n">excluded_names</span><span class="o">=</span><span class="n">partial_excluded_names</span><span class="p">)</span>
+                        <span class="n">check</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span>
+                                    <span class="n">disp_bonds_in_portfolio_for_this_issuer_names</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">check</span> <span class="o">&lt;</span> <span class="n">non_blocked_max_concentration_per_issuer</span><span class="p">:</span>
+                            <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">]</span> <span class="o">+=</span> \
+                                <span class="n">non_blocked_max_concentration_per_issuer</span> <span class="o">-</span> <span class="n">check</span>
+
+        <span class="k">if</span> <span class="n">excluded_list</span> <span class="o">!=</span> <span class="n">source_excluded_list</span><span class="p">:</span>
+            <span class="c1"># Meaning at least one emissor was touched upon</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">unnalocated_symbol</span><span class="p">]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">return</span> <span class="n">excluded_list</span>
+
+        <span class="k">for</span> <span class="n">issuer</span><span class="p">,</span> <span class="n">issuer_concentration</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">issuer_concentration_dict</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()):</span>
+            <span class="n">disp_bonds_in_portfolio_for_this_issuer</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts_collection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">issuer_bond_names</span><span class="p">[</span><span class="n">issuer</span><span class="p">]</span> <span class="k">if</span> <span class="n">x</span>
+                                                       <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded_list</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">bond</span> <span class="ow">in</span> <span class="n">disp_bonds_in_portfolio_for_this_issuer</span><span class="p">:</span>
+                <span class="n">bond_name</span> <span class="o">=</span> <span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span>
+                <span class="n">bond_percent</span> <span class="o">=</span> <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">bond</span><span class="o">.</span><span class="n">ts_name</span><span class="p">]</span>
+                <span class="n">this_bond_outstanding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bond_current_outstanding</span><span class="p">(</span><span class="n">bond</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">)</span>
+                <span class="n">this_bond_outstanding_category</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">max_concentration_per_outstanding</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span>
+                                                     <span class="n">this_bond_outstanding</span><span class="p">)</span>
+                <span class="n">this_bond_outstanding_limit</span> <span class="o">=</span> <span class="n">max_concentration_per_outstanding</span><span class="p">[</span><span class="n">this_bond_outstanding_category</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">bond_percent</span> <span class="o">&gt;</span> <span class="n">this_bond_outstanding_limit</span> <span class="o">+</span> <span class="mf">0.00000001</span><span class="p">:</span>
+                    <span class="c1"># print(&#39;Correcting a bond!!!: {0}. {1}&#39;.format(bond, bond_percent))</span>
+                    <span class="n">new_concentration_rules</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+                    <span class="n">new_concentration_rules</span><span class="p">[</span><span class="s1">&#39;OUTSTANDING&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">concentration_rules</span><span class="p">[</span><span class="s1">&#39;ISSUER-OUTSTANDING&#39;</span><span class="p">][</span>
+                        <span class="s1">&#39;OUTSTANDING&#39;</span><span class="p">]</span>
+                    <span class="n">disp_bonds_in_portfolio_for_this_issuer_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">ts_name</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span>
+                                                                     <span class="n">disp_bonds_in_portfolio_for_this_issuer</span><span class="p">]</span>
+                    <span class="n">total_allocation_in_disp_bonds</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span>
+                                                         <span class="ow">in</span> <span class="n">disp_bonds_in_portfolio_for_this_issuer_names</span><span class="p">)</span>
+                    <span class="n">partial_excluded_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span>
+                                              <span class="n">disp_bonds_in_portfolio_for_this_issuer_names</span><span class="p">]</span>
+                    <span class="n">_</span><span class="p">,</span> <span class="n">new_excluded_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recursive_distribute</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span>
+                                                       <span class="n">available_securities</span><span class="o">=</span><span class="n">disp_bonds_in_portfolio_for_this_issuer</span><span class="p">,</span>
+                                                       <span class="n">the_date</span><span class="o">=</span><span class="n">the_date</span><span class="p">,</span> <span class="n">distribution_type</span><span class="o">=</span><span class="s1">&#39;BOND_MARKET_OUTSTANDING&#39;</span><span class="p">,</span>
+                                                       <span class="n">concentration_rules</span><span class="o">=</span><span class="n">new_concentration_rules</span><span class="p">,</span>
+                                                       <span class="n">ts_collection</span><span class="o">=</span><span class="n">ts_collection</span><span class="p">,</span>
+                                                       <span class="n">target_portfolio_dict</span><span class="o">=</span><span class="n">target_portfolio_dict</span><span class="p">,</span>
+                                                       <span class="n">excluded_names</span><span class="o">=</span><span class="n">partial_excluded_names</span><span class="p">)</span>
+                    <span class="c1"># print(&#39;This is the new_excludedlist&#39;)</span>
+                    <span class="c1"># input(new_excluded_list)</span>
+                    <span class="c1"># print(&#39;This is the disp_bonds&#39;)</span>
+                    <span class="c1"># input(disp_bonds_in_portfolio_for_this_issuer_names)</span>
+                    <span class="k">if</span> <span class="nb">all</span><span class="p">((</span><span class="n">x</span> <span class="ow">in</span> <span class="n">new_excluded_list</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">disp_bonds_in_portfolio_for_this_issuer_names</span><span class="p">)):</span>
+                        <span class="c1"># print(&#39;Going to all, it is ok&#39;)</span>
+                        <span class="c1"># Meaning all the bonds for this emissor are now blocked!!</span>
+                        <span class="n">excluded_list</span> <span class="o">+=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">new_excluded_list</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">partial_excluded_names</span><span class="p">]</span>
+                        <span class="c1"># After running the above _recursive_distribute only for the bonds of this issuer, this bond is</span>
+                        <span class="c1"># sure to be at its maximum allocation (per individual bond rules), so add it to excluded list.</span>
+                        <span class="k">return</span> <span class="n">excluded_list</span>
+        <span class="c1"># If nothing is wrong, return the same excluded_list that was received. This will end the recursion in</span>
+        <span class="c1"># the _recursive_distribute method.</span>
+        <span class="k">return</span> <span class="s1">&#39;OK&#39;</span>
+
+    <span class="k">def</span> <span class="nf">_exclude_and_unconcentrate_by_bond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_portfolio_dict</span><span class="p">,</span> <span class="n">concentration_rules</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">,</span>
+                                           <span class="n">source_excluded_list</span><span class="p">,</span> <span class="n">the_date</span><span class="p">):</span>
+        <span class="n">excluded_list</span> <span class="o">=</span> <span class="n">source_excluded_list</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">max_concentration_per_outstanding</span> <span class="o">=</span> <span class="n">concentration_rules</span><span class="p">[</span><span class="s1">&#39;OUTSTANDING&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">bond_name</span><span class="p">,</span> <span class="n">bond_percent</span> <span class="ow">in</span> <span class="n">target_portfolio_dict</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">bond_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded_list</span><span class="p">:</span>
+                <span class="n">bond</span> <span class="o">=</span> <span class="n">ts_collection</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">bond_name</span><span class="p">)</span>
+                <span class="n">this_bond_outstanding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bond_current_outstanding</span><span class="p">(</span><span class="n">bond</span><span class="p">,</span> <span class="n">the_date</span><span class="p">,</span> <span class="n">ts_collection</span><span class="p">)</span>
+                <span class="n">this_bond_outstanding_category</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">max_concentration_per_outstanding</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span>
+                                                     <span class="n">this_bond_outstanding</span><span class="p">)</span>
+                <span class="n">this_bond_outstanding_limit</span> <span class="o">=</span> <span class="n">max_concentration_per_outstanding</span><span class="p">[</span><span class="n">this_bond_outstanding_category</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">bond_percent</span> <span class="o">&gt;</span> <span class="n">this_bond_outstanding_limit</span> <span class="o">+</span> <span class="mf">0.00000001</span><span class="p">:</span>
+                    <span class="n">target_portfolio_dict</span><span class="p">[</span><span class="n">bond_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">this_bond_outstanding_limit</span>
+                    <span class="c1"># print(&#39;exclude_and_unconcentrate_by_bond is adding this bond to excluded_list:&#39;)</span>
+                    <span class="c1"># print(bond_name)</span>
+                    <span class="n">excluded_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bond_name</span><span class="p">)</span>
+                    <span class="c1"># Check if the following changes anything</span>
+                    <span class="c1"># return excluded_list</span>
+        <span class="k">return</span> <span class="n">excluded_list</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

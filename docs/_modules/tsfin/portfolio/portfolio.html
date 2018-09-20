@@ -1,0 +1,439 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.portfolio.portfolio &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.portfolio.portfolio</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">bisect</span> <span class="k">import</span> <span class="n">bisect_left</span><span class="p">,</span> <span class="n">bisect_right</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">from</span> <span class="nn">tsio.tools</span> <span class="k">import</span> <span class="n">at_index</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.qlconverters</span> <span class="k">import</span> <span class="n">to_ql_date</span>
+
+<span class="n">trade</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;trade&#39;</span><span class="p">,</span> <span class="s1">&#39;qty price&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="merge_trades"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.merge_trades">[docs]</a><span class="k">def</span> <span class="nf">merge_trades</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">new</span><span class="p">):</span>
+    <span class="n">merged_trade</span> <span class="o">=</span> <span class="n">trade</span><span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">qty</span> <span class="o">+</span> <span class="n">new</span><span class="o">.</span><span class="n">qty</span><span class="p">,</span> <span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">qty</span> <span class="o">*</span> <span class="n">old</span><span class="o">.</span><span class="n">price</span> <span class="o">+</span> <span class="n">new</span><span class="o">.</span><span class="n">qty</span> <span class="o">*</span> <span class="n">new</span><span class="o">.</span><span class="n">price</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">qty</span> <span class="o">+</span> <span class="n">new</span><span class="o">.</span><span class="n">qty</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">merged_trade</span></div>
+
+
+<div class="viewcode-block" id="find_gt"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.find_gt">[docs]</a><span class="k">def</span> <span class="nf">find_gt</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">sorted_dates</span><span class="p">):</span>
+    <span class="c1"># Find leftmost value greater than x</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">bisect_right</span><span class="p">(</span><span class="n">sorted_dates</span><span class="p">,</span> <span class="n">date</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_dates</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sorted_dates</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not find leftmost value greater than date.&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="find_lt"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.find_lt">[docs]</a><span class="k">def</span> <span class="nf">find_lt</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">sorted_dates</span><span class="p">):</span>
+    <span class="c1"># Find rightmost value less than x</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">bisect_left</span><span class="p">(</span><span class="n">sorted_dates</span><span class="p">,</span> <span class="n">date</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">i</span><span class="p">:</span>
+        <span class="c1"># print(&#39;returning {}&#39;.format(sorted_dates[i-1]))</span>
+        <span class="k">return</span> <span class="n">sorted_dates</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not find rightmost value less than date.&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Portfolio"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio">[docs]</a><span class="k">class</span> <span class="nc">Portfolio</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Model of a Simple Portfolio of Securities</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    portfolio : DataFrame</span>
+<span class="sd">        DataFrame with columns = [&#39;DATE&#39;, &#39;TS_NAME&#39;, &#39;NMV&#39;].</span>
+<span class="sd">        TS_NAME : Name of the TimeSeries.</span>
+<span class="sd">        NMV : Total value of the TimeSeries at Date.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">currency</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">positions</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="o">=</span> <span class="n">currency</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span> <span class="o">=</span> <span class="n">security_objects</span>
+
+<div class="viewcode-block" id="Portfolio.copy"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">copied_portfolio</span> <span class="o">=</span> <span class="n">Portfolio</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">copied_portfolio</span><span class="o">.</span><span class="n">positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">copied_portfolio</span><span class="o">.</span><span class="n">trades</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">copied_portfolio</span></div>
+
+<div class="viewcode-block" id="Portfolio.add_position"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.add_position">[docs]</a>    <span class="k">def</span> <span class="nf">add_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">qty</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">date</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">qty</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">qty</span><span class="p">}</span></div>
+
+<div class="viewcode-block" id="Portfolio.remove_position"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.remove_position">[docs]</a>    <span class="k">def</span> <span class="nf">remove_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">qty</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">date</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">qty</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">qty</span></div>
+
+<div class="viewcode-block" id="Portfolio.get_security"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.get_security">[docs]</a>    <span class="k">def</span> <span class="nf">get_security</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="n">security</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">security_objects</span> <span class="k">if</span>
+                         <span class="n">security_name</span> <span class="o">==</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;ts_name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span>
+                         <span class="n">security_name</span> <span class="o">==</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span> <span class="p">[</span><span class="kc">None</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">security</span></div>
+
+<div class="viewcode-block" id="Portfolio.carry_to"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.carry_to">[docs]</a>    <span class="k">def</span> <span class="nf">carry_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="k">if</span> <span class="n">date</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">sorted_dates</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+            <span class="n">previous_date</span> <span class="o">=</span> <span class="n">find_lt</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">sorted_dates</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">previous_date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="c1"># print(&#39;carrying &#39; + security_name)</span>
+                <span class="n">security</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_position</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="n">security</span><span class="o">.</span><span class="n">cash_to_date</span><span class="p">(</span><span class="n">start_date</span><span class="o">=</span><span class="n">previous_date</span><span class="p">,</span>
+                                                                             <span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">))</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">security</span><span class="o">.</span><span class="n">is_expired</span><span class="p">(</span><span class="n">date</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_position</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">previous_date</span><span class="p">][</span><span class="n">security_name</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="Portfolio.add_trade"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.add_trade">[docs]</a>    <span class="k">def</span> <span class="nf">add_trade</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">new_trade</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">date</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">merge_trades</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">trade</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span> <span class="n">new_trade</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trades</span><span class="p">[</span><span class="n">date</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">new_trade</span><span class="p">}</span>
+        <span class="c1"># Now apply the new trade to the positions dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_apply_trade</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">new_trade</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_apply_trade</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">new_trade</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">date</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">new_trade</span><span class="o">.</span><span class="n">qty</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-</span> \
+            <span class="n">new_trade</span><span class="o">.</span><span class="n">qty</span> <span class="o">*</span> <span class="n">new_trade</span><span class="o">.</span><span class="n">price</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Portfolio.value"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.value">[docs]</a>    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># print(&#39;Portfolio: valuating in &#39; + the_date.strftime(&#39;%Y-%m-%d&#39;))</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">value_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">security_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">:</span>
+                <span class="n">unit_value</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">unit_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span> <span class="n">last_available</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_value</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null value in </span><span class="si">{1}</span><span class="s2">, replacing by zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span>
+                                                                                                    <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_value</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">value_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_value</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">][</span><span class="n">security_name</span><span class="p">]</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.ytm"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.ytm">[docs]</a>    <span class="k">def</span> <span class="nf">ytm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">ytm</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null ytm in </span><span class="si">{1}</span><span class="s2">, replacing by zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span>
+                                                                                                  <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.ytw"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.ytw">[docs]</a>    <span class="k">def</span> <span class="nf">ytw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">ytw</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null ytw in </span><span class="si">{1}</span><span class="s2">, replacing by zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span>
+                                                                                                  <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.ytw_rolling_call"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.ytw_rolling_call">[docs]</a>    <span class="k">def</span> <span class="nf">ytw_rolling_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.zspread_to_mat"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.zspread_to_mat">[docs]</a>    <span class="k">def</span> <span class="nf">zspread_to_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">yield_curve_timeseries</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;yield_curve_timeseries&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span>
+                                                <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">zspread_to_mat</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span>
+                                                                        <span class="n">yield_curve_timeseries</span><span class="o">=</span><span class="n">yield_curve_timeseries</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null zspread_to_mat </span><span class="si">{1}</span><span class="s2">, replacing by zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">security_name</span><span class="p">,</span> <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.zspread_to_worst"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.zspread_to_worst">[docs]</a>    <span class="k">def</span> <span class="nf">zspread_to_worst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">yield_curve_timeseries</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;yield_curve_timeseries&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span>
+                                                <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">zspread_to_worst</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span>
+                                                                        <span class="n">yield_curve_timeseries</span><span class="o">=</span><span class="n">yield_curve_timeseries</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null zspread_to_worst </span><span class="si">{1}</span><span class="s2">, replacing by zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">security_name</span><span class="p">,</span> <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.zspread_to_worst_rolling_call"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.zspread_to_worst_rolling_call">[docs]</a>    <span class="k">def</span> <span class="nf">zspread_to_worst_rolling_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">yield_curve_timeseries</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;yield_curve_timeseries&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span>
+                                                <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">zspread_to_worst_rolling_call</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span>
+                                                                        <span class="n">yield_curve_timeseries</span><span class="o">=</span><span class="n">yield_curve_timeseries</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null zspread_to_worst_rolling_call </span><span class="si">{1}</span><span class="s2">, replacing by &quot;</span>
+                          <span class="s2">&quot;zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.mac_duration_to_mat"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.mac_duration_to_mat">[docs]</a>    <span class="k">def</span> <span class="nf">mac_duration_to_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.mac_duration_to_worst"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.mac_duration_to_worst">[docs]</a>    <span class="k">def</span> <span class="nf">mac_duration_to_worst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.mac_duration_to_worst_rolling_call"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.mac_duration_to_worst_rolling_call">[docs]</a>    <span class="k">def</span> <span class="nf">mac_duration_to_worst_rolling_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.mod_duration_to_mat"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.mod_duration_to_mat">[docs]</a>    <span class="k">def</span> <span class="nf">mod_duration_to_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">mod_duration_to_mat</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null mod_duration_to_mat </span><span class="si">{1}</span><span class="s2">, replacing by &quot;</span>
+                          <span class="s2">&quot;zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.mod_duration_to_worst"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.mod_duration_to_worst">[docs]</a>    <span class="k">def</span> <span class="nf">mod_duration_to_worst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">mod_duration_to_worst</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null mod_duration_to_worst </span><span class="si">{1}</span><span class="s2">, replacing by &quot;</span>
+                          <span class="s2">&quot;zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.mod_duration_to_worst_rolling_call"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.mod_duration_to_worst_rolling_call">[docs]</a>    <span class="k">def</span> <span class="nf">mod_duration_to_worst_rolling_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">security_objects</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">security_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">security_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carry_to</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="n">result_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">value_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">security_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_security</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">security_objects</span><span class="p">)</span><span class="o">.</span><span class="n">mod_duration_to_worst_rolling_call</span><span class="p">(</span>
+                    <span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">unit_result</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Security </span><span class="si">{0}</span><span class="s2"> is returning null mod_duration_to_worst_rolling_call </span><span class="si">{1}</span><span class="s2">, replacing by &quot;</span>
+                          <span class="s2">&quot;zero..&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">security_name</span><span class="p">,</span> <span class="n">date</span><span class="p">))</span>
+                    <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">unit_result</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">result_dict</span><span class="p">[</span><span class="n">security_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">unit_result</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">*</span> <span class="n">result_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="n">value</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positions</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">result_dict</span></div>
+
+<div class="viewcode-block" id="Portfolio.convexity_to_mat"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.convexity_to_mat">[docs]</a>    <span class="k">def</span> <span class="nf">convexity_to_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.convexity_to_worst"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.convexity_to_worst">[docs]</a>    <span class="k">def</span> <span class="nf">convexity_to_worst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.convexity_to_worst_rolling_call"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.convexity_to_worst_rolling_call">[docs]</a>    <span class="k">def</span> <span class="nf">convexity_to_worst_rolling_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.percentage_of_amount_outstanding"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.percentage_of_amount_outstanding">[docs]</a>    <span class="k">def</span> <span class="nf">percentage_of_amount_outstanding</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="Portfolio.liquidity_index"><a class="viewcode-back" href="../../../tsfin/tsfin.portfolio.portfolio.html#tsfin.portfolio.portfolio.Portfolio.liquidity_index">[docs]</a>    <span class="k">def</span> <span class="nf">liquidity_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">security_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># total_liquidity_index = total_amt_outstd * number_of_securities.</span>
+        <span class="k">pass</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

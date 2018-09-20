@@ -1,0 +1,268 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Deposit Rate &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Fra DDI" href="tsfin.instruments.fraddi.html" />
+    <link rel="prev" title="Currency Future" href="tsfin.instruments.currencyfuture.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tsfin.instruments.currencyfuture.html" title="previous chapter">Currency Future</a></li>
+      <li>Next: <a href="tsfin.instruments.fraddi.html" title="next chapter">Fra DDI</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tsfin.instruments.depositrate">
+<span id="deposit-rate"></span><h1>Deposit Rate<a class="headerlink" href="#module-tsfin.instruments.depositrate" title="Permalink to this headline">¶</a></h1>
+<p>DepositRate class, to represent deposit rates.</p>
+<dl class="class">
+<dt id="tsfin.instruments.depositrate.DepositRate">
+<em class="property">class </em><code class="descname">DepositRate</code><span class="sig-paren">(</span><em>timeseries</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/depositrate.html#DepositRate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="tsfin.base.instrument.html#tsfin.base.instrument.Instrument" title="tsfin.base.instrument.Instrument"><code class="xref py py-class docutils literal notranslate"><span class="pre">tsfin.base.instrument.Instrument</span></code></a></p>
+<p>Class to model deposit rates.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeseries</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeries</span></code>) – TimeSeries representing the deposit rate.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="tsfin.instruments.depositrate.DepositRate.cash_to_date">
+<code class="descname">cash_to_date</code><span class="sig-paren">(</span><em>start_date</em>, <em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate.cash_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>start_date</strong> (<em>datetime-like</em>) – </li>
+<li><strong>date</strong> (<em>datetime-like</em><em>, </em><em>optional</em>) – Defaults to last available date in <code class="docutils literal notranslate"><span class="pre">self.price.ts_values</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Cash amount paid by a unit of the instrument between <cite>start_date</cite> and <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.depositrate.DepositRate.is_expired">
+<code class="descname">is_expired</code><span class="sig-paren">(</span><em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/depositrate.html#DepositRate.is_expired"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate.is_expired" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the deposit rate is expired.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Whether the instrument is expired at <cite>date</cite>.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)">bool</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.depositrate.DepositRate.maturity">
+<code class="descname">maturity</code><span class="sig-paren">(</span><em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate.maturity" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>datetime-like</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Date representing the maturity or expiry of the instrument. Returns None if there is no maturity.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">QuantLib.Date, None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.depositrate.DepositRate.performance">
+<code class="descname">performance</code><span class="sig-paren">(</span><em>start_date=None</em>, <em>date=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/depositrate.html#DepositRate.performance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate.performance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performance of investment in the interest rate, taking tenor into account.</p>
+<p>If the period between start_date and date is larger the the deposit rate’s tenor, considers the investment
+is rolled at the prevailing rate at each maturity.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>start_date</strong> (<em>QuantLib.Date</em>) – Start date of the investment period.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>c-vectorized</em>) – End date of the investment period.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Performance of the investment.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.depositrate.DepositRate.rate_helper">
+<code class="descname">rate_helper</code><span class="sig-paren">(</span><em>date</em>, <em>last_available=True</em>, <em>**other_args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/depositrate.html#DepositRate.rate_helper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate.rate_helper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper for yield curve construction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date.</li>
+<li><strong>last_available</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to use last available quotes if missing data.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Rate helper for yield curve construction.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">QuantLib.RateHelper</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.depositrate.DepositRate.tenor">
+<code class="descname">tenor</code><span class="sig-paren">(</span><em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/depositrate.html#DepositRate.tenor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate.tenor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get tenor of the deposit rate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The tenor (period) to maturity of the deposit rate.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">QuantLib.Period</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.depositrate.DepositRate.value">
+<code class="descname">value</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/depositrate.html#DepositRate.value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.depositrate.DepositRate.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns zero.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/tsfin/tsfin.instruments.depositrate.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

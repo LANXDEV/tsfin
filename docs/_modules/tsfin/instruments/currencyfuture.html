@@ -1,0 +1,732 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.instruments.currencyfuture &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.instruments.currencyfuture</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Currency Future class to model currency futures. Also contains the BaseCurrencyFuture and CurrencyFutureHelper classes,</span>
+<span class="sd">which work as analogies to QuantLib&#39;s instrument and helper classes, respectively.</span>
+<span class="sd">TODO: Propose implementation of these classes in QuantLib.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">QuantLib</span> <span class="k">as</span> <span class="nn">ql</span>
+<span class="kn">from</span> <span class="nn">tsfin.base</span> <span class="k">import</span> <span class="n">Instrument</span><span class="p">,</span> <span class="n">conditional_vectorize</span><span class="p">,</span> <span class="n">to_ql_date</span><span class="p">,</span> <span class="n">to_ql_frequency</span><span class="p">,</span> <span class="n">to_ql_calendar</span><span class="p">,</span> \
+    <span class="n">to_ql_compounding</span><span class="p">,</span> <span class="n">to_ql_day_counter</span><span class="p">,</span> <span class="n">to_ql_currency</span>
+<span class="kn">from</span> <span class="nn">tsfin.constants</span> <span class="k">import</span> <span class="n">BASE_CURRENCY</span><span class="p">,</span> <span class="n">COUNTER_CURRENCY</span><span class="p">,</span> <span class="n">BASE_RATE_COMPOUNDING</span><span class="p">,</span> <span class="n">BASE_RATE_DAY_COUNTER</span><span class="p">,</span> \
+    <span class="n">BASE_RATE_FREQUENCY</span><span class="p">,</span> <span class="n">COUNTER_RATE_COMPOUNDING</span><span class="p">,</span> <span class="n">COUNTER_RATE_DAY_COUNTER</span><span class="p">,</span> <span class="n">COUNTER_RATE_FREQUENCY</span><span class="p">,</span> <span class="n">CALENDAR</span><span class="p">,</span> \
+    <span class="n">MATURITY_DATE</span><span class="p">,</span> <span class="n">SETTLEMENT_DAYS</span>
+
+
+<div class="viewcode-block" id="usdbrl_next_maturity"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.usdbrl_next_maturity">[docs]</a><span class="k">def</span> <span class="nf">usdbrl_next_maturity</span><span class="p">(</span><span class="n">date</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Next maturity of BM&amp;F (Brazil) USDBRL future contracts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    date: QuantLib.Date</span>
+<span class="sd">        Reference date.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.Date</span>
+<span class="sd">        Maturity date of closest-to-maturity contract.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+    <span class="n">calendar</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">Brazil</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">calendar</span><span class="o">.</span><span class="n">endOfMonth</span><span class="p">(</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Days</span><span class="p">)),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Days</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="default_arguments_currency_future"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.default_arguments_currency_future">[docs]</a><span class="k">def</span> <span class="nf">default_arguments_currency_future</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Decorator to set default arguments for :py:class:`CurrencyFuture`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f: method</span>
+<span class="sd">        A method to be increased with default arguments.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    function</span>
+<span class="sd">        `f`, increased with default arguments.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | Missing Attribute(s)       | Default Value(s)                         |</span>
+<span class="sd">    +============================+==========================================+</span>
+<span class="sd">    | date and quote             | dates and quotes in                      |</span>
+<span class="sd">    |                            | self.quotes.ts_values                    |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | date                       | dates in self.quotes.ts_values           |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | quote                      | corresponding quotes at passed dates     |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | base_rate_day_counter      | self.base_rate_day_counter               |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | base_rate_compounding      | self.base_rate_compounding               |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | base_rate_frequency        | self.base_rate_frequency                 |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | counter_rate_day_counter   | self.counter_rate_day_counter            |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | counter_rate_compounding   | self.counter_rate_compounding            |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | counter_rate_frequency     | self.counter_rate_frequency              |</span>
+<span class="sd">    | maturity                   | self.maturity_date                       |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">new_f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;base_rate_day_counter&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;base_rate_day_counter&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;base_rate_day_counter&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;counter_rate_day_counter&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;counter_rate_day_counter&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;counter_rate_day_counter&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;base_rate_compounding&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;base_rate_compounding&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;base_rate_compounding&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;counter_rate_compounding&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;counter_rate_compounding&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;counter_rate_compounding&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;base_rate_frequency&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;base_rate_frequency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;base_rate_frequency&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;counter_rate_frequency&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;counter_rate_frequency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;counter_rate_frequency&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;maturity&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;maturity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;maturity_date&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;settlement_days&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;settlement_days&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;settlement_days&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;last&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;last&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># If last True, use last available date and value for yield calculation.</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;last&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;quotes&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;quote&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;quotes&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">ts_values</span><span class="p">[</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]]</span>
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># If not, use all the available dates and values.</span>
+        <span class="k">if</span> <span class="s1">&#39;date&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;quotes&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span>
+            <span class="k">if</span> <span class="s1">&#39;quote&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;quote&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;quotes&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">elif</span> <span class="s1">&#39;quote&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;quote&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;quotes&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_values</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">new_f</span><span class="o">.</span><span class="n">_decorated_by_default_arguments_</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="n">new_f</span></div>
+
+
+<div class="viewcode-block" id="default_arguments_base_currency_future"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.default_arguments_base_currency_future">[docs]</a><span class="k">def</span> <span class="nf">default_arguments_base_currency_future</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Decorator to set default arguments for :py:class:`BaseCurrencyFuture`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f: method</span>
+<span class="sd">        A method to be increased with default arguments.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    function</span>
+<span class="sd">        `f`, increased with default arguments.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | Missing Attribute(s)       | Default Value(s)                         |</span>
+<span class="sd">    +============================+==========================================+</span>
+<span class="sd">    | base_rate_day_counter      | self.base_rate_day_counter               |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | base_rate_compounding      | self.base_rate_compounding               |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | base_rate_frequency        | self.base_rate_frequency                 |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | counter_rate_day_counter   | self.counter_rate_day_counter            |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | counter_rate_compounding   | self.counter_rate_compounding            |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | counter_rate_frequency     | self.counter_rate_frequency              |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+<span class="sd">    | maturity                   | self.maturity_date                       |</span>
+<span class="sd">    +----------------------------+------------------------------------------+</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">new_f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;base_rate_day_counter&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;base_rate_day_counter&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;base_rate_day_counter&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;counter_rate_day_counter&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;counter_rate_day_counter&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;counter_rate_day_counter&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;base_rate_compounding&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;base_rate_compounding&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;base_rate_compounding&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;counter_rate_compounding&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;counter_rate_compounding&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;counter_rate_compounding&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;base_rate_frequency&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;base_rate_frequency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;base_rate_frequency&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;counter_rate_frequency&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;counter_rate_frequency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;counter_rate_frequency&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;maturity&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;maturity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;maturity_date&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;settlement_days&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;settlement_days&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;settlement_days&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">new_f</span><span class="o">.</span><span class="n">_decorated_by_default_arguments_</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="n">new_f</span></div>
+
+
+<div class="viewcode-block" id="CurrencyFuture"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture">[docs]</a><span class="k">class</span> <span class="nc">CurrencyFuture</span><span class="p">(</span><span class="n">Instrument</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Currency future time series object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    timeseries: :py:obj:`TimeSeries`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeseries</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">timeseries</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_currency</span> <span class="o">=</span> <span class="n">to_ql_currency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">BASE_CURRENCY</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_currency</span> <span class="o">=</span> <span class="n">to_ql_currency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">COUNTER_CURRENCY</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">MATURITY_DATE</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quotes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeseries</span><span class="o">.</span><span class="n">price</span><span class="o">.</span><span class="n">ts_values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span> <span class="o">=</span> <span class="n">to_ql_calendar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">CALENDAR</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_day_counter</span> <span class="o">=</span> <span class="n">to_ql_day_counter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">BASE_RATE_DAY_COUNTER</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_day_counter</span> <span class="o">=</span> <span class="n">to_ql_day_counter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">COUNTER_RATE_DAY_COUNTER</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_compounding</span> <span class="o">=</span> <span class="n">to_ql_compounding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">BASE_RATE_COMPOUNDING</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_compounding</span> <span class="o">=</span> <span class="n">to_ql_compounding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">COUNTER_RATE_COMPOUNDING</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_frequency</span> <span class="o">=</span> <span class="n">to_ql_frequency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">BASE_RATE_FREQUENCY</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_frequency</span> <span class="o">=</span> <span class="n">to_ql_frequency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">COUNTER_RATE_FREQUENCY</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settlement_days</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="n">SETTLEMENT_DAYS</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_currency_future</span> <span class="o">=</span> <span class="n">BaseCurrencyFuture</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_currency</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">counter_currency</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_day_counter</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_compounding</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_frequency</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_day_counter</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_compounding</span><span class="p">,</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settlement_days</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CurrencyFuture.is_expired"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.is_expired">[docs]</a>    <span class="k">def</span> <span class="nf">is_expired</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if the contract is expired.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Reference date.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            Whether the contract is expired.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">date</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Days</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="CurrencyFuture.maturity"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.maturity">[docs]</a>    <span class="k">def</span> <span class="nf">maturity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return maturity date of the contract.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            The reference date.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.Date</span>
+<span class="sd">            The maturity date of the contract.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span></div>
+
+<div class="viewcode-block" id="CurrencyFuture.tenor"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.tenor">[docs]</a>    <span class="k">def</span> <span class="nf">tenor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Tenor to maturity of the contract.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.Period</span>
+<span class="sd">            Period representing the time to maturity of the contract.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Period</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">businessDaysBetween</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span><span class="p">),</span> <span class="n">ql</span><span class="o">.</span><span class="n">Days</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CurrencyFuture.cash_to_date"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.cash_to_date">[docs]</a>    <span class="k">def</span> <span class="nf">cash_to_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Cashflow received/paid by the holder of a contract.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        start_date: QuantLib.Date</span>
+<span class="sd">        date: QuantLib.Date</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Cash amount received/paid by the holder of a contract between `start_date` and `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement this.</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This method is not yet implemented.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CurrencyFuture.value"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.value">[docs]</a>    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">last_available_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Value of a contract.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        last: bool</span>
+<span class="sd">            Use last data in ``self.price.ts_values``.</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Valuation date.</span>
+<span class="sd">        quote: scalar</span>
+<span class="sd">            Quote of the contract at `date`.</span>
+<span class="sd">        last_available_data: bool</span>
+<span class="sd">            Whether to use last available data, if unavailable.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Valuation of the contract at `date`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;This method is not yet implemented.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CurrencyFuture.counter_rate"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.counter_rate">[docs]</a>    <span class="nd">@default_arguments_currency_future</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;spot&#39;</span><span class="p">,</span> <span class="s1">&#39;base_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">counter_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot</span><span class="p">,</span> <span class="n">base_rate</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                     <span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span> <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span>
+                     <span class="n">maturity</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Obtain the interest rate of the counter currency.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spot: scalar</span>
+<span class="sd">            Spot exchange rate.</span>
+<span class="sd">        base_rate: scalar</span>
+<span class="sd">            Interest rate of the base currency.</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to use last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Quote of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Reference date.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day base of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        maturity: QuantLib.Date, optional</span>
+<span class="sd">            Maturity date of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Implied interest rate to `maturity` in the counter currency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_currency_future</span><span class="o">.</span><span class="n">counter_rate</span><span class="p">(</span><span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">spot</span><span class="o">=</span><span class="n">spot</span><span class="p">,</span> <span class="n">base_rate</span><span class="o">=</span><span class="n">base_rate</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span>
+                                                      <span class="n">counter_rate_day_counter</span><span class="o">=</span><span class="n">counter_rate_day_counter</span><span class="p">,</span>
+                                                      <span class="n">counter_rate_compounding</span><span class="o">=</span><span class="n">counter_rate_compounding</span><span class="p">,</span>
+                                                      <span class="n">counter_rate_frequency</span><span class="o">=</span><span class="n">counter_rate_frequency</span><span class="p">,</span>
+                                                      <span class="n">base_rate_day_counter</span><span class="o">=</span><span class="n">base_rate_day_counter</span><span class="p">,</span>
+                                                      <span class="n">base_rate_compounding</span><span class="o">=</span><span class="n">base_rate_compounding</span><span class="p">,</span>
+                                                      <span class="n">base_rate_frequency</span><span class="o">=</span><span class="n">base_rate_frequency</span><span class="p">,</span> <span class="n">maturity</span><span class="o">=</span><span class="n">maturity</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="CurrencyFuture.base_rate"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.base_rate">[docs]</a>    <span class="nd">@default_arguments_currency_future</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;spot&#39;</span><span class="p">,</span> <span class="s1">&#39;counter_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">base_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot</span><span class="p">,</span> <span class="n">counter_rate</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                  <span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span> <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span>
+                  <span class="n">maturity</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Obtain the interest rate of the base currency.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spot: scalar</span>
+<span class="sd">            Spot exchange rate.</span>
+<span class="sd">        counter_rate: scalar</span>
+<span class="sd">            Interest rate of the base currency.</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to use last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Quote of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Reference date.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day base of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        maturity: QuantLib.Date, optional</span>
+<span class="sd">            Maturity date of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Implied interest rate to `maturity` in the base currency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_currency_future</span><span class="o">.</span><span class="n">base_rate</span><span class="p">(</span><span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">spot</span><span class="o">=</span><span class="n">spot</span><span class="p">,</span> <span class="n">counter_rate</span><span class="o">=</span><span class="n">counter_rate</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span>
+                                                   <span class="n">counter_rate_day_counter</span><span class="o">=</span><span class="n">counter_rate_day_counter</span><span class="p">,</span>
+                                                   <span class="n">counter_rate_compounding</span><span class="o">=</span><span class="n">counter_rate_compounding</span><span class="p">,</span>
+                                                   <span class="n">counter_rate_frequency</span><span class="o">=</span><span class="n">counter_rate_frequency</span><span class="p">,</span>
+                                                   <span class="n">base_rate_day_counter</span><span class="o">=</span><span class="n">base_rate_day_counter</span><span class="p">,</span>
+                                                   <span class="n">base_rate_compounding</span><span class="o">=</span><span class="n">base_rate_compounding</span><span class="p">,</span>
+                                                   <span class="n">base_rate_frequency</span><span class="o">=</span><span class="n">base_rate_frequency</span><span class="p">,</span> <span class="n">maturity</span><span class="o">=</span><span class="n">maturity</span><span class="p">)</span><span class="o">.</span><span class="n">rate</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="CurrencyFuture.helper"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFuture.helper">[docs]</a>    <span class="k">def</span> <span class="nf">helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">last_available</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Obtain a currency helper for time series of currency curves building.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Reference date.</span>
+<span class="sd">        last_available: bool, optional</span>
+<span class="sd">            Whether to use last available data.</span>
+<span class="sd">            Default: True.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        :py:obj:`CurrencyFutureHelper`</span>
+<span class="sd">            Helper for use of currency curve time series objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_expired</span><span class="p">(</span><span class="n">date</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">quote</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price</span><span class="o">.</span><span class="n">get_values</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">date</span><span class="p">,</span> <span class="n">last_available</span><span class="o">=</span><span class="n">last_available</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">quote</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CurrencyFutureHelper</span><span class="p">(</span><span class="n">base_currency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_currency</span><span class="p">,</span> <span class="n">counter_currency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_currency</span><span class="p">,</span>
+                                    <span class="n">maturity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span><span class="p">,</span> <span class="n">calendar</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="p">,</span>
+                                    <span class="n">base_rate_day_counter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_rate_day_counter</span><span class="p">,</span>
+                                    <span class="n">base_rate_compounding</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_rate_compounding</span><span class="p">,</span>
+                                    <span class="n">base_rate_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_rate_frequency</span><span class="p">,</span>
+                                    <span class="n">counter_rate_day_counter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_day_counter</span><span class="p">,</span>
+                                    <span class="n">counter_rate_compounding</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_compounding</span><span class="p">,</span>
+                                    <span class="n">counter_rate_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span>
+                                    <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="BaseCurrencyFuture"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.BaseCurrencyFuture">[docs]</a><span class="k">class</span> <span class="nc">BaseCurrencyFuture</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; A currency future object.</span>
+
+<span class="sd">    Analogous to QuantLib instrument class (but simplified).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    base_currency: QuantLib.Currency</span>
+<span class="sd">        Representation of the base currency.</span>
+<span class="sd">    counter_currency: QuantLib.Currency</span>
+<span class="sd">        Representation of the counter currency.</span>
+<span class="sd">    maturity: QuantLib.Date</span>
+<span class="sd">        Maturity of the contract.</span>
+<span class="sd">    calendar: QuantLib.Calendar</span>
+<span class="sd">        Calendar followed by the contract.</span>
+<span class="sd">    base_rate_day_counter: QuatLib.DayCounter</span>
+<span class="sd">        Day count convention of the base currency interest rate.</span>
+<span class="sd">    base_rate_compounding: QuantLib.Compounding</span>
+<span class="sd">        Compounding convention of the base currency interest rate.</span>
+<span class="sd">    base_rate_frequency: QuantLib.Frequency</span>
+<span class="sd">        Compounding frequency of the base currency interest rate.</span>
+<span class="sd">    counter_rate_day_counter: QuatLib.DayCounter</span>
+<span class="sd">        Day count convention of the counter currency interest rate.</span>
+<span class="sd">    counter_rate_compounding: QuantLib.Compounding</span>
+<span class="sd">        Compounding convention of the counter currency interest rate.</span>
+<span class="sd">    counter_rate_frequency: QuantLib.Frequency</span>
+<span class="sd">        Compounding frequency of the counter currency interest rate.</span>
+<span class="sd">    settlement_days: int</span>
+<span class="sd">        Settlement days for the contract.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_currency</span><span class="p">,</span> <span class="n">counter_currency</span><span class="p">,</span> <span class="n">maturity</span><span class="p">,</span> <span class="n">calendar</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span>
+                 <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                 <span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_currency</span> <span class="o">=</span> <span class="n">base_currency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_currency</span> <span class="o">=</span> <span class="n">counter_currency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maturity</span> <span class="o">=</span> <span class="n">maturity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span> <span class="o">=</span> <span class="n">calendar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_day_counter</span> <span class="o">=</span> <span class="n">base_rate_day_counter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_compounding</span> <span class="o">=</span> <span class="n">base_rate_compounding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_rate_frequency</span> <span class="o">=</span> <span class="n">base_rate_frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_day_counter</span> <span class="o">=</span> <span class="n">counter_rate_day_counter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_compounding</span> <span class="o">=</span> <span class="n">counter_rate_compounding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter_rate_frequency</span> <span class="o">=</span> <span class="n">counter_rate_frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settlement_days</span> <span class="o">=</span> <span class="n">settlement_days</span>
+
+<div class="viewcode-block" id="BaseCurrencyFuture.counter_rate"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.BaseCurrencyFuture.counter_rate">[docs]</a>    <span class="nd">@default_arguments_base_currency_future</span>
+    <span class="k">def</span> <span class="nf">counter_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot</span><span class="p">,</span> <span class="n">base_rate</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                     <span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span> <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span>
+                     <span class="n">maturity</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Obtain the interest rate of the counter currency.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spot: scalar</span>
+<span class="sd">            Spot exchange rate.</span>
+<span class="sd">        base_rate: scalar</span>
+<span class="sd">            Interest rate of the base currency.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Quote of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Reference date.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        counter_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        counter_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        counter_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        base_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day base of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        base_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        base_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+<span class="sd">        maturity: QuantLib.Date, optional</span>
+<span class="sd">            Maturity date of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_base_currency_future`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Implied interest rate to `maturity` in the counter currency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">maturity</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">maturity</span><span class="p">)</span>
+        <span class="n">base_rate</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">InterestRate</span><span class="p">(</span><span class="n">base_rate</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span> <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">)</span>
+        <span class="n">compound</span> <span class="o">=</span> <span class="n">quote</span> <span class="o">/</span> <span class="n">spot</span> <span class="o">*</span> <span class="n">base_rate</span><span class="o">.</span><span class="n">discountFactor</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">maturity</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">InterestRate_impliedRate</span><span class="p">(</span><span class="n">compound</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                                           <span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">maturity</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BaseCurrencyFuture.base_rate"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.BaseCurrencyFuture.base_rate">[docs]</a>    <span class="nd">@default_arguments_base_currency_future</span>
+    <span class="k">def</span> <span class="nf">base_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spot</span><span class="p">,</span> <span class="n">counter_rate</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                  <span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span> <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span>
+                  <span class="n">maturity</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Obtain the interest rate of the base currency.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spot: scalar</span>
+<span class="sd">            Spot exchange rate.</span>
+<span class="sd">        counter_rate: scalar</span>
+<span class="sd">            Interest rate of the base currency.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Quote of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Reference date.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        counter_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the counter currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day base of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        base_rate_frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency of the base currency interest rate.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+<span class="sd">        maturity: QuantLib.Date, optional</span>
+<span class="sd">            Maturity date of the contract.</span>
+<span class="sd">            Default: see :py:func:`default_arguments_currency_future`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Implied interest rate to `maturity` in the base currency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">maturity</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">maturity</span><span class="p">)</span>
+        <span class="n">counter_rate</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">InterestRate</span><span class="p">(</span><span class="n">counter_rate</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                                       <span class="n">counter_rate_frequency</span><span class="p">)</span>
+        <span class="n">compound</span> <span class="o">=</span> <span class="n">spot</span> <span class="o">*</span> <span class="n">counter_rate</span><span class="o">.</span><span class="n">compoundFactor</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">maturity</span><span class="p">)</span> <span class="o">/</span> <span class="n">quote</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">InterestRate_impliedRate</span><span class="p">(</span><span class="n">compound</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span> <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span>
+                                           <span class="n">date</span><span class="p">,</span> <span class="n">maturity</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="CurrencyFutureHelper"><a class="viewcode-back" href="../../../tsfin/tsfin.instruments.currencyfuture.html#tsfin.instruments.currencyfuture.CurrencyFutureHelper">[docs]</a><span class="k">class</span> <span class="nc">CurrencyFutureHelper</span><span class="p">(</span><span class="n">BaseCurrencyFuture</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Helper for currency future curve construction.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    base_currency: QuantLib.Currency</span>
+<span class="sd">        Representation of the base currency.</span>
+<span class="sd">    counter_currency: QuantLib.Currency</span>
+<span class="sd">        Representation of the counter currency.</span>
+<span class="sd">    maturity: QuantLib.Date</span>
+<span class="sd">        Maturity of the contract.</span>
+<span class="sd">    calendar: QuantLib.Calendar</span>
+<span class="sd">        Calendar of the contract.</span>
+<span class="sd">    base_rate_day_counter: QuantLib.DayCounter</span>
+<span class="sd">        Day counter of base currency interest rate.</span>
+<span class="sd">    base_rate_compounding: QuantLib.Compounding</span>
+<span class="sd">        Compounding convention of base currency interest rate.</span>
+<span class="sd">    base_rate_frequency: QuantLib.Frequency</span>
+<span class="sd">        Compounding frequency of base currency interest rate.</span>
+<span class="sd">    counter_rate_day_counter: QuantLib.DayCounter</span>
+<span class="sd">        Day counter of counter currency interest rate.</span>
+<span class="sd">    counter_rate_compounding: QuantLib.Compounding</span>
+<span class="sd">        Compounding convention of counter currency interest rate.</span>
+<span class="sd">    counter_rate_frequency: QuantLib.Frequency</span>
+<span class="sd">        Compounding frequency of counter currency interest rate.</span>
+<span class="sd">    date: QuantLib.Date</span>
+<span class="sd">        Reference date.</span>
+<span class="sd">    quote: scalar</span>
+<span class="sd">        Quote of the contract.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_currency</span><span class="p">,</span> <span class="n">counter_currency</span><span class="p">,</span> <span class="n">maturity</span><span class="p">,</span> <span class="n">calendar</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span>
+                 <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span> <span class="n">counter_rate_compounding</span><span class="p">,</span>
+                 <span class="n">counter_rate_frequency</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">quote</span><span class="p">):</span>
+        <span class="c1"># Just a BaseCurrencyFuture with a date and a quote.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">base_currency</span><span class="p">,</span> <span class="n">counter_currency</span><span class="p">,</span> <span class="n">maturity</span><span class="p">,</span> <span class="n">calendar</span><span class="p">,</span> <span class="n">base_rate_day_counter</span><span class="p">,</span>
+                         <span class="n">base_rate_compounding</span><span class="p">,</span> <span class="n">base_rate_frequency</span><span class="p">,</span> <span class="n">counter_rate_day_counter</span><span class="p">,</span>
+                         <span class="n">counter_rate_compounding</span><span class="p">,</span> <span class="n">counter_rate_frequency</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quote</span> <span class="o">=</span> <span class="n">quote</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

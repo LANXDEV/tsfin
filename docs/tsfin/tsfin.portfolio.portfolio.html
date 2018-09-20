@@ -1,0 +1,292 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.portfolio.portfolio module &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tsfin.portfolio.portfolio">
+<span id="tsfin-portfolio-portfolio-module"></span><h1>tsfin.portfolio.portfolio module<a class="headerlink" href="#module-tsfin.portfolio.portfolio" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="tsfin.portfolio.portfolio.Portfolio">
+<em class="property">class </em><code class="descname">Portfolio</code><span class="sig-paren">(</span><em>currency</em>, <em>security_objects=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Model of a Simple Portfolio of Securities
+.. attribute:: portfolio</p>
+<blockquote>
+<div><em>DataFrame</em> – DataFrame with columns = [‘DATE’, ‘TS_NAME’, ‘NMV’].
+TS_NAME : Name of the TimeSeries.
+NMV : Total value of the TimeSeries at Date.</div></blockquote>
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.add_position">
+<code class="descname">add_position</code><span class="sig-paren">(</span><em>date</em>, <em>name</em>, <em>qty</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.add_position"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.add_position" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.add_trade">
+<code class="descname">add_trade</code><span class="sig-paren">(</span><em>date</em>, <em>name</em>, <em>new_trade</em>, <em>security_objects=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.add_trade"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.add_trade" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.carry_to">
+<code class="descname">carry_to</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.carry_to"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.carry_to" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.convexity_to_mat">
+<code class="descname">convexity_to_mat</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.convexity_to_mat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.convexity_to_mat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.convexity_to_worst">
+<code class="descname">convexity_to_worst</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.convexity_to_worst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.convexity_to_worst" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.convexity_to_worst_rolling_call">
+<code class="descname">convexity_to_worst_rolling_call</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.convexity_to_worst_rolling_call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.convexity_to_worst_rolling_call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.get_security">
+<code class="descname">get_security</code><span class="sig-paren">(</span><em>security_name</em>, <em>security_objects=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.get_security"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.get_security" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.liquidity_index">
+<code class="descname">liquidity_index</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.liquidity_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.liquidity_index" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.mac_duration_to_mat">
+<code class="descname">mac_duration_to_mat</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.mac_duration_to_mat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.mac_duration_to_mat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.mac_duration_to_worst">
+<code class="descname">mac_duration_to_worst</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.mac_duration_to_worst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.mac_duration_to_worst" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.mac_duration_to_worst_rolling_call">
+<code class="descname">mac_duration_to_worst_rolling_call</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.mac_duration_to_worst_rolling_call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.mac_duration_to_worst_rolling_call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.mod_duration_to_mat">
+<code class="descname">mod_duration_to_mat</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.mod_duration_to_mat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.mod_duration_to_mat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.mod_duration_to_worst">
+<code class="descname">mod_duration_to_worst</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.mod_duration_to_worst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.mod_duration_to_worst" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.mod_duration_to_worst_rolling_call">
+<code class="descname">mod_duration_to_worst_rolling_call</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.mod_duration_to_worst_rolling_call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.mod_duration_to_worst_rolling_call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.percentage_of_amount_outstanding">
+<code class="descname">percentage_of_amount_outstanding</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.percentage_of_amount_outstanding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.percentage_of_amount_outstanding" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.remove_position">
+<code class="descname">remove_position</code><span class="sig-paren">(</span><em>date</em>, <em>name</em>, <em>qty=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.remove_position"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.remove_position" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.value">
+<code class="descname">value</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.value" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.ytm">
+<code class="descname">ytm</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.ytm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.ytm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.ytw">
+<code class="descname">ytw</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.ytw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.ytw" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.ytw_rolling_call">
+<code class="descname">ytw_rolling_call</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.ytw_rolling_call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.ytw_rolling_call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.zspread_to_mat">
+<code class="descname">zspread_to_mat</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.zspread_to_mat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.zspread_to_mat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.zspread_to_worst">
+<code class="descname">zspread_to_worst</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.zspread_to_worst"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.zspread_to_worst" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.Portfolio.zspread_to_worst_rolling_call">
+<code class="descname">zspread_to_worst_rolling_call</code><span class="sig-paren">(</span><em>date</em>, <em>security_objects=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#Portfolio.zspread_to_worst_rolling_call"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.Portfolio.zspread_to_worst_rolling_call" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.portfolio.portfolio.find_gt">
+<code class="descname">find_gt</code><span class="sig-paren">(</span><em>date</em>, <em>sorted_dates</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#find_gt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.find_gt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tsfin.portfolio.portfolio.find_lt">
+<code class="descname">find_lt</code><span class="sig-paren">(</span><em>date</em>, <em>sorted_dates</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#find_lt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.find_lt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tsfin.portfolio.portfolio.merge_trades">
+<code class="descname">merge_trades</code><span class="sig-paren">(</span><em>old</em>, <em>new</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/portfolio/portfolio.html#merge_trades"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.portfolio.portfolio.merge_trades" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="tsfin.portfolio.portfolio.trade">
+<em class="property">class </em><code class="descname">trade</code><span class="sig-paren">(</span><em>qty</em>, <em>price</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.portfolio.portfolio.trade" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.trade.count">
+<code class="descname">count</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span> &#x2192; integer -- return number of occurrences of value<a class="headerlink" href="#tsfin.portfolio.portfolio.trade.count" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tsfin.portfolio.portfolio.trade.index">
+<code class="descname">index</code><span class="sig-paren">(</span><em>value</em><span class="optional">[</span>, <em>start</em><span class="optional">[</span>, <em>stop</em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> &#x2192; integer -- return first index of value.<a class="headerlink" href="#tsfin.portfolio.portfolio.trade.index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raises ValueError if the value is not present.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tsfin.portfolio.portfolio.trade.price">
+<code class="descname">price</code><a class="headerlink" href="#tsfin.portfolio.portfolio.trade.price" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tsfin.portfolio.portfolio.trade.qty">
+<code class="descname">qty</code><a class="headerlink" href="#tsfin.portfolio.portfolio.trade.qty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/tsfin/tsfin.portfolio.portfolio.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

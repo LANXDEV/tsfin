@@ -1,0 +1,554 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.base.basetools &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.base.basetools</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Basic independent tools that can be imported by any module in the package.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">bisect</span> <span class="k">import</span> <span class="n">bisect_right</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">time</span> <span class="k">as</span> <span class="n">dtime</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">QuantLib</span> <span class="k">as</span> <span class="nn">ql</span>
+
+
+<div class="viewcode-block" id="to_datetime"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.to_datetime">[docs]</a><span class="k">def</span> <span class="nf">to_datetime</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a QuantLib.Date instance to datetime.datetime instance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: date-like</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    datetime.datetime</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">isvectorizable</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Works if all elements in arg are QuantLib.Date objects.</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">datetime</span><span class="p">(</span><span class="n">day</span><span class="o">=</span><span class="n">arg_n</span><span class="o">.</span><span class="n">dayOfMonth</span><span class="p">(),</span> <span class="n">month</span><span class="o">=</span><span class="n">arg_n</span><span class="o">.</span><span class="n">month</span><span class="p">(),</span> <span class="n">year</span><span class="o">=</span><span class="n">arg_n</span><span class="o">.</span><span class="n">year</span><span class="p">())</span> <span class="k">for</span> <span class="n">arg_n</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># arg is not vectorizable.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Works if arg is a ql.Date object.</span>
+            <span class="k">return</span> <span class="n">datetime</span><span class="p">(</span><span class="n">day</span><span class="o">=</span><span class="n">arg</span><span class="o">.</span><span class="n">dayOfMonth</span><span class="p">(),</span> <span class="n">month</span><span class="o">=</span><span class="n">arg</span><span class="o">.</span><span class="n">month</span><span class="p">(),</span> <span class="n">year</span><span class="o">=</span><span class="n">arg</span><span class="o">.</span><span class="n">year</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="collapse_intraday_ts_values"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.collapse_intraday_ts_values">[docs]</a><span class="k">def</span> <span class="nf">collapse_intraday_ts_values</span><span class="p">(</span><span class="n">ts_list</span><span class="p">,</span> <span class="n">initial_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">final_date</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Drop (inplace) intraday data from TimeSeries&#39; ts_values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ts_list: list-like of TimeSeries objects</span>
+<span class="sd">    initial_date: datetime.datetime</span>
+<span class="sd">    final_date: datetime.datetime</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">no_time</span> <span class="o">=</span> <span class="n">dtime</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">initial_date</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">final_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_list</span><span class="p">:</span>
+            <span class="n">last_date</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">last_date</span><span class="p">:</span>
+                <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="p">[(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">time</span> <span class="o">==</span> <span class="n">no_time</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">last_date</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="n">initial_date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">final_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_list</span><span class="p">:</span>
+            <span class="n">last_date</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">last_date</span><span class="p">:</span>
+                <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="p">[(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">time</span> <span class="o">==</span> <span class="n">no_time</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">last_date</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">initial_date</span><span class="p">)]</span>
+    <span class="k">elif</span> <span class="n">initial_date</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">final_date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_list</span><span class="p">:</span>
+            <span class="n">last_date</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">last_date</span><span class="p">:</span>
+                <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="p">[(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">time</span> <span class="o">==</span> <span class="n">no_time</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">last_date</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">final_date</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_list</span><span class="p">:</span>
+            <span class="n">last_date</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">last_date</span><span class="p">:</span>
+                <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="p">[(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">time</span> <span class="o">==</span> <span class="n">no_time</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">last_date</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">initial_date</span><span class="p">)</span> <span class="o">|</span>
+                                            <span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">final_date</span><span class="p">)]</span></div>
+
+
+<div class="viewcode-block" id="rebase_ts_values"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.rebase_ts_values">[docs]</a><span class="k">def</span> <span class="nf">rebase_ts_values</span><span class="p">(</span><span class="n">union</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">intersection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dates</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">initial_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">final_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">collapse_intraday</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">collapse_intraday_initial_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">collapse_intraday_final_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reindex (inplace) TimeSeries&#39;s ts_values so that their index coincides.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    union: list-like of TimeSeries objects, optional</span>
+<span class="sd">        The union of these TimeSeries&#39; indexes will be used to build the final index.</span>
+<span class="sd">    intersection: list-like of TimeSeries objects, optional</span>
+<span class="sd">        The intersection of these TimeSeries&#39; indexes will be used to build the final index.</span>
+<span class="sd">        If the &#39;union&#39; argument is not None, the final index will be the taken from the intersection of the</span>
+<span class="sd">        intersection of indexes in the &#39;intersection&#39; argument with the union of the indexes in the &#39;union&#39; argument.</span>
+<span class="sd">    dates: list-like of datetime.datetime, optional</span>
+<span class="sd">        Starting index.</span>
+<span class="sd">    last: bool, optional</span>
+<span class="sd">        If True, select only the last date after all union and intersection operations in the indexes.</span>
+<span class="sd">    initial_date: datetime.datetime, optional</span>
+<span class="sd">        If passed, drop dates in the index that are lower than it.</span>
+<span class="sd">    final_date: datetime.datetime, optional</span>
+<span class="sd">        If passed, drop dates in the index that are higher than it.</span>
+<span class="sd">    collapse_intraday: bool, optional</span>
+<span class="sd">        Drop intraday dates.</span>
+<span class="sd">    collapse_intraday_initial_date: datetime.datetime, optional</span>
+<span class="sd">        Drop intraday after this date.</span>
+<span class="sd">    collapse_intraday_final_date: datetime.datetime, optional</span>
+<span class="sd">        Drop intraday before this date.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DatetimeIndex</span>
+<span class="sd">        The final (common) index obtained.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ts_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">union</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ts_list</span> <span class="o">+=</span> <span class="p">[</span><span class="n">ts</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">union</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">intersection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ts_list</span> <span class="o">+=</span> <span class="p">[</span><span class="n">ts</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">intersection</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ts_list</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;rebase_ts_values should receive iterables of TimeSeries in either its &#39;union&#39; or &quot;</span>
+                         <span class="s2">&quot;&#39;intersection&#39; arguments.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Remove intraday data if necessary, but not the last date&#39;s!</span>
+    <span class="k">if</span> <span class="n">collapse_intraday</span><span class="p">:</span>
+        <span class="n">collapse_intraday_ts_values</span><span class="p">(</span><span class="n">ts_list</span><span class="p">,</span> <span class="n">initial_date</span><span class="o">=</span><span class="n">collapse_intraday_final_date</span><span class="p">,</span>
+                                    <span class="n">final_date</span><span class="o">=</span><span class="n">collapse_intraday_final_date</span><span class="p">)</span>
+
+    <span class="c1"># Reindex on the union of all the dates.</span>
+    <span class="k">if</span> <span class="n">dates</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">union</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dates</span> <span class="o">=</span> <span class="n">dates</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">index_union</span><span class="p">([</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">union</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">intersection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">union</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dates</span> <span class="o">=</span> <span class="n">intersection</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span>
+            <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">intersection</span><span class="p">:</span>
+                <span class="n">dates</span> <span class="o">=</span> <span class="n">dates</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dates</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_list</span><span class="p">:</span>
+        <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;pad&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">last</span><span class="p">:</span>
+        <span class="n">last_date</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">ts_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_list</span><span class="p">:</span>
+            <span class="n">filter_series</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="p">,</span> <span class="n">initial_date</span><span class="o">=</span><span class="n">last_date</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">initial_date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">final_date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">ts_list</span><span class="p">:</span>
+            <span class="n">filter_series</span><span class="p">(</span><span class="n">ts</span><span class="o">.</span><span class="n">ts_values</span><span class="p">,</span> <span class="n">initial_date</span><span class="o">=</span><span class="n">initial_date</span><span class="p">,</span> <span class="n">final_date</span><span class="o">=</span><span class="n">final_date</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">collapse_intraday</span><span class="p">:</span>
+        <span class="n">collapse_intraday_ts_values</span><span class="p">(</span><span class="n">ts_list</span><span class="p">,</span> <span class="n">initial_date</span><span class="o">=</span><span class="n">collapse_intraday_initial_date</span><span class="p">,</span>
+                                    <span class="n">final_date</span><span class="o">=</span><span class="n">collapse_intraday_final_date</span><span class="p">)</span>
+
+    <span class="c1"># Return the final index.</span>
+    <span class="k">return</span> <span class="n">ts_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">index</span></div>
+
+
+<div class="viewcode-block" id="index_union"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.index_union">[docs]</a><span class="k">def</span> <span class="nf">index_union</span><span class="p">(</span><span class="n">df_list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Union of TimeSeries&#39; ts_values indexes.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df_list: list-like of TimeSeries objects.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DatetimeIndex</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">all_dates</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">df_list</span><span class="p">:</span>
+        <span class="n">all_dates</span> <span class="o">=</span> <span class="n">all_dates</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">all_dates</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">all_dates</span><span class="p">)</span>
+    <span class="n">all_dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span><span class="n">all_dates</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">all_dates</span></div>
+
+
+<div class="viewcode-block" id="filter_series"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.filter_series">[docs]</a><span class="k">def</span> <span class="nf">filter_series</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">initial_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">final_date</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Filter (inplace) a Series/DataFrame DatetimeIndex to keep only dates that are between two dates.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df: pandas.Series, pandas.DataFrame</span>
+<span class="sd">    initial_date: datetime.datetime, optional</span>
+<span class="sd">    final_date: datetime.datetime, optional</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">initial_date</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">final_date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">final_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">final_date</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">df</span><span class="p">[(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;</span> <span class="n">final_date</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">final_date</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">initial_date</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">initial_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">initial_date</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">df</span><span class="p">[(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">initial_date</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">final_date</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">initial_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">elif</span> <span class="n">initial_date</span> <span class="o">==</span> <span class="n">final_date</span><span class="p">:</span>
+        <span class="n">initial_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">initial_date</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">df</span><span class="p">[(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">!=</span> <span class="n">initial_date</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">initial_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">initial_date</span><span class="p">)</span>
+        <span class="n">final_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">final_date</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">df</span><span class="p">[(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">initial_date</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;</span> <span class="n">final_date</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="to_list"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.to_list">[docs]</a><span class="k">def</span> <span class="nf">to_list</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Make the object iterable in a &#39;reasonable way&#39;.</span>
+
+<span class="sd">    &#39;reasonable&#39; means:</span>
+<span class="sd">        If the object is a string, tuple or dict, return [object].</span>
+<span class="sd">        If the object has no __iter__ method, return [object].</span>
+<span class="sd">        If the object has an __iter__ method, return object (unchanged).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    iterable object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span>
+                                                                                                               <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">arg</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">arg</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="to_upper_list"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.to_upper_list">[docs]</a><span class="k">def</span> <span class="nf">to_upper_list</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert a string or list of strings in upper-case list of strings.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str or list-like of str.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="to_lower_list"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.to_lower_list">[docs]</a><span class="k">def</span> <span class="nf">to_lower_list</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert a string or list of strings in lower-case list of strings.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str or list-like of str.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">arg</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="isvectorizable"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.isvectorizable">[docs]</a><span class="k">def</span> <span class="nf">isvectorizable</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check if object is numpy.vectorize-vectorizable.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">datetime64</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Date</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="conditional_vectorize"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.conditional_vectorize">[docs]</a><span class="k">def</span> <span class="nf">conditional_vectorize</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a function generator that numpy.vectorizes a given function depending of the passed arguments.</span>
+
+<span class="sd">    This function is intended to be used as a decorator/wrapper for class methods or functions that may accept single</span>
+<span class="sd">    or iterable types of input for the same argument.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    args: strings</span>
+<span class="sd">        The argument names of the input function (&#39;f&#39;, that will be passed to the &#39;function_builder&#39;) that signal</span>
+<span class="sd">        vectorization of the input function. If one of the arguments in &#39;args&#39; given to &#39;f&#39; are iterable,</span>
+<span class="sd">        &#39;function_builder&#39; will return a vectorized &#39;f&#39;. Otherwise, &#39;function_builder&#39; will return &#39;f&#39; unchanged.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    function</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Suppose you have a method or function that carries out a complicated calculation.</span>
+
+<span class="sd">    &gt;&gt;&gt; def calculation(argument1, argument2):</span>
+<span class="sd">    ...     return argument1*argument2  # Just an example!</span>
+<span class="sd">    ... print(calculation(argument=1, argument2=2))</span>
+<span class="sd">    2</span>
+
+<span class="sd">    Suppose you now want the calculation function to accept iterable arguments and run the calculation in every</span>
+<span class="sd">    argument within the iterable automatically, without polluting the function&#39;s implementation.</span>
+
+<span class="sd">    &gt;&gt;&gt; @conditional_vectorize(&#39;argument1&#39;, &#39;argument2&#39;)</span>
+<span class="sd">    ... def calculation(argument1, argument2)</span>
+<span class="sd">    ...     return argument1*argument2</span>
+<span class="sd">    ...</span>
+<span class="sd">    ... print(calculation(argument1=1, argument2=2))</span>
+<span class="sd">    2</span>
+<span class="sd">    ...</span>
+<span class="sd">    ... print(calculation(argument1=[1, 2], argument2=2))</span>
+<span class="sd">    [2, 4]</span>
+<span class="sd">    ...</span>
+<span class="sd">    ... print(calculation(argument1=[1, 2], argument2=[3, 4]))</span>
+<span class="sd">    [3, 8]</span>
+<span class="sd">    ...</span>
+<span class="sd">    ... print(calculation(argument1=2, argument2=[4, 5]))</span>
+<span class="sd">    [8, 10]</span>
+
+<span class="sd">    Warnings</span>
+<span class="sd">    --------</span>
+<span class="sd">    Every function decorated by conditional_vectorize must ALWAYS be called with keyword arguments. Failure to do so</span>
+<span class="sd">    may cause unexpected behavior.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">function_builder</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">new_f</span><span class="p">(</span><span class="o">*</span><span class="n">fargs</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">isvectorizable</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">):</span>
+                <span class="n">excluded</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">args</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">fargs</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">ExtendedArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vectorize</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="n">excluded</span><span class="p">)(</span><span class="o">*</span><span class="n">fargs</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">),</span> <span class="n">meta</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                        <span class="n">arg_value</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">arg_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arg_value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="k">raise</span> <span class="n">e</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">fargs</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">new_f</span><span class="o">.</span><span class="n">_conditional_vectorized_</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">new_f</span><span class="o">.</span><span class="n">_conditional_vectorize_args_</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">return</span> <span class="n">new_f</span>
+    <span class="k">return</span> <span class="n">function_builder</span></div>
+
+
+<div class="viewcode-block" id="timeit"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.timeit">[docs]</a><span class="k">def</span> <span class="nf">timeit</span><span class="p">(</span><span class="n">loops</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Time function execution.</span>
+
+<span class="sd">    Decorate a function/method in test-code with this to obtain an estimate of the function&#39;s run-time. The execution</span>
+<span class="sd">    time is printed after some executions (given by &#39;loops&#39; argument).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    loops: int, optional</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Loops is the number of times to execute the passed function</span>
+    <span class="k">if</span> <span class="n">loops</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">loops</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">build_timed_method</span><span class="p">(</span><span class="n">method</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">timed_method</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">loops</span><span class="p">):</span>
+                <span class="c1"># print(&quot;Running iteration {}&quot;.format(i))</span>
+                <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">method</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;timeit: </span><span class="si">{0}</span><span class="s2"> </span><span class="si">{1:.9}</span><span class="s2">ms, avg of </span><span class="si">{2}</span><span class="s2"> iterations.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">method</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span><span class="p">,</span> <span class="n">loops</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">timed_method</span>
+    <span class="k">return</span> <span class="n">build_timed_method</span></div>
+
+
+<div class="viewcode-block" id="find_le"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.find_le">[docs]</a><span class="k">def</span> <span class="nf">find_le</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Find rightmost value in `a` that is less than or equal `x`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a: list-like</span>
+<span class="sd">        Sorted list.</span>
+<span class="sd">    x: object</span>
+<span class="sd">        object to compare against elements of `a`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    object</span>
+<span class="sd">        Leftmost value in `a` that is less than or equal `x`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">bisect_right</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">i</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span></div>
+
+
+<div class="viewcode-block" id="find_gt"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.find_gt">[docs]</a><span class="k">def</span> <span class="nf">find_gt</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Find leftmost value in `a` that is greater than `x`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    a: list-like</span>
+<span class="sd">        Sorted list.</span>
+<span class="sd">    x: object</span>
+<span class="sd">        object to compare against elements of `a`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    object</span>
+<span class="sd">        Leftmost value in a greater than x.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">bisect_right</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span></div>
+
+
+<div class="viewcode-block" id="ExtendedArray"><a class="viewcode-back" href="../../../tsfin/tsfin.base.basetools.html#tsfin.base.basetools.ExtendedArray">[docs]</a><span class="k">class</span> <span class="nc">ExtendedArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">input_array</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># Input array is an already formed ndarray instance.</span>
+        <span class="c1"># We first cast to be our class type.</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">input_array</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+        <span class="c1"># add the new attribute to the created instance</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span>
+        <span class="c1"># Finally, we must return the newly created object:</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">__array_finalize__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="c1"># see InfoArray.__array_finalize__ for comments</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;meta&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

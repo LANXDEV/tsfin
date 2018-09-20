@@ -1,0 +1,339 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.base.qlconverters &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.base.qlconverters</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Functions for converting strings to QuantLib objects. Used to map attributes stored in the database to objects.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">QuantLib</span> <span class="k">as</span> <span class="nn">ql</span>
+
+
+<div class="viewcode-block" id="to_ql_date"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_date">[docs]</a><span class="k">def</span> <span class="nf">to_ql_date</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a string, datetime.datetime or numpy.datetime64 instance to ql.Date instance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: date-like</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.Date</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Date</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">arg</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">arg</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Date</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">day</span><span class="p">,</span> <span class="n">arg</span><span class="o">.</span><span class="n">month</span><span class="p">,</span> <span class="n">arg</span><span class="o">.</span><span class="n">year</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="to_ql_frequency"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_frequency">[docs]</a><span class="k">def</span> <span class="nf">to_ql_frequency</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts string with a period representing a tenor to a QuantLib period.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.Period</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;ANNUAL&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Annual</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;SEMIANNUAL&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Semiannual</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;QUARTERLY&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Quarterly</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;BIMONTHLY&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Bimonthly</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;MONTHLY&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Monthly</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib frequency&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_calendar"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_calendar">[docs]</a><span class="k">def</span> <span class="nf">to_ql_calendar</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts string with a calendar name to a calendar instance of QuantLib.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.Calendar</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;NYSE&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">UnitedStates</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">UnitedStates</span><span class="o">.</span><span class="n">NYSE</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;UK&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">UnitedKingdom</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;BZ&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Brazil</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;TARGET&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">TARGET</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib calendar&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_currency"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_currency">[docs]</a><span class="k">def</span> <span class="nf">to_ql_currency</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts string with a calendar name to a calendar instance of QuantLib.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.Currency</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;USD&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">USDCurrency</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;BRL&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">BRLCurrency</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib currency&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_business_convention"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_business_convention">[docs]</a><span class="k">def</span> <span class="nf">to_ql_business_convention</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a string with business convention name to the corresponding QuantLib object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.BusinessConvention</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FOLLOWING&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Following</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;MODIFIEDFOLLOWING&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">ModifiedFollowing</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;UNADJUSTED&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Unadjusted</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib business convention&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_day_counter"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_day_counter">[docs]</a><span class="k">def</span> <span class="nf">to_ql_day_counter</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a string with day_counter name to the corresponding QuantLib object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.DayCounter</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;THIRTY360E&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Thirty360</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Thirty360</span><span class="o">.</span><span class="n">European</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;ACTUAL360&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Actual360</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;ACTUAL365&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Actual365Fixed</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;ACTUALACTUALISMA&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">ActualActual</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">ActualActual</span><span class="o">.</span><span class="n">ISMA</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;ACTUALACTUALISDA&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">ActualActual</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">ActualActual</span><span class="o">.</span><span class="n">ISDA</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;BUSINESS252&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Business252</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib day counter&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_date_generation"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_date_generation">[docs]</a><span class="k">def</span> <span class="nf">to_ql_date_generation</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a string with date_generation name to the corresponding QuantLib object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.DateGeneration</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FORWARD&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">DateGeneration</span><span class="o">.</span><span class="n">Forward</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;BACKWARD&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">DateGeneration</span><span class="o">.</span><span class="n">Backward</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib date generation specification&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_compounding"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_compounding">[docs]</a><span class="k">def</span> <span class="nf">to_ql_compounding</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a string with compounding convention name to the corresponding QuantLib object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.Compounding</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;COMPOUNDED&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Compounded</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;SIMPLE&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Simple</span>
+    <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;CONTINUOUS&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">Continuous</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib compounding specification&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_index"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_index">[docs]</a><span class="k">def</span> <span class="nf">to_ql_index</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a string with index name to the corresponding QuantLib object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.Index</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;USDLIBOR&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">USDLibor</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib index&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_ql_overnight_index"><a class="viewcode-back" href="../../../tsfin/tsfin.base.qlconverters.html#tsfin.base.qlconverters.to_ql_overnight_index">[docs]</a><span class="k">def</span> <span class="nf">to_ql_overnight_index</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts a string with overnight index name to the corresponding QuantLib object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    arg: str</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    QuantLib.OvernightIndex</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FEDFUNDS&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ql</span><span class="o">.</span><span class="n">FedFunds</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to convert </span><span class="si">{}</span><span class="s2"> to a QuantLib overnight index&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

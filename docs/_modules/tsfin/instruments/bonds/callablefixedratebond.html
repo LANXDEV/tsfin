@@ -1,0 +1,227 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.instruments.bonds.callablefixedratebond &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.instruments.bonds.callablefixedratebond</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">QuantLib</span> <span class="k">as</span> <span class="nn">ql</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.qlconverters</span> <span class="k">import</span> <span class="n">to_ql_date</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.basetools</span> <span class="k">import</span> <span class="n">conditional_vectorize</span><span class="p">,</span> <span class="n">to_datetime</span>
+<span class="kn">from</span> <span class="nn">tsfin.instruments.bonds._basebond</span> <span class="k">import</span> <span class="n">_BaseBond</span><span class="p">,</span> <span class="n">default_arguments</span><span class="p">,</span> <span class="n">create_call_component</span>
+
+
+<div class="viewcode-block" id="CallableFixedRateBond"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html#tsfin.instruments.bonds.callablefixedratebond.CallableFixedRateBond">[docs]</a><span class="k">class</span> <span class="nc">CallableFixedRateBond</span><span class="p">(</span><span class="n">_BaseBond</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Callable fixed rate bond.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    timeseries: :py:obj:`TimeSeries`</span>
+<span class="sd">        The TimeSeries representing the bond.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    The `timeseries` attribute needs a component TimeSeries `call_schedule`, containing the call dates and call prices</span>
+<span class="sd">    schedule in its `ts_values`.</span>
+
+<span class="sd">    See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeseries</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">timeseries</span><span class="o">=</span><span class="n">timeseries</span><span class="p">)</span>
+        <span class="c1"># TODO: Add support for puttable bonds.</span>
+        <span class="c1"># TODO: Here we assume that the call prices are always clean prices. Fix this!</span>
+        <span class="c1"># TODO: Implement an option to reduce (some kind of &#39;telescopic&#39;) call dates.</span>
+        <span class="c1"># if there are too much. This is useful in case we are treating a callable perpetual bond, for example.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callability_schedule</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">CallabilitySchedule</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">call_date</span><span class="p">,</span> <span class="n">call_price</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_schedule</span><span class="o">.</span><span class="n">ts_values</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="c1"># The original bond (with maturity at self.maturity will be added to the components after its</span>
+            <span class="c1"># instantiation below.</span>
+            <span class="n">call_date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">call_date</span><span class="p">))</span>
+            <span class="n">callability_price</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">CallabilityPrice</span><span class="p">(</span><span class="n">call_price</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">CallabilityPrice</span><span class="o">.</span><span class="n">Clean</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callability_schedule</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">Callability</span><span class="p">(</span><span class="n">callability_price</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Callability</span><span class="o">.</span><span class="n">Call</span><span class="p">,</span> <span class="n">call_date</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bond_components</span><span class="p">[</span><span class="n">call_date</span><span class="p">]</span> <span class="o">=</span> <span class="n">create_call_component</span><span class="p">(</span><span class="n">call_date</span><span class="p">,</span> <span class="n">call_price</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span>
+                                                                    <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">business_convention</span><span class="p">,</span>
+                                                                    <span class="bp">self</span><span class="o">.</span><span class="n">_tenor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">date_generation</span><span class="p">,</span>
+                                                                    <span class="bp">self</span><span class="o">.</span><span class="n">month_end</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settlement_days</span><span class="p">,</span>
+                                                                    <span class="bp">self</span><span class="o">.</span><span class="n">face_amount</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coupons</span><span class="p">,</span>
+                                                                    <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">issue_date</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bond</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">CallableFixedRateBond</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settlement_days</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">face_amount</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coupons</span><span class="p">,</span>
+                                             <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">business_convention</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">redemption</span><span class="p">,</span>
+                                             <span class="bp">self</span><span class="o">.</span><span class="n">issue_date</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">callability_schedule</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bond_components</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond</span>  <span class="c1"># Add the original bond to bond_components.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bond_components_backup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond_components</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<div class="viewcode-block" id="CallableFixedRateBond.oas"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html#tsfin.instruments.bonds.callablefixedratebond.CallableFixedRateBond.oas">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">oas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">yield_curve_timeseries</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">model_params</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span>
+            <span class="n">settlement_days</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Warning</span>
+<span class="sd">        -------</span>
+<span class="sd">        This method has only been tested with ``model=QuantLib.HullWhite``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`</span>
+<span class="sd">            The yield curve object against which the z-spreads will be calculated.</span>
+<span class="sd">        model: QuantLib.ShortRateModel</span>
+<span class="sd">            A class reference (not an instance) of a QuantLib model, for simulating evolution of rates.</span>
+<span class="sd">            **Currently only tested with QuantLib.HullWhite.**</span>
+<span class="sd">        model_params: tuple, dict</span>
+<span class="sd">            Parameter set for the model.</span>
+<span class="sd">            * tuple format: (param1, param2, ...)</span>
+<span class="sd">                If a tuple is passed, assumes the model parameters are fixed for all possibly vectorized calculation</span>
+<span class="sd">                dates.</span>
+<span class="sd">            * dict format: {date1: (param1, param2, ...), date2: (param1, param2, ...), ... }</span>
+<span class="sd">                If a dict is passed, assumes it contains a parameter set for each date of the possibly vectorized</span>
+<span class="sd">                calculation dates.</span>
+
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Bond&#39;s quote.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Date of the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        settlement_days: int, optional</span>
+<span class="sd">            Number of days for trade settlement.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Bond&#39;s option-adjusted spread relative to `yield_curve_timeseries`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Test this with other QuantLib short-rate models.</span>
+        <span class="n">bond</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">yield_curve_relinkable_handle</span> <span class="o">=</span> <span class="n">yield_curve_timeseries</span><span class="o">.</span><span class="n">yield_curve_relinkable_handle</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">ql</span><span class="o">.</span><span class="n">Settings</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">evaluationDate</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model_params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="c1"># Assumes model parameters are given for each date.</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">yield_curve_relinkable_handle</span><span class="p">,</span> <span class="o">*</span><span class="n">model_params</span><span class="p">[</span><span class="n">date</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Only one set of model parameters are given (calibrated for, say, a specific date).</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">yield_curve_relinkable_handle</span><span class="p">,</span> <span class="o">*</span><span class="n">model_params</span><span class="p">)</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">TreeCallableFixedRateBondEngine</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+        <span class="n">bond</span><span class="o">.</span><span class="n">setPricingEngine</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
+        <span class="n">settlement_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Period</span><span class="p">(</span><span class="n">settlement_days</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Days</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">business_convention</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">bond</span><span class="o">.</span><span class="n">OAS</span><span class="p">(</span><span class="n">quote</span><span class="p">,</span> <span class="n">yield_curve_relinkable_handle</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_date</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

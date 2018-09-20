@@ -1,0 +1,235 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.tools module &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tsfin.tools">
+<span id="tsfin-tools-module"></span><h1>tsfin.tools module<a class="headerlink" href="#module-tsfin.tools" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="tsfin.tools.calibrate_hull_white_model">
+<code class="descname">calibrate_hull_white_model</code><span class="sig-paren">(</span><em>date</em>, <em>model_class</em>, <em>term_structure_ts</em>, <em>swaption_vol_ts_collection</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/tools.html#calibrate_hull_white_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.tools.calibrate_hull_white_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calibrate a Hull-White QuantLib model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Calibration date.</li>
+<li><strong>model_class</strong> (<em>QuantLib.Model</em>) – Model for calibration.</li>
+<li><strong>term_structure_ts</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">YieldCurveTimeSeries</span></code>) – Yield curve time series of the curve.</li>
+<li><strong>swaption_vol_ts_collection</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeriesCollection</span></code>) – Collection of swaption volatility (Black, log-normal) quotes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Calibrated model.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">QuantLib.Model</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.tools.filter_series">
+<code class="descname">filter_series</code><span class="sig-paren">(</span><em>df</em>, <em>initial_date=None</em>, <em>final_date=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/tools.html#filter_series"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.tools.filter_series" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter inplace a pandas.Series to keep its index between an initial and a final date.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>df</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">pandas.Series</span></code>) – Series to be filtered.</li>
+<li><strong>initial_date</strong> (<em>date-like</em>) – Initial date.</li>
+<li><strong>final_date</strong> (<em>date-like</em>) – Final date.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.tools.generate_instruments">
+<code class="descname">generate_instruments</code><span class="sig-paren">(</span><em>ts_collection</em>, <em>indices=None</em>, <em>index_curves=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/tools.html#generate_instruments"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.tools.generate_instruments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a collection of <code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeries</span></code>, instantiate instruments with each one of them.</p>
+<p>If an element is not an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">TimeSeries</span></code>, does nothing with it.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>ts_collection</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeriesCollection</span></code>) – Collection of time series.</li>
+<li><strong>indices</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a><em>, </em><em>optional</em>) – Dictionary with <code class="docutils literal notranslate"><span class="pre">{index_name:</span> <span class="pre">index_time_series}</span></code>, where <cite>index_name</cite> is the name of the ‘index’ (e.g.:
+libor3m, CDI), in the INDEX attribute of a time series. <cite>index_time_series</cite> is a <code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeries</span></code>
+representing the index. This is currently needed only for floating rate bonds. Default is None.</li>
+<li><strong>index_curves</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a><em>, </em><em>optional</em>) – Dictionary with <code class="docutils literal notranslate"><span class="pre">{index_name:</span> <span class="pre">index_yield_curve_time_series}</span></code>, where <cite>index_name</cite> is the name of the ‘index’
+(e.g.: libor3m, CDI), in the INDEX attribute of a time series. <cite>index_yield_curve_time_series</cite> is a
+<code class="xref py py-obj docutils literal notranslate"><span class="pre">YieldCurveTimeSeries</span></code> representing the yield curve of the index. This is currently
+needed only for floating rate bonds. Default is None.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Time series collection with the created instruments.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeriesCollection</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.tools.returns">
+<code class="descname">returns</code><span class="sig-paren">(</span><em>ts</em>, <em>calc_type='D'</em>, <em>force=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/tools.html#returns"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.tools.returns" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate returns time series of returns for various time windows.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>ts</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeries</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">pandas.Series</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code>) – Time series whose returns will be calculated.</li>
+<li><strong>calc_type</strong> (<em>{'D'</em><em>, </em><em>'W'</em><em>, </em><em>'M'</em><em>, </em><em>'6M'</em><em>, </em><em>'Y'</em><em>, </em><em>'3Y'</em><em>, </em><em>'WTD'</em><em>, </em><em>'MTD'</em><em>, </em><em>'YTD'</em><em>, </em><em>'SI'}</em><em>, </em><em>optional</em>) – The time window for return calculation. Default is ‘D’ (daily returns).</li>
+<li><strong>force</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Backward-fill missing data. Default is False.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Series or DataFrame of returns.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pandas.Series</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.tools.ts_values_to_dict">
+<code class="descname">ts_values_to_dict</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/tools.html#ts_values_to_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.tools.ts_values_to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produce a date-indexed dictionary of tuples from the values of multiple time series.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> (<em>time series names</em><em> (</em><em>each time series represents a parameter</em><em>)</em><em></em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Dictionary of parameter tuples, indexed by dates.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)">dict</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/tsfin/tsfin.tools.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

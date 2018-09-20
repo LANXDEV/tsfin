@@ -1,0 +1,598 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>tsfin.instruments.bonds.floatingratebond &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.currencyfuture.html">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tsfin/tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for tsfin.instruments.bonds.floatingratebond</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">QuantLib</span> <span class="k">as</span> <span class="nn">ql</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.qlconverters</span> <span class="k">import</span> <span class="n">to_ql_date</span><span class="p">,</span> <span class="n">to_ql_index</span>
+<span class="kn">from</span> <span class="nn">tsfin.base.basetools</span> <span class="k">import</span> <span class="n">conditional_vectorize</span>
+<span class="kn">from</span> <span class="nn">tsfin.instruments.bonds._basebond</span> <span class="k">import</span> <span class="n">_BaseBond</span><span class="p">,</span> <span class="n">default_arguments</span>
+
+
+<div class="viewcode-block" id="set_floating_rate_index"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.set_floating_rate_index">[docs]</a><span class="k">def</span> <span class="nf">set_floating_rate_index</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Decorator to set values of the floating rate bond&#39;s index.</span>
+
+<span class="sd">    This is needed for correct cash flow projection. Does nothing if the bond has no floating coupon.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    f: method</span>
+<span class="sd">        A method that needs the bond to have its past index values set.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    function</span>
+<span class="sd">        `f` itself. Only the bond instance is modified with this decorator.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    If the wrapped function is called with a True-like optional argument &#39;bypass_set_floating_rate_index&#39;,</span>
+<span class="sd">    the effects of this wrapper is bypassed. This is useful for nested calling of methods that are wrapped by function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">new_f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;bypass_set_floating_rate_index&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">])</span>
+        <span class="n">ql</span><span class="o">.</span><span class="n">Settings</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">evaluationDate</span> <span class="o">=</span> <span class="n">date</span>
+        <span class="n">index_timeseries</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;index_timeseries&#39;</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;index&#39;</span><span class="p">)</span>
+        <span class="n">forecast_curve</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;forecast_curve&#39;</span><span class="p">)</span>
+        <span class="n">reference_curve</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;reference_curve&#39;</span><span class="p">)</span>
+        <span class="n">forecast_curve</span><span class="o">.</span><span class="n">linkTo</span><span class="p">(</span><span class="n">reference_curve</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">dt</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;fixing_dates&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">dt</span> <span class="o">&lt;=</span> <span class="n">date</span><span class="p">:</span>
+                <span class="n">index</span><span class="o">.</span><span class="n">addFixing</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span> <span class="n">index_timeseries</span><span class="o">.</span><span class="n">get_values</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">dt</span><span class="p">))</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">ql</span><span class="o">.</span><span class="n">IndexManager</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span><span class="o">.</span><span class="n">clearHistory</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">result</span>
+    <span class="n">new_f</span><span class="o">.</span><span class="n">_decorated_by_floating_rate_index_</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="n">new_f</span></div>
+
+
+<div class="viewcode-block" id="FloatingRateBond"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond">[docs]</a><span class="k">class</span> <span class="nc">FloatingRateBond</span><span class="p">(</span><span class="n">_BaseBond</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Floating rate bond.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    timeseries: :py:obj:`TimeSeries`</span>
+<span class="sd">        The TimeSeries representing the bond.</span>
+<span class="sd">    index_timeseries: :py:obj:`TimeSeries`</span>
+<span class="sd">        The TimeSeries containing the quotes of the index used to calculate the bond&#39;s coupon.</span>
+<span class="sd">    reference_curve: :py:obj:YieldCurveTimeSeries</span>
+<span class="sd">        The yield curve of the index rate, used to estimate future cash flows.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeseries</span><span class="p">,</span> <span class="n">index_timeseries</span><span class="p">,</span> <span class="n">reference_curve</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">timeseries</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference_curve</span> <span class="o">=</span> <span class="n">reference_curve</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">forecast_curve</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">RelinkableYieldTermStructureHandle</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">to_ql_index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="s1">&#39;INDEX&#39;</span><span class="p">])(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tenor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">forecast_curve</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index_timeseries</span> <span class="o">=</span> <span class="n">index_timeseries</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gearings</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># TODO: Make it possible to have a list of different gearings.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spreads</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ts_attributes</span><span class="p">[</span><span class="s2">&quot;SPREAD&quot;</span><span class="p">])]</span>  <span class="c1"># TODO: Make it possible to have different spreads.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caps</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># TODO: Make it possible to have caps.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">floors</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># TODO: Make it possible to have floors.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">in_arrears</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># TODO: Check if this can be made variable.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bond</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">FloatingRateBond</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settlement_days</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">face_amount</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">business_convention</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">fixingDays</span><span class="p">(),</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">gearings</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spreads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">caps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">floors</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_arrears</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">redemption</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">issue_date</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coupon_dates</span> <span class="o">=</span> <span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">date</span><span class="p">()</span> <span class="k">for</span> <span class="n">cf</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond</span><span class="o">.</span><span class="n">cashflows</span><span class="p">()]</span>
+
+        <span class="c1"># Store the fixing dates of the coupon. These will be useful later.</span>
+        <span class="n">index_calendar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">fixingCalendar</span><span class="p">()</span>
+        <span class="n">index_bus_day_convention</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">businessDayConvention</span><span class="p">()</span>
+        <span class="n">reference_schedule</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schedule</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fixing_dates</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">fixingDate</span><span class="p">(</span><span class="n">dt</span><span class="p">)</span> <span class="k">for</span> <span class="n">dt</span> <span class="ow">in</span> <span class="n">reference_schedule</span><span class="p">]</span>
+
+        <span class="c1"># Coupon pricers</span>
+        <span class="n">pricer</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">BlackIborCouponPricer</span><span class="p">()</span>
+        <span class="n">volatility</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">vol</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">ConstantOptionletVolatility</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">settlement_days</span><span class="p">,</span> <span class="n">index_calendar</span><span class="p">,</span> <span class="n">index_bus_day_convention</span><span class="p">,</span>
+                                             <span class="n">volatility</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">)</span>
+        <span class="n">pricer</span><span class="o">.</span><span class="n">setCapletVolatility</span><span class="p">(</span><span class="n">ql</span><span class="o">.</span><span class="n">OptionletVolatilityStructureHandle</span><span class="p">(</span><span class="n">vol</span><span class="p">))</span>
+        <span class="n">ql</span><span class="o">.</span><span class="n">setCouponPricer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bond</span><span class="o">.</span><span class="n">cashflows</span><span class="p">(),</span> <span class="n">pricer</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bond_components</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">maturity_date</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bond_components_backup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bond_components</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<div class="viewcode-block" id="FloatingRateBond.rate_helper"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond.rate_helper">[docs]</a>    <span class="k">def</span> <span class="nf">rate_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">last_available</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">yield_type</span><span class="o">=</span><span class="s1">&#39;ytm&#39;</span><span class="p">,</span> <span class="n">curve_type</span><span class="o">=</span><span class="s1">&#39;zero&#39;</span><span class="p">,</span> <span class="n">max_inactive_days</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                    <span class="n">reference_date_for_worst_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Warnings</span>
+<span class="sd">        --------</span>
+<span class="sd">        This method is not implemented for this class yet. It returns None by default.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        date: QuantLib.Date</span>
+<span class="sd">            Date of the rate helper.</span>
+<span class="sd">        last_available: bool, optional</span>
+<span class="sd">            Whether to use last available quotes if missing data.</span>
+<span class="sd">        yield_type: {&#39;ytm&#39;, &#39;ytw&#39;}, optional</span>
+<span class="sd">            Which yield to use for the rate helper. Default is &#39;ytm&#39;.</span>
+<span class="sd">        curve_type: {&#39;zero&#39;, &#39;par&#39;}, optional</span>
+<span class="sd">            Which type of yield curve will be built. Default is &#39;zero&#39;.</span>
+<span class="sd">        max_inactive_days: int, optional</span>
+<span class="sd">            After how many days of missing data will this method return None. Default is 3.</span>
+<span class="sd">        reference_date_for_worst_date: QuantLib.Date</span>
+<span class="sd">            Date of the quote to be used to calculate the worst date of the bond.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        QuantLib.RateHelper</span>
+<span class="sd">            Object used to build yield curves.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement this method.</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="FloatingRateBond.duration_to_mat"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond.duration_to_mat">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="nd">@set_floating_rate_index</span>
+    <span class="k">def</span> <span class="nf">duration_to_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration_type</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="p">,</span>
+                        <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        duration_type: QuantLib.Duration.Type</span>
+<span class="sd">            The duration type.</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Bond&#39;s quote.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Date of the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        settlement_days: int, optional</span>
+<span class="sd">            Number of days for trade settlement.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Bond&#39;s duration to maturity.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        Duration methods need different implementation for floating rate bonds.</span>
+<span class="sd">        See Balaraman G., Ballabio L. QuantLib Python Cookbook [ch. Duration of floating-rate bonds].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">to_ql_date</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">ytm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ytm</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="o">=</span><span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="o">=</span><span class="n">compounding</span><span class="p">,</span>
+                       <span class="n">frequency</span><span class="o">=</span><span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="o">=</span><span class="n">settlement_days</span><span class="p">,</span> <span class="n">bypass_set_floating_rate_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                       <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">settlement_date</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calendar</span><span class="o">.</span><span class="n">advance</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Period</span><span class="p">(</span><span class="n">settlement_days</span><span class="p">,</span> <span class="n">ql</span><span class="o">.</span><span class="n">Days</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">business_convention</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_expired</span><span class="p">(</span><span class="n">settlement_date</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty_price</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="o">=</span><span class="n">day_counter</span><span class="p">,</span>
+                             <span class="n">compounding</span><span class="o">=</span><span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="n">frequency</span><span class="p">,</span>
+                             <span class="n">settlement_days</span><span class="o">=</span><span class="n">settlement_days</span><span class="p">,</span> <span class="n">bypass_set_floating_rate_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">dy</span> <span class="o">=</span> <span class="mf">1e-5</span>
+        <span class="n">forecast_curve_timeseries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference_curve</span>
+        <span class="n">node_dates</span> <span class="o">=</span> <span class="n">forecast_curve_timeseries</span><span class="o">.</span><span class="n">yield_curve</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">dates</span><span class="p">()</span>
+        <span class="n">node_rates</span> <span class="o">=</span> <span class="n">forecast_curve_timeseries</span><span class="o">.</span><span class="n">zero_rate_to_date</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">date</span><span class="p">,</span> <span class="n">to_date</span><span class="o">=</span><span class="n">node_dates</span><span class="p">,</span>
+                                                                 <span class="n">compounding</span><span class="o">=</span><span class="n">ql</span><span class="o">.</span><span class="n">Simple</span><span class="p">,</span>
+                                                                 <span class="n">frequency</span><span class="o">=</span><span class="n">ql</span><span class="o">.</span><span class="n">Annual</span><span class="p">)</span>
+        <span class="n">lower_shifted_curve</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">LogLinearZeroCurve</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">node_dates</span><span class="p">),</span> <span class="p">[</span><span class="n">r</span> <span class="o">-</span> <span class="n">dy</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">node_rates</span><span class="p">],</span>
+                                                    <span class="n">forecast_curve_timeseries</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span>
+                                                    <span class="n">forecast_curve_timeseries</span><span class="o">.</span><span class="n">calendar</span><span class="p">,</span>
+                                                    <span class="n">ql</span><span class="o">.</span><span class="n">LogLinear</span><span class="p">(),</span>
+                                                    <span class="n">ql</span><span class="o">.</span><span class="n">Simple</span><span class="p">,</span>
+                                                    <span class="p">)</span>
+        <span class="n">upper_shifted_curve</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">LogLinearZeroCurve</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">node_dates</span><span class="p">),</span> <span class="p">[</span><span class="n">r</span> <span class="o">+</span> <span class="n">dy</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">node_rates</span><span class="p">],</span>
+                                                    <span class="n">forecast_curve_timeseries</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span>
+                                                    <span class="n">forecast_curve_timeseries</span><span class="o">.</span><span class="n">calendar</span><span class="p">,</span>
+                                                    <span class="n">ql</span><span class="o">.</span><span class="n">LogLinear</span><span class="p">(),</span>
+                                                    <span class="n">ql</span><span class="o">.</span><span class="n">Simple</span><span class="p">,</span>
+                                                    <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">forecast_curve</span><span class="o">.</span><span class="n">linkTo</span><span class="p">(</span><span class="n">lower_shifted_curve</span><span class="p">)</span>
+        <span class="n">P_m</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">CashFlows</span><span class="o">.</span><span class="n">npv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bond</span><span class="o">.</span><span class="n">cashflows</span><span class="p">(),</span>
+                               <span class="n">ql</span><span class="o">.</span><span class="n">InterestRate</span><span class="p">(</span><span class="n">ytm</span> <span class="o">-</span> <span class="n">dy</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">yield_quote_compounding</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">yield_quote_frequency</span><span class="p">),</span>
+                               <span class="kc">True</span><span class="p">,</span> <span class="n">settlement_date</span><span class="p">,</span> <span class="n">settlement_date</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">forecast_curve</span><span class="o">.</span><span class="n">linkTo</span><span class="p">(</span><span class="n">upper_shifted_curve</span><span class="p">)</span>
+        <span class="n">P_p</span> <span class="o">=</span> <span class="n">ql</span><span class="o">.</span><span class="n">CashFlows</span><span class="o">.</span><span class="n">npv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bond</span><span class="o">.</span><span class="n">cashflows</span><span class="p">(),</span>
+                               <span class="n">ql</span><span class="o">.</span><span class="n">InterestRate</span><span class="p">(</span><span class="n">ytm</span> <span class="o">+</span> <span class="n">dy</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">day_counter</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">yield_quote_compounding</span><span class="p">,</span>
+                                               <span class="bp">self</span><span class="o">.</span><span class="n">yield_quote_frequency</span><span class="p">),</span>
+                               <span class="kc">True</span><span class="p">,</span> <span class="n">settlement_date</span><span class="p">,</span> <span class="n">settlement_date</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">ytm</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">yield_quote_frequency</span><span class="p">)</span> <span class="o">*</span> <span class="o">-</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">P</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">P_p</span> <span class="o">-</span> <span class="n">P_m</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">dy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FloatingRateBond.duration_to_worst"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond.duration_to_worst">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="nd">@set_floating_rate_index</span>
+    <span class="k">def</span> <span class="nf">duration_to_worst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration_type</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="p">,</span>
+                          <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        duration_type: QuantLib.Duration.Type</span>
+<span class="sd">            The duration type.</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Bond&#39;s quote.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Date of the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        settlement_days: int, optional</span>
+<span class="sd">            Number of days for trade settlement.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Same as duration to maturity.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        Duration methods need different implementation for floating rate bonds.</span>
+<span class="sd">        See Balaraman G., Ballabio L. QuantLib Python Cookbook [ch. Duration of floating-rate bonds].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">duration_to_mat</span><span class="p">(</span><span class="n">duration_type</span><span class="o">=</span><span class="n">duration_type</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">day_counter</span><span class="o">=</span><span class="n">day_counter</span><span class="p">,</span>
+                                    <span class="n">compounding</span><span class="o">=</span><span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="o">=</span><span class="n">settlement_days</span><span class="p">,</span>
+                                    <span class="n">bypass_set_floating_rate_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FloatingRateBond.duration_to_worst_rolling_call"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond.duration_to_worst_rolling_call">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="nd">@set_floating_rate_index</span>
+    <span class="k">def</span> <span class="nf">duration_to_worst_rolling_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration_type</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span>
+                                       <span class="n">settlement_days</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        duration_type: QuantLib.Duration.Type</span>
+<span class="sd">            The duration type.</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Bond&#39;s quote.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Date of the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        settlement_days: int, optional</span>
+<span class="sd">            Number of days for trade settlement.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Same as duration to maturity.</span>
+
+<span class="sd">        Note</span>
+<span class="sd">        ----</span>
+<span class="sd">        Duration methods need different implementation for floating rate bonds.</span>
+<span class="sd">        See Balaraman G., Ballabio L. QuantLib Python Cookbook [ch. Duration of floating-rate bonds].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">duration_to_mat</span><span class="p">(</span><span class="n">duration_type</span><span class="o">=</span><span class="n">duration_type</span><span class="p">,</span> <span class="n">last</span><span class="o">=</span><span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="n">quote</span><span class="p">,</span> <span class="n">day_counter</span><span class="o">=</span><span class="n">day_counter</span><span class="p">,</span>
+                                    <span class="n">compounding</span><span class="o">=</span><span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="o">=</span><span class="n">settlement_days</span><span class="p">,</span>
+                                    <span class="n">bypass_set_floating_rate_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FloatingRateBond.convexity_to_mat"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond.convexity_to_mat">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="nd">@set_floating_rate_index</span>
+    <span class="k">def</span> <span class="nf">convexity_to_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Warnings</span>
+<span class="sd">        --------</span>
+<span class="sd">        This method is not yet implemented. Returns Numpy.nan by default.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Bond&#39;s quote.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Date of the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        settlement_days: int, optional</span>
+<span class="sd">            Number of days for trade settlement.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Bond&#39;s convexity to maturity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement this.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span></div>
+
+<div class="viewcode-block" id="FloatingRateBond.convexity_to_worst"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond.convexity_to_worst">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="nd">@set_floating_rate_index</span>
+    <span class="k">def</span> <span class="nf">convexity_to_worst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Warnings</span>
+<span class="sd">        --------</span>
+<span class="sd">        This method is not yet implemented. Returns Numpy.nan by default.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Bond&#39;s quote.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Date of the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        settlement_days: int, optional</span>
+<span class="sd">            Number of days for trade settlement.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Bond&#39;s convexity to worst.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement this.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span></div>
+
+<div class="viewcode-block" id="FloatingRateBond.convexity_to_worst_rolling_call"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.FloatingRateBond.convexity_to_worst_rolling_call">[docs]</a>    <span class="nd">@default_arguments</span>
+    <span class="nd">@conditional_vectorize</span><span class="p">(</span><span class="s1">&#39;quote&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">)</span>
+    <span class="nd">@set_floating_rate_index</span>
+    <span class="k">def</span> <span class="nf">convexity_to_worst_rolling_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">quote</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">day_counter</span><span class="p">,</span> <span class="n">compounding</span><span class="p">,</span> <span class="n">frequency</span><span class="p">,</span> <span class="n">settlement_days</span><span class="p">,</span>
+                                        <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Warnings</span>
+<span class="sd">        --------</span>
+<span class="sd">        This method is not yet implemented. Returns Numpy.nan by default.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        last: bool, optional</span>
+<span class="sd">            Whether to last data.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        quote: scalar, optional</span>
+<span class="sd">            Bond&#39;s quote.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        date: QuantLib.Date, optional</span>
+<span class="sd">            Date of the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        day_counter: QuantLib.DayCounter, optional</span>
+<span class="sd">            Day counter for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        compounding: QuantLib.Compounding, optional</span>
+<span class="sd">            Compounding convention for the calculation.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        frequency: QuantLib.Frequency, optional</span>
+<span class="sd">            Compounding frequency.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+<span class="sd">        settlement_days: int, optional</span>
+<span class="sd">            Number of days for trade settlement.</span>
+<span class="sd">            Default: see :py:func:`default_arguments`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        scalar</span>
+<span class="sd">            Bond&#39;s convexity to worst.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement this.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span></div></div>
+
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">###########################################################################################</span>
+<span class="sd">Methods of the FloatingRateBond class need to be decorated with set_floating_rate_index.</span>
+<span class="sd">So we unwrap the base class methods from their wrappers and include set_floating_rate_index </span>
+<span class="sd">in the wrapper chain.</span>
+<span class="sd">###########################################################################################</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="c1"># Methods to redecorate with set_floating_rate_index.</span>
+<span class="n">methods_to_redecorate</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;accrued_interest&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;cash_to_date&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;clean_price&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;dirty_price&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;value&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;performance&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;ytm&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;ytw_and_worst_date&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;ytw&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;ytw_and_worst_date_rolling_call&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;ytw_rolling_call&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;yield_to_date&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;worst_date&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;worst_date_rolling_call&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;clean_price_from_ytm&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;clean_price_from_yield_to_date&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;dirty_price_from_ytm&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;dirty_price_from_yield_to_date&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;zspread_to_mat&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;zspread_to_worst&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;zspread_to_worst_rolling_call&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;oas&#39;</span><span class="p">,</span>
+                         <span class="p">]</span>
+
+
+<div class="viewcode-block" id="redecorate_with_set_floating_rate_index"><a class="viewcode-back" href="../../../../tsfin/tsfin.instruments.bonds.floatingratebond.html#tsfin.instruments.bonds.floatingratebond.redecorate_with_set_floating_rate_index">[docs]</a><span class="k">def</span> <span class="nf">redecorate_with_set_floating_rate_index</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s1">&#39;_decorated_by_floating_rate_index_&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s1">&#39;_conditional_vectorized_&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> \
+                <span class="nb">getattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s1">&#39;_decorated_by_default_arguments_&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">vectorized_args</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">_conditional_vectorize_args_</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">default_arguments</span><span class="p">(</span><span class="n">conditional_vectorize</span><span class="p">(</span><span class="n">vectorized_args</span><span class="p">)(</span>
+                <span class="n">set_floating_rate_index</span><span class="p">(</span><span class="n">method</span><span class="p">))))</span>
+        <span class="k">elif</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s1">&#39;_conditional_vectorized_&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">vectorized_args</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">_conditional_vectorize_args_</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">conditional_vectorize</span><span class="p">(</span><span class="n">vectorized_args</span><span class="p">)(</span><span class="n">set_floating_rate_index</span><span class="p">(</span><span class="n">method</span><span class="p">)))</span>
+        <span class="k">elif</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s1">&#39;_decorated_by_default_arguments_&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">default_arguments</span><span class="p">(</span><span class="n">set_floating_rate_index</span><span class="p">(</span><span class="n">method</span><span class="p">)))</span></div>
+
+
+<span class="c1"># Redecorating methods.</span>
+<span class="k">for</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">methods_to_redecorate</span><span class="p">:</span>
+    <span class="n">redecorate_with_set_floating_rate_index</span><span class="p">(</span><span class="n">FloatingRateBond</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">FloatingRateBond</span><span class="p">,</span> <span class="n">method_name</span><span class="p">))</span>
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

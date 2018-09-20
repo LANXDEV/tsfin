@@ -1,0 +1,783 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Currency Future &#8212; T.S. Finance 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Deposit Rate" href="tsfin.instruments.depositrate.html" />
+    <link rel="prev" title="Floating Rate Bond" href="tsfin.instruments.bonds.floatingratebond.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">T.S. Finance</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=LANXDEV&repo=tsfin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tsfin.base.instrument.html">Base Instrument</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.fixedratebond.html">Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.callablefixedratebond.html">Callable Fixed Rate Bond</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.bonds.floatingratebond.html">Floating Rate Bond</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Currency Future</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.depositrate.html">Deposit Rate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.fraddi.html">Fra DDI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.cupomcambial.html">Cupom Cambial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.ois.html">OIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.instruments.swaprate.html">Swap Rate</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.yieldcurve.html">Yield Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.currencycurve.html">Currency Curve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tsfin.curves.hybridyieldcurve.html">Hybrid Yield Curve</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tsfin.instruments.bonds.floatingratebond.html" title="previous chapter">Floating Rate Bond</a></li>
+      <li>Next: <a href="tsfin.instruments.depositrate.html" title="next chapter">Deposit Rate</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tsfin.instruments.currencyfuture">
+<span id="currency-future"></span><h1>Currency Future<a class="headerlink" href="#module-tsfin.instruments.currencyfuture" title="Permalink to this headline">¶</a></h1>
+<p>Currency Future class to model currency futures. Also contains the BaseCurrencyFuture and CurrencyFutureHelper classes,
+which work as analogies to QuantLib’s instrument and helper classes, respectively.
+TODO: Propose implementation of these classes in QuantLib.</p>
+<dl class="class">
+<dt id="tsfin.instruments.currencyfuture.BaseCurrencyFuture">
+<em class="property">class </em><code class="descname">BaseCurrencyFuture</code><span class="sig-paren">(</span><em>base_currency</em>, <em>counter_currency</em>, <em>maturity</em>, <em>calendar</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>settlement_days</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#BaseCurrencyFuture"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.BaseCurrencyFuture" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A currency future object.</p>
+<p>Analogous to QuantLib instrument class (but simplified).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>base_currency</strong> (<em>QuantLib.Currency</em>) – Representation of the base currency.</li>
+<li><strong>counter_currency</strong> (<em>QuantLib.Currency</em>) – Representation of the counter currency.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em>) – Maturity of the contract.</li>
+<li><strong>calendar</strong> (<em>QuantLib.Calendar</em>) – Calendar followed by the contract.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuatLib.DayCounter</em>) – Day count convention of the base currency interest rate.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention of the base currency interest rate.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em>) – Compounding frequency of the base currency interest rate.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuatLib.DayCounter</em>) – Day count convention of the counter currency interest rate.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention of the counter currency interest rate.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em>) – Compounding frequency of the counter currency interest rate.</li>
+<li><strong>settlement_days</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – Settlement days for the contract.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.BaseCurrencyFuture.base_rate">
+<code class="descname">base_rate</code><span class="sig-paren">(</span><em>spot</em>, <em>counter_rate</em>, <em>quote</em>, <em>date</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>maturity</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#BaseCurrencyFuture.base_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.BaseCurrencyFuture.base_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain the interest rate of the base currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spot</strong> (<em>scalar</em>) – Spot exchange rate.</li>
+<li><strong>counter_rate</strong> (<em>scalar</em>) – Interest rate of the base currency.</li>
+<li><strong>quote</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Quote of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Reference date.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day counter of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day base of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Maturity date of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Implied interest rate to <cite>maturity</cite> in the base currency.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.BaseCurrencyFuture.counter_rate">
+<code class="descname">counter_rate</code><span class="sig-paren">(</span><em>spot</em>, <em>base_rate</em>, <em>quote</em>, <em>date</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>maturity</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#BaseCurrencyFuture.counter_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.BaseCurrencyFuture.counter_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain the interest rate of the counter currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spot</strong> (<em>scalar</em>) – Spot exchange rate.</li>
+<li><strong>base_rate</strong> (<em>scalar</em>) – Interest rate of the base currency.</li>
+<li><strong>quote</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Quote of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Reference date.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day counter of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day base of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Maturity date of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Implied interest rate to <cite>maturity</cite> in the counter currency.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture">
+<em class="property">class </em><code class="descname">CurrencyFuture</code><span class="sig-paren">(</span><em>timeseries</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="tsfin.base.instrument.html#tsfin.base.instrument.Instrument" title="tsfin.base.instrument.Instrument"><code class="xref py py-class docutils literal notranslate"><span class="pre">tsfin.base.instrument.Instrument</span></code></a></p>
+<p>Currency future time series object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeseries</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSeries</span></code>) – </td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.base_rate">
+<code class="descname">base_rate</code><span class="sig-paren">(</span><em>spot</em>, <em>counter_rate</em>, <em>last</em>, <em>quote</em>, <em>date</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>maturity</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.base_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.base_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain the interest rate of the base currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spot</strong> (<em>scalar</em>) – Spot exchange rate.</li>
+<li><strong>counter_rate</strong> (<em>scalar</em>) – Interest rate of the base currency.</li>
+<li><strong>last</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to use last data.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>quote</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Quote of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Reference date.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day counter of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day base of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Maturity date of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Implied interest rate to <cite>maturity</cite> in the base currency.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.cash_to_date">
+<code class="descname">cash_to_date</code><span class="sig-paren">(</span><em>start_date</em>, <em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.cash_to_date"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.cash_to_date" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cashflow received/paid by the holder of a contract.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>start_date</strong> (<em>QuantLib.Date</em>) – </li>
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Cash amount received/paid by the holder of a contract between <cite>start_date</cite> and <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.counter_rate">
+<code class="descname">counter_rate</code><span class="sig-paren">(</span><em>spot</em>, <em>base_rate</em>, <em>last</em>, <em>quote</em>, <em>date</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>maturity</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.counter_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.counter_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain the interest rate of the counter currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spot</strong> (<em>scalar</em>) – Spot exchange rate.</li>
+<li><strong>base_rate</strong> (<em>scalar</em>) – Interest rate of the base currency.</li>
+<li><strong>last</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to use last data.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>quote</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Quote of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Reference date.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day counter of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day base of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Maturity date of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Implied interest rate to <cite>maturity</cite> in the counter currency.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.helper">
+<code class="descname">helper</code><span class="sig-paren">(</span><em>date</em>, <em>last_available=True</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.helper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.helper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain a currency helper for time series of currency curves building.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date.</li>
+<li><strong>last_available</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Whether to use last available data.
+Default: True.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Helper for use of currency curve time series objects.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#tsfin.instruments.currencyfuture.CurrencyFutureHelper" title="tsfin.instruments.currencyfuture.CurrencyFutureHelper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CurrencyFutureHelper</span></code></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.is_expired">
+<code class="descname">is_expired</code><span class="sig-paren">(</span><em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.is_expired"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.is_expired" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the contract is expired.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Whether the contract is expired.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)">bool</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.maturity">
+<code class="descname">maturity</code><span class="sig-paren">(</span><em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.maturity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.maturity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return maturity date of the contract.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – The reference date.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The maturity date of the contract.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">QuantLib.Date</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.performance">
+<code class="descname">performance</code><span class="sig-paren">(</span><em>start_date=None</em>, <em>start_quote=None</em>, <em>date=None</em>, <em>quote=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.performance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to deduce performance for a unit of the TimeSeries (as a financial instrument).</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The result may be wrong. Use this method only for emergency/temporary cases. It is safer to instantiate a
+‘real’ financial instrument class and call its <code class="docutils literal notranslate"><span class="pre">performance</span></code> method instead of using this.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>start_date</strong> (<em>datetime-like</em><em>, </em><em>optional</em>) – The starting date of the period.</li>
+<li><strong>date</strong> (<em>datetime-like</em><em>, </em><em>optional</em>) – The ending date of the period.</li>
+<li><strong>start_quote</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.7)"><em>float</em></a><em>, </em><em>optional</em>) – The quote of the instrument in <cite>start_date</cite>. Defaults to the quote in <cite>start_date</cite>.</li>
+<li><strong>quote</strong> – The quote of the instrument in <cite>date</cite>. Defaults to the quote in <cite>date</cite>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Performance of a unit of the instrument.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar, None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.rate_helper">
+<code class="descname">rate_helper</code><span class="sig-paren">(</span><em>date</em>, <em>last_available=True</em>, <em>tenor=None</em>, <em>fixing_days=None</em>, <em>calendar=None</em>, <em>busdayconvention=None</em>, <em>day_counter=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.rate_helper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to deduce a helper for yield curve construction.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The result may be wrong. Use this method only for emergency/temporary cases. It is safer to instantiate a
+‘real’ financial instrument class and call its <code class="docutils literal notranslate"><span class="pre">rate_helper</span></code> method instead of using this.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>date</strong> (<em>date-like</em>) – </li>
+<li><strong>last_available</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a><em>, </em><em>optional</em>) – Defaults to True.</li>
+<li><strong>tenor</strong> (<em>QuantLib.Period</em><em>, </em><em>optional</em>) – Defaults to a call to <code class="docutils literal notranslate"><span class="pre">self.tenor(date)</span></code>.</li>
+<li><strong>fixing_days</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><em>optional</em>) – Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>.</li>
+<li><strong>calendar</strong> (<em>QuantLib.Calendar</em><em>, </em><em>optional</em>) – Defaults to <code class="docutils literal notranslate"><span class="pre">QuantLib.UnitedStates(ql.UnitedStates.NYSE)</span></code>.</li>
+<li><strong>busdayconvention</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a><em>, </em><em>optional</em>) – Defaults to <code class="docutils literal notranslate"><span class="pre">QuantLib.Unadjusted</span></code>.</li>
+<li><strong>day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Defaults to <code class="docutils literal notranslate"><span class="pre">QuantLib.Actual365Fixed()</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">RateHelper object for yield curve construction.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">QuantLib.RateHelper-like, None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.tenor">
+<code class="descname">tenor</code><span class="sig-paren">(</span><em>date</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.tenor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.tenor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tenor to maturity of the contract.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Period representing the time to maturity of the contract.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">QuantLib.Period</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFuture.value">
+<code class="descname">value</code><span class="sig-paren">(</span><em>last</em>, <em>date</em>, <em>quote</em>, <em>last_available_data=False</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFuture.value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFuture.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value of a contract.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>last</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – Use last data in <code class="docutils literal notranslate"><span class="pre">self.price.ts_values</span></code>.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Valuation date.</li>
+<li><strong>quote</strong> (<em>scalar</em>) – Quote of the contract at <cite>date</cite>.</li>
+<li><strong>last_available_data</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – Whether to use last available data, if unavailable.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Valuation of the contract at <cite>date</cite>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFutureHelper">
+<em class="property">class </em><code class="descname">CurrencyFutureHelper</code><span class="sig-paren">(</span><em>base_currency</em>, <em>counter_currency</em>, <em>maturity</em>, <em>calendar</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>date</em>, <em>quote</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#CurrencyFutureHelper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFutureHelper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tsfin.instruments.currencyfuture.BaseCurrencyFuture" title="tsfin.instruments.currencyfuture.BaseCurrencyFuture"><code class="xref py py-class docutils literal notranslate"><span class="pre">tsfin.instruments.currencyfuture.BaseCurrencyFuture</span></code></a></p>
+<p>Helper for currency future curve construction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>base_currency</strong> (<em>QuantLib.Currency</em>) – Representation of the base currency.</li>
+<li><strong>counter_currency</strong> (<em>QuantLib.Currency</em>) – Representation of the counter currency.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em>) – Maturity of the contract.</li>
+<li><strong>calendar</strong> (<em>QuantLib.Calendar</em>) – Calendar of the contract.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuantLib.DayCounter</em>) – Day counter of base currency interest rate.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention of base currency interest rate.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em>) – Compounding frequency of base currency interest rate.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuantLib.DayCounter</em>) – Day counter of counter currency interest rate.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em>) – Compounding convention of counter currency interest rate.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em>) – Compounding frequency of counter currency interest rate.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date.</li>
+<li><strong>quote</strong> (<em>scalar</em>) – Quote of the contract.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFutureHelper.base_rate">
+<code class="descname">base_rate</code><span class="sig-paren">(</span><em>spot</em>, <em>counter_rate</em>, <em>quote</em>, <em>date</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>maturity</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFutureHelper.base_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain the interest rate of the base currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spot</strong> (<em>scalar</em>) – Spot exchange rate.</li>
+<li><strong>counter_rate</strong> (<em>scalar</em>) – Interest rate of the base currency.</li>
+<li><strong>quote</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Quote of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Reference date.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day counter of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day base of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Maturity date of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_currency_future()</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Implied interest rate to <cite>maturity</cite> in the base currency.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tsfin.instruments.currencyfuture.CurrencyFutureHelper.counter_rate">
+<code class="descname">counter_rate</code><span class="sig-paren">(</span><em>spot</em>, <em>base_rate</em>, <em>quote</em>, <em>date</em>, <em>counter_rate_day_counter</em>, <em>counter_rate_compounding</em>, <em>counter_rate_frequency</em>, <em>base_rate_day_counter</em>, <em>base_rate_compounding</em>, <em>base_rate_frequency</em>, <em>maturity</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#tsfin.instruments.currencyfuture.CurrencyFutureHelper.counter_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain the interest rate of the counter currency.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spot</strong> (<em>scalar</em>) – Spot exchange rate.</li>
+<li><strong>base_rate</strong> (<em>scalar</em>) – Interest rate of the base currency.</li>
+<li><strong>quote</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Quote of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>date</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Reference date.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day counter of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>counter_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the counter currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_day_counter</strong> (<em>QuantLib.DayCounter</em><em>, </em><em>optional</em>) – Day base of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_compounding</strong> (<em>QuantLib.Compounding</em><em>, </em><em>optional</em>) – Compounding convention of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>base_rate_frequency</strong> (<em>QuantLib.Frequency</em><em>, </em><em>optional</em>) – Compounding frequency of the base currency interest rate.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+<li><strong>maturity</strong> (<em>QuantLib.Date</em><em>, </em><em>optional</em>) – Maturity date of the contract.
+Default: see <a class="reference internal" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="tsfin.instruments.currencyfuture.default_arguments_base_currency_future"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_arguments_base_currency_future()</span></code></a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Implied interest rate to <cite>maturity</cite> in the counter currency.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">scalar</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.instruments.currencyfuture.default_arguments_base_currency_future">
+<code class="descname">default_arguments_base_currency_future</code><span class="sig-paren">(</span><em>f</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#default_arguments_base_currency_future"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.default_arguments_base_currency_future" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator to set default arguments for <a class="reference internal" href="#tsfin.instruments.currencyfuture.BaseCurrencyFuture" title="tsfin.instruments.currencyfuture.BaseCurrencyFuture"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCurrencyFuture</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>f</strong> (<em>method</em>) – A method to be increased with default arguments.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><cite>f</cite>, increased with default arguments.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">function</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<table border="1" class="last docutils">
+<colgroup>
+<col width="40%" />
+<col width="60%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Missing Attribute(s)</th>
+<th class="head">Default Value(s)</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>base_rate_day_counter</td>
+<td>self.base_rate_day_counter</td>
+</tr>
+<tr class="row-odd"><td>base_rate_compounding</td>
+<td>self.base_rate_compounding</td>
+</tr>
+<tr class="row-even"><td>base_rate_frequency</td>
+<td>self.base_rate_frequency</td>
+</tr>
+<tr class="row-odd"><td>counter_rate_day_counter</td>
+<td>self.counter_rate_day_counter</td>
+</tr>
+<tr class="row-even"><td>counter_rate_compounding</td>
+<td>self.counter_rate_compounding</td>
+</tr>
+<tr class="row-odd"><td>counter_rate_frequency</td>
+<td>self.counter_rate_frequency</td>
+</tr>
+<tr class="row-even"><td>maturity</td>
+<td>self.maturity_date</td>
+</tr>
+</tbody>
+</table>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.instruments.currencyfuture.default_arguments_currency_future">
+<code class="descname">default_arguments_currency_future</code><span class="sig-paren">(</span><em>f</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#default_arguments_currency_future"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.default_arguments_currency_future" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator to set default arguments for <a class="reference internal" href="#tsfin.instruments.currencyfuture.CurrencyFuture" title="tsfin.instruments.currencyfuture.CurrencyFuture"><code class="xref py py-class docutils literal notranslate"><span class="pre">CurrencyFuture</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>f</strong> (<em>method</em>) – A method to be increased with default arguments.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><cite>f</cite>, increased with default arguments.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">function</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<table border="1" class="last docutils">
+<colgroup>
+<col width="40%" />
+<col width="60%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Missing Attribute(s)</th>
+<th class="head">Default Value(s)</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>date and quote</td>
+<td>dates and quotes in
+self.quotes.ts_values</td>
+</tr>
+<tr class="row-odd"><td>date</td>
+<td>dates in self.quotes.ts_values</td>
+</tr>
+<tr class="row-even"><td>quote</td>
+<td>corresponding quotes at passed dates</td>
+</tr>
+<tr class="row-odd"><td>base_rate_day_counter</td>
+<td>self.base_rate_day_counter</td>
+</tr>
+<tr class="row-even"><td>base_rate_compounding</td>
+<td>self.base_rate_compounding</td>
+</tr>
+<tr class="row-odd"><td>base_rate_frequency</td>
+<td>self.base_rate_frequency</td>
+</tr>
+<tr class="row-even"><td>counter_rate_day_counter</td>
+<td>self.counter_rate_day_counter</td>
+</tr>
+<tr class="row-odd"><td>counter_rate_compounding</td>
+<td>self.counter_rate_compounding</td>
+</tr>
+<tr class="row-even"><td>counter_rate_frequency
+maturity</td>
+<td>self.counter_rate_frequency
+self.maturity_date</td>
+</tr>
+</tbody>
+</table>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="tsfin.instruments.currencyfuture.usdbrl_next_maturity">
+<code class="descname">usdbrl_next_maturity</code><span class="sig-paren">(</span><em>date</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/tsfin/instruments/currencyfuture.html#usdbrl_next_maturity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tsfin.instruments.currencyfuture.usdbrl_next_maturity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Next maturity of BM&amp;F (Brazil) USDBRL future contracts.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>date</strong> (<em>QuantLib.Date</em>) – Reference date.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Maturity date of closest-to-maturity contract.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">QuantLib.Date</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, Lanx Capital.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/tsfin/tsfin.instruments.currencyfuture.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
