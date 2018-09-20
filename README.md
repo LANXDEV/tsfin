@@ -4,7 +4,10 @@ This project implements classes for financial instruments and curves. It is buil
 [Time Series I/O](https://github.com/LANXDEV/tsio) and [QuantLib-Python](https://www.quantlib.org/). The objects in this
 project are all based on the Time Series model, in the sense of the [Time Series I/O project](https://github.com/LANXDEV/tsio),
 and provide similar features in addition to standard financial calculations. The classes and tools defined here might be
- of great help in building financial applications.
+of great help in building financial applications.
+
+Check the project's [Documentation](https://lanxdev.github.io/tsfin/index).
+
 
 ## Requirements
 - A running MongoDB instance
@@ -30,6 +33,12 @@ pip install git+https://github.com/LANXDEV/tsfin/
 * **Vinícius Calasans** - [vcalasans](https://github.com/vcalasans)
 
 
+## Acknowledgements
+
+Time Series Finance has been developed at [Lanx Capital Investimentos](https://www.lanxcapital.com/) since 2016.
+
+
 ## License
 
-This project is licensed under the GNU GPL v3. See [License](LICENSE) for details.
+This project is licensed under the GNU LGPL v3. See [Copying](COPYING) and [Copying.Lesser](COPYING.LESSER) for details.
+
