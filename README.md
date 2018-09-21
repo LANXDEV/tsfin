@@ -35,7 +35,14 @@ pip install git+https://github.com/LANXDEV/tsfin/
 
 ## Acknowledgements
 
-Time Series Finance has been developed at [Lanx Capital Investimentos](https://www.lanxcapital.com/) since 2016.
+Time Series Finance has been developed at [Lanx Capital Investimentos](https://www.lanxcapital.com/) since 2016, serving
+as base for our internal frameworks. It wouldn't be possible without the support and insight provided by our team of
+analysts:
+
+- Tulio Ribeiro
+- Eduardo Thiele
+- Pedro Coelho
+- Humberto Nardiello
 
 
 ## License
