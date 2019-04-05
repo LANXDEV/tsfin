@@ -5,8 +5,8 @@ from functools import wraps
 import numpy as np
 import QuantLib as ql
 from tsfin.instruments.depositrate import DepositRate
-from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_index, to_ql_business_convention
-from tsfin.constants import CALENDAR, INDEX, DAY_COUNTER, TENOR_PERIOD, BUSINESS_CONVENTION
+from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_rate_index, to_ql_business_convention
+from tsfin.constants import CALENDAR, INDEX, DAY_COUNTER, TENOR_PERIOD, BUSINESS_CONVENTION, INDEX_TENOR, QUOTE_TYPE
 
 
 class SwapRate(DepositRate):
@@ -25,7 +25,13 @@ class SwapRate(DepositRate):
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
-        self.index = to_ql_index(self.ts_attributes[INDEX])(ql.Period(3, ql.Months))  # TODO: needs to be parametrized.
+        # self.index = to_ql_index(self.ts_attributes[INDEX])(ql.Period(3, ql.Months))
+        # TODO: needs to be parametrized.
+        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
+        # self.index = to_ql_rate_index(self.ts_attributes[INDEX],
+        #                               ql.Period(3, ql.Months))
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX],
+                                      self._index_tenor)
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
 
     def is_expired(self, date, *args, **kwargs):
@@ -60,7 +66,12 @@ class SwapRate(DepositRate):
         """
         # Returns None if impossible to obtain a rate helper from this time series
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+
+        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
+        quote_type = self.get_attribute(QUOTE_TYPE)
+        rate /= float(quote_type_dict.get(quote_type, 100))
+
         if np.isnan(rate):
             return None
-        return ql.SwapRateHelper(rate, self._tenor, self.calendar, self.frequency, self.business_convention,
-                                 self.day_counter, self.index)
+        return ql.SwapRateHelper(ql.QuoteHandle(ql.SimpleQuote(rate)), self._tenor, self.calendar, self.frequency,
+                                 self.business_convention, self.day_counter, self.index)

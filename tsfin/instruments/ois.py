@@ -4,8 +4,8 @@ A class for modelling OIS (Overnight Indexed Swap) rates.
 import numpy as np
 import QuantLib as ql
 from tsfin.instruments.depositrate import DepositRate
-from tsfin.base.qlconverters import to_ql_date, to_ql_overnight_index
-from tsfin.constants import INDEX, TENOR_PERIOD, SETTLEMENT_DAYS, PAYMENT_LAG
+from tsfin.base.qlconverters import to_ql_date, to_ql_rate_index, to_ql_calendar
+from tsfin.constants import INDEX, TENOR_PERIOD, SETTLEMENT_DAYS, PAYMENT_LAG, CALENDAR
 
 
 class OISRate(DepositRate):
@@ -18,10 +18,11 @@ class OISRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.overnight_index = to_ql_overnight_index(self.attributes[INDEX])
-        self._tenor = ql.PeriodParser.parse(self.attributes[TENOR_PERIOD])
-        self.settlement_days = int(self.attributes[SETTLEMENT_DAYS])
-        self.payment_lag = int(self.attributes[PAYMENT_LAG])
+        self.overnight_index = to_ql_rate_index(self.ts_attributes[INDEX])
+        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
+        self.payment_lag = int(self.ts_attributes[PAYMENT_LAG])
 
     def rate_helper(self, date, last_available=True, *args, **kwargs):
         """ Rate helper object for yield curve building.
@@ -41,7 +42,7 @@ class OISRate(DepositRate):
         # Returns None if impossible to obtain a rate helper from this time series
         if self.is_expired(date):
             return None
-        rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan) / 100
         if np.isnan(rate):
             return None
         date = to_ql_date(date)
@@ -52,5 +53,5 @@ class OISRate(DepositRate):
             return None
         # Convert rate to simple compounding because DepositRateHelper expects simple rates.
         return ql.OISRateHelper(self.settlement_days, tenor, ql.QuoteHandle(ql.SimpleQuote(rate)),
-                                self.overnight_index(), ql.YieldTermStructureHandle(), False, 0,
-                                ql.ModifiedFollowing)
+                                self.overnight_index, ql.YieldTermStructureHandle(), False, 0,
+                                self.business_convention)

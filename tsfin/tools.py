@@ -4,13 +4,15 @@ from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
 from tsfin.base.qlconverters import to_ql_date
 from tsfin.base.basetools import to_datetime
 from tsio import TimeSeries, TimeSeriesCollection
+from tsfin.base.instrument import Instrument
 from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond
 from tsfin.instruments.depositrate import DepositRate
 from tsfin.instruments.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.swaprate import SwapRate
+from tsfin.instruments.equityoptions import BaseEquityOption
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
-    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE
+    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY
 
 
 def generate_instruments(ts_collection, indices=None, index_curves=None):
@@ -52,8 +54,7 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
             if bond_type == FLOATINGRATE:
                 # Floating rate bonds need some special treatment.
                 index_tag = ts.get_attribute(INDEX)
-                instrument = FloatingRateBond(ts, index_timeseries=indices[index_tag],
-                                              reference_curve=index_curves[index_tag])
+                instrument = FloatingRateBond(ts, reference_curve=index_tag)
             elif bond_type == FIXEDRATE:
                 instrument = FixedRateBond(ts)
             elif bond_type == CALLABLEFIXEDRATE:
@@ -62,7 +63,7 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
                 instrument_list.append(ts)
                 continue
 
-        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE):
+        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE, RATE_INDEX):
             instrument = DepositRate(ts)
         elif ts_type == CURRENCY_FUTURE:
             instrument = CurrencyFuture(ts)
@@ -70,6 +71,10 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
             instrument = SwapRate(ts)
         elif ts_type == OIS_RATE:
             instrument = OISRate(ts)
+        elif ts_type == EQUITY_OPTION:
+            instrument = BaseEquityOption(ts)
+        elif ts_type == EQUITY:
+            instrument = Instrument(ts)
         else:
             instrument = TimeSeries(ts)
 
@@ -245,7 +250,7 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
     # Create the swaption helpers
     swaption_helpers = list()
     for swaption in swaption_vol_ts_collection:
-        vol = swaption.value(date=to_datetime(date)) / 100
+        vol = swaption.get_values(index=to_datetime(date)) / 100
         vol_handle = ql.QuoteHandle(ql.SimpleQuote(vol))
         helper = ql.SwaptionHelper(calendar.advance(date, ql.PeriodParser.parse(swaption.get_attribute('MATURITY'))),
                                    ql.PeriodParser.parse(swaption.get_attribute("TENOR")), vol_handle, index,

@@ -34,7 +34,7 @@ class CallableFixedRateBond(_BaseBond):
             self.callability_schedule.append(ql.Callability(callability_price, ql.Callability.Call, call_date))
             self.bond_components[call_date] = create_call_component(call_date, call_price, self.schedule,
                                                                     self.calendar, self.business_convention,
-                                                                    self._tenor, self.date_generation,
+                                                                    self.coupon_frequency, self.date_generation,
                                                                     self.month_end, self.settlement_days,
                                                                     self.face_amount, self.coupons,
                                                                     self.day_counter, self.issue_date)
