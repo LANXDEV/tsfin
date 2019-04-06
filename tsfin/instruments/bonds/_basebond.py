@@ -145,8 +145,6 @@ def create_schedule_for_component(call_date, main_bond_schedule, calendar, busin
         # period is irregular.
         regularity_payment_dates[call_date] = False
 
-    ql.Schedule()
-
     payment_dates = list(regularity_payment_dates.keys())
     regular_periods = list(regularity_payment_dates.values())[1:]
     return ql.Schedule(payment_dates, calendar, business_convention, business_convention, tenor, date_generation,
