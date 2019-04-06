@@ -82,12 +82,16 @@ def to_ql_calendar(arg):
 
     if arg.upper() == "NYSE":
         return ql.UnitedStates(ql.UnitedStates.NYSE)
+    if arg.upper() == "US":
+        return ql.UnitedStates()
     if arg.upper() == "UK":
         return ql.UnitedKingdom()
     if arg.upper() == "BZ":
         return ql.Brazil()
     if arg.upper() == "TARGET":
         return ql.TARGET()
+    if arg.upper() == "FD":
+        return ql.UnitedStates(ql.UnitedStates.FederalReserve)
     else:
         raise ValueError("Unable to convert {} to a QuantLib calendar".format(arg))
 
@@ -109,6 +113,8 @@ def to_ql_currency(arg):
         return ql.USDCurrency()
     if arg.upper() == "BRL":
         return ql.BRLCurrency()
+    if arg.upper() == "EUR":
+        return ql.EURCurrency()
     else:
         raise ValueError("Unable to convert {} to a QuantLib currency".format(arg))
 
@@ -154,6 +160,8 @@ def to_ql_day_counter(arg):
         return ql.Actual360()
     elif arg.upper() == "ACTUAL365":
         return ql.Actual365Fixed()
+    elif arg.upper() == "ACTUALACTUAL":
+        return ql.ActualActual(ql.ActualActual.ISMA)
     elif arg.upper() == "ACTUALACTUALISMA":
         return ql.ActualActual(ql.ActualActual.ISMA)
     elif arg.upper() == "ACTUALACTUALISDA":
@@ -220,6 +228,8 @@ def to_ql_index(arg):
     """
     if arg.upper() == "USDLIBOR":
         return ql.USDLibor
+    elif arg.upper() == "FEDFUNDS":
+        return ql.FedFunds()
     else:
         raise ValueError("Unable to convert {} to a QuantLib index".format(arg))
 
@@ -237,6 +247,47 @@ def to_ql_overnight_index(arg):
 
     """
     if arg.upper() == "FEDFUNDS":
-        return ql.FedFunds
+        return ql.FedFunds()
     else:
         raise ValueError("Unable to convert {} to a QuantLib overnight index".format(arg))
+
+
+def to_ql_option_type(arg):
+
+    if arg.upper() == 'CALL':
+        return ql.Option.Call
+    elif arg.upper() == 'PUT':
+        return ql.Option.Put
+
+
+def to_ql_rate_index(arg, *args):
+    """Converts a string with index name to the corresponding QuantLib object.
+
+    Parameters
+    ----------
+    arg: str
+    arg2: ql.Period
+
+    Returns
+    -------
+    QuantLib.Index
+
+    """
+    if arg.upper() == "USDLIBOR":
+        if len(args) > 0:
+            return ql.USDLibor(*args)
+        else:
+            return ql.USDLibor()
+    elif arg.upper() == "FEDFUNDS":
+        if len(args) > 0:
+            return ql.FedFunds(*args)
+        else:
+            return ql.FedFunds()
+    else:
+        raise ValueError("Unable to convert {} to a QuantLib index".format(arg))
+
+
+def to_ql_quote_handle(arg):
+
+    return ql.QuoteHandle(ql.SimpleQuote(arg))
+

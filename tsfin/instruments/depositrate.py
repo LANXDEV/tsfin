@@ -20,7 +20,7 @@ DepositRate class, to represent deposit rates.
 import numpy as np
 import QuantLib as ql
 from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
-    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS
+    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS, QUOTE_TYPE
 from tsfin.base.instrument import default_arguments
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
     to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter
@@ -120,7 +120,7 @@ class DepositRate(Instrument):
 
     @default_arguments
     @conditional_vectorize('date')
-    def performance(self, start_date=None, date=None, **kwargs):
+    def performance(self, start_date=None, date=None, spread=None, **kwargs):
         """Performance of investment in the interest rate, taking tenor into account.
 
         If the period between start_date and date is larger the the deposit rate's tenor, considers the investment
@@ -132,13 +132,15 @@ class DepositRate(Instrument):
             Start date of the investment period.
         date: QuantLib.Date, c-vectorized
             End date of the investment period.
+        spread: float
+            rate to be added to the return calculation.
 
         Returns
         -------
         scalar
             Performance of the investment.
         """
-        first_available_date = self.quotes.first_valid_index()
+        first_available_date = self.quotes.ts_values.first_valid_index()
         if start_date is None:
             start_date = first_available_date
         if start_date < first_available_date:
@@ -149,6 +151,13 @@ class DepositRate(Instrument):
         date = to_ql_date(date)
         fixing_dates, maturity_dates = self._get_fixing_maturity_dates(start_date, date)
         fixings = self.timeseries.get_values(index=[to_datetime(fixing_date) for fixing_date in fixing_dates])
+
+        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
+        quote_type = self.get_attribute(QUOTE_TYPE)
+        fixings /= float(quote_type_dict.get(quote_type, 100))
+        if spread is not None:
+            fixings += spread
+
         return np.prod([ql.InterestRate(fixing, self.day_counter, self.compounding,
                                         self.frequency).compoundFactor(fixing_date, maturity_date, start_date, date)
                        for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)]) - 1
@@ -172,6 +181,9 @@ class DepositRate(Instrument):
         if self.is_expired(date):
             return None
         rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
+        quote_type = self.get_attribute(QUOTE_TYPE)
+        rate /= float(quote_type_dict.get(quote_type, 100))
         # print("{0} is returning a rate helper with rate {1}".format(self.ts_name, rate))
         if np.isnan(rate):
             return None

@@ -316,7 +316,7 @@ def conditional_vectorize(*args):
     --------
     Suppose you have a method or function that carries out a complicated calculation.
 
-    >>> def calculation(argument1, argument2):
+    # >>> def calculation(argument1, argument2):
     ...     return argument1*argument2  # Just an example!
     ... print(calculation(argument=1, argument2=2))
     2
@@ -324,7 +324,7 @@ def conditional_vectorize(*args):
     Suppose you now want the calculation function to accept iterable arguments and run the calculation in every
     argument within the iterable automatically, without polluting the function's implementation.
 
-    >>> @conditional_vectorize('argument1', 'argument2')
+    # >>> @conditional_vectorize('argument1', 'argument2')
     ... def calculation(argument1, argument2)
     ...     return argument1*argument2
     ...
@@ -452,6 +452,7 @@ class ExtendedArray(np.ndarray):
 
     def __array_finalize__(self, obj):
         # see InfoArray.__array_finalize__ for comments
-        if obj is None: return
+        if obj is None:
+            return
         self.meta = getattr(obj, 'meta', None)
 

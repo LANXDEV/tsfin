@@ -18,9 +18,10 @@
 from functools import wraps
 import numpy as np
 import QuantLib as ql
-from tsfin.base.qlconverters import to_ql_date, to_ql_index
-from tsfin.base.basetools import conditional_vectorize
+from tsfin.base.qlconverters import to_ql_date, to_ql_index, to_ql_rate_index
+from tsfin.base.basetools import conditional_vectorize, to_datetime
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments
+from tsfin.constants import INDEX, INDEX_TENOR, INDEX_TIME_SERIES
 
 
 def set_floating_rate_index(f):
@@ -80,12 +81,14 @@ class FloatingRateBond(_BaseBond):
     ----
     See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
     """
-    def __init__(self, timeseries, index_timeseries, reference_curve):
+    # def __init__(self, timeseries, index_timeseries, reference_curve):
+    def __init__(self, timeseries, reference_curve):
         super().__init__(timeseries)
         self.reference_curve = reference_curve
         self.forecast_curve = ql.RelinkableYieldTermStructureHandle()
-        self.index = to_ql_index(self.ts_attributes['INDEX'])(self._tenor, self.forecast_curve)
-        self.index_timeseries = index_timeseries
+        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        self.index_timeseries = self.ts_attributes[INDEX_TIME_SERIES]
         self.gearings = [1]  # TODO: Make it possible to have a list of different gearings.
         self.spreads = [float(self.ts_attributes["SPREAD"])]  # TODO: Make it possible to have different spreads.
         self.caps = []  # TODO: Make it possible to have caps.
@@ -102,7 +105,6 @@ class FloatingRateBond(_BaseBond):
         index_bus_day_convention = self.index.businessDayConvention()
         reference_schedule = list(self.schedule)[:-1]
         self.fixing_dates = [self.index.fixingDate(dt) for dt in reference_schedule]
-
         # Coupon pricers
         pricer = ql.BlackIborCouponPricer()
         volatility = 0.0

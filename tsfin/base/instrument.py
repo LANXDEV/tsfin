@@ -246,7 +246,7 @@ class Instrument:
         if start_date < first_available_date:
             start_date = first_available_date
         if start_quote is None:
-            start_quote = quotes.get_value(date=start_date)
+            start_quote = quotes.get_values(index=start_date)
         if date < start_date:
             return np.nan
         start_value = self.value(quote=start_quote, date=start_date)
