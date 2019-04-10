@@ -15,16 +15,18 @@ def filtered_series(timeseries, initial_date, final_date):
 
 class BlackScholesMerton:
 
-    def __init__(self, ts_option_vol, ts_underlying, ts_underlying_dvd, initial_date, final_date,
+    def __init__(self, ts_options, ts_underlying, initial_date, final_date,
                  curve_tag, dvd_zero=False, dvd_tax_adjust=1):
 
-        self.ts_option_vol = TimeSeriesCollection(to_list(ts_option_vol))
-        self.ts_underlying_dvd = ts_underlying_dvd
-        self.ts_underlying_price = ts_underlying
+        # self.ts_option_vol = TimeSeriesCollection(to_list(ts_option_vol))
+        self.ts_options = TimeSeriesCollection(to_list(ts_options))
+        self.ts_underlying = ts_underlying
+        # self.ts_underlying_dvd = ts_underlying_dvd
+        # self.ts_underlying_price = ts_underlying
         self.initial_date = initial_date
         self.final_date = final_date
-        self.calendar = to_ql_calendar(ts_option_vol[0].ts_attributes[CALENDAR])
-        self.day_counter = to_ql_day_counter(ts_option_vol[0].ts_attributes[DAY_COUNTER])
+        self.calendar = to_ql_calendar(ts_options[0].ts_attributes[CALENDAR])
+        self.day_counter = to_ql_day_counter(ts_options[0].ts_attributes[DAY_COUNTER])
         self.curve_tag = curve_tag
         self.dvd_zero = dvd_zero
         self.dvd_tax_adjust = dvd_tax_adjust
@@ -48,7 +50,7 @@ class BlackScholesMerton:
 
     def dividend_yield_from_ts_values(self, initial_date, final_date):
 
-        dvd_series = filtered_series(self.ts_underlying_dvd,
+        dvd_series = filtered_series(self.ts_underlying.eqy_dvd_yld_12m,
                                      initial_date=initial_date,
                                      final_date=final_date)
         dvd_series.ts_values *= self.dvd_tax_adjust
@@ -76,7 +78,7 @@ class BlackScholesMerton:
 
     def underlying_quote_handler(self, initial_date, final_date):
 
-        underlying_ts = filtered_series(self.ts_underlying_price,
+        underlying_ts = filtered_series(self.ts_underlying.price,
                                         initial_date=initial_date,
                                         final_date=final_date)
 
@@ -94,8 +96,8 @@ class BlackScholesMerton:
             self.final_date = to_datetime(final_date)
 
         vol_collection = OrderedDict()
-        for ts in self.ts_option_vol:
-            vol_collection[ts.ts_name] = self.volatility_from_ts_values(ts_vol=ts,
+        for ts in self.ts_options:
+            vol_collection[ts.ts_name] = self.volatility_from_ts_values(ts_vol=ts.ivol_mid,
                                                                         initial_date=self.initial_date,
                                                                         final_date=self.final_date)
 
@@ -112,9 +114,9 @@ class BlackScholesMerton:
                                                         final_date=self.final_date)
 
         process = OrderedDict()
-        for ts in self.ts_option_vol:
+        for ts in self.ts_options:
             process[ts.ts_name] = OrderedDict()
-            for date_value in ts.ts_values.index:
+            for date_value in ts.ivol_mid.ts_values.index:
                 process[ts.ts_name][date_value] = ql.BlackScholesMertonProcess(
                     self.spot_price[date_value],
                     self.dividend[date_value],
@@ -134,7 +136,7 @@ class BlackScholesMerton:
                                               final_date=self.final_date)
 
         process = OrderedDict()
-        for ts in self.ts_option_vol:
+        for ts in self.ts_options:
             process[ts.ts_name] = OrderedDict()
             for date_value in ts.ts_values.index:
                 process[ts.ts_name][date_value] = ql.BlackScholesMertonProcess(
@@ -149,7 +151,7 @@ class BlackScholesMerton:
         return process
 
     @conditional_vectorize('date, spot_price')
-    def update_only_spot_price(self, date, spot_price, overwrite=False):
+    def update_only_spot_price(self, date, spot_price):
 
         if not self.initial_date <= date <= self.final_date:
             raise ValueError('Date not is not on interval')
@@ -160,16 +162,11 @@ class BlackScholesMerton:
         spot_price_dict = OrderedDict()
         spot_price_dict[date] = to_ql_quote_handle(spot_price)
 
-        process = OrderedDict()
-        process[date] = ql.BlackScholesMertonProcess(self.spot_price[date],
-                                                     self.dividend[date],
-                                                     self.yield_curve.yield_curve_handle(date=date),
-                                                     self.volatility[date])
-
-        if overwrite:
-            self.spot_price[date] = spot_price_dict[date]
-            self.process[date] = process[date]
-        return process
+        self.process[date] = ql.BlackScholesMertonProcess(self.spot_price[date],
+                                                          self.dividend[date],
+                                                          self.yield_curve.yield_curve_handle(date=date),
+                                                          self.volatility[date])
+        return self
 
     @conditional_vectorize('date, vol_value')
     def update_missing_vol(self, date, vol_value, ts_name):
