@@ -32,7 +32,7 @@ from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE,
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY
 
 
-def generate_instruments(ts_collection, indices=None, index_curves=None):
+def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
     """ Given a collection of :py:obj:`TimeSeries`, instantiate instruments with each one of them.
 
     If an element is not an instance of :py:class:`TimeSeries`, does nothing with it.
@@ -89,7 +89,7 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
         elif ts_type == OIS_RATE:
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
-            instrument = BaseEquityOption(ts)
+            instrument = BaseEquityOption(ts, ql_process=ql_process)
         elif ts_type == EQUITY:
             instrument = Instrument(ts)
         else:
