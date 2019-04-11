@@ -18,11 +18,8 @@ class BlackScholesMerton:
     def __init__(self, ts_options, ts_underlying, initial_date, final_date,
                  curve_tag, dvd_zero=False, dvd_tax_adjust=1):
 
-        # self.ts_option_vol = TimeSeriesCollection(to_list(ts_option_vol))
         self.ts_options = TimeSeriesCollection(to_list(ts_options))
         self.ts_underlying = ts_underlying
-        # self.ts_underlying_dvd = ts_underlying_dvd
-        # self.ts_underlying_price = ts_underlying
         self.initial_date = initial_date
         self.final_date = final_date
         self.calendar = to_ql_calendar(ts_options[0].ts_attributes[CALENDAR])
@@ -126,7 +123,7 @@ class BlackScholesMerton:
         self.process = process
         return self
 
-    def update_only_yield_curve(self, curve_tag, overwrite=False):
+    def update_only_yield_curve(self, curve_tag):
 
         if self.process is None:
             self.update_process()
@@ -145,10 +142,8 @@ class BlackScholesMerton:
                     yield_curve.yield_curve_handle(date=date_value),
                     self.volatility[ts.ts_name][date_value])
 
-        if overwrite:
-            self.yield_curve = yield_curve
-            self.process = process
-        return process
+        self.process = process
+        return self
 
     @conditional_vectorize('date, spot_price')
     def update_only_spot_price(self, date, spot_price):
