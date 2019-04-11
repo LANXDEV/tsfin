@@ -28,7 +28,7 @@ from tsfin.base.basetools import to_list, conditional_vectorize, find_le, find_g
 # The default issue_date is used if it is impossible to decide the issue date of a given TimeSeries.
 DEFAULT_ISSUE_DATE = ql.Date.minDate()
 
-# ExtRateHelpers are a namedtuples containing QuantLib RateHelpers objects and other meta-information.
+# ExtRateHelpers are a named tuples containing QuantLib RateHelpers objects and other meta-information.
 ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'tenor', 'maturity_date', 'helper'])
 
 
@@ -137,7 +137,6 @@ class YieldCurveTimeSeries:
         dates = to_list(dates)
 
         for date in dates:
-            print("Calculating for date...")
             ql_date = to_ql_date(date)
             ql.Settings.instance().evaluationDate = ql_date
 
