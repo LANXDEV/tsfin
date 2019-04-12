@@ -73,7 +73,19 @@ class BaseEquityOption(Instrument):
     def intrinsic(self, date):
 
         dt_date = to_datetime(date)
-        return
+        strike = self.strike
+        spot = self.ql_process.spot_price[dt_date].value()
+        intrinsic = 0
+
+        if self.opt_type == 'CALL':
+            intrinsic = spot - strike
+        if self.opt_type == 'PUT':
+            intrinsic = strike - spot
+
+        if intrinsic < 0:
+            return 0
+        else:
+            return intrinsic
 
     def ql_option(self, date, exercise_ovrd=None):
 
