@@ -146,21 +146,18 @@ class BlackScholesMerton:
         return self
 
     @conditional_vectorize('date, spot_price')
-    def update_only_spot_price(self, date, spot_price):
+    def update_only_spot_price(self, date, spot_price, ts_name):
 
-        if not self.initial_date <= date <= self.final_date:
-            raise ValueError('Date not is not on interval')
-
+        dt_date = to_datetime(date)
         if self.process is None:
             self.update_process()
 
-        spot_price_dict = OrderedDict()
-        spot_price_dict[date] = to_ql_quote_handle(spot_price)
+        self.spot_price[dt_date] = to_ql_quote_handle(spot_price)
 
-        self.process[date] = ql.BlackScholesMertonProcess(self.spot_price[date],
-                                                          self.dividend[date],
-                                                          self.yield_curve.yield_curve_handle(date=date),
-                                                          self.volatility[date])
+        self.process[ts_name][dt_date] = ql.BlackScholesMertonProcess(self.spot_price[dt_date],
+                                                                      self.dividend[dt_date],
+                                                                      self.yield_curve.yield_curve_handle(date=dt_date),
+                                                                      self.volatility[ts_name][dt_date])
         return self
 
     @conditional_vectorize('date, vol_value')
@@ -215,6 +212,7 @@ class BlackScholesMerton:
         self.process[ts_name][to_datetime(date)] = ql.BlackScholesMertonProcess(
             self.spot_price[to_datetime(date)],
             self.dividend[to_datetime(date)],
-            self.yield_curve.yield_curve_handle(date=date), self.volatility[ts_name][to_datetime(date)])
+            self.yield_curve.yield_curve_handle(date=date),
+            self.volatility[ts_name][to_datetime(date)])
 
         return self

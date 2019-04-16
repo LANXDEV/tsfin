@@ -69,6 +69,10 @@ class BaseEquityOption(Instrument):
 
         return (value / start_value) - 1
 
+    def notional(self):
+
+        return float(self.contract_size)*float(self.strike)
+
     @conditional_vectorize('date')
     def intrinsic(self, date):
 
@@ -152,6 +156,15 @@ class BaseEquityOption(Instrument):
     def delta(self, date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
+        option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+        return option.delta()
+
+    @conditional_vectorize('date', 'spot_price')
+    def delta_underlying(self, date, spot_price, exercise_ovrd=None):
+
+        ql.Settings.instance().evaluationDate = to_ql_date(date)
+        ql_process = self.ql_process.update_only_spot_price(date=date, spot_price=spot_price, ts_name=self.ts_name)
+        self.ql_process = ql_process
         option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
         return option.delta()
 
