@@ -67,7 +67,7 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
         ts_type = ts.get_attribute(TYPE)
 
         if ts_type == BOND:
-            bond_type = ts.get_attribute(BOND_TYPE).upper()
+            bond_type = str(ts.get_attribute(BOND_TYPE)).upper()
             if bond_type == FLOATINGRATE:
                 # Floating rate bonds need some special treatment.
                 index_tag = ts.get_attribute(INDEX)

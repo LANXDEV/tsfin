@@ -45,14 +45,14 @@ class BaseEquityOption(Instrument):
         return self.option_maturity
 
     @conditional_vectorize('date', 'quote')
-    def value(self, date, quote=None, *args, **kwargs):
+    def value(self, date, quote=None, exercise_ovrd=None, *args, **kwargs):
 
         dt_date = to_datetime(date)
         size = float(self.contract_size)
         if quote is not None:
             return float(quote)*size
         else:
-            return self.price(date=dt_date)*size
+            return self.price(date=dt_date, exercise_ovrd=exercise_ovrd)*size
 
     @conditional_vectorize('date', 'quote')
     def performance(self, date=None, quote=None, start_date=None, start_quote=None, *args, **kwargs):
@@ -64,8 +64,8 @@ class BaseEquityOption(Instrument):
             start_date = first_available_date
         if date < start_date:
             return np.nan
-        start_value = self.value(date=start_date, quote=quote)
-        value = self.value(date=date, quote=quote)
+        start_value = self.value(date=start_date, quote=quote, *args, **kwargs)
+        value = self.value(date=date, quote=quote, *args, **kwargs)
 
         return (value / start_value) - 1
 
@@ -172,6 +172,16 @@ class BaseEquityOption(Instrument):
         else:
             return option.vega()
 
+    @conditional_vectorize('date')
+    def rho(self, date, exercise_ovrd=None):
+
+        ql.Settings.instance().evaluationDate = to_ql_date(date)
+        option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+        if isinstance(self.exercise, ql.AmericanExercise):
+            return None
+        else:
+            return option.rho()
+
     @conditional_vectorize('date', 'target')
     def implied_vol(self, date, target, exercise_ovrd=None):
 
@@ -187,3 +197,10 @@ class BaseEquityOption(Instrument):
         implied_vol = self.option.impliedVolatility(targetValue=target, process=bsm_process[self.ts_name][dt_date])
 
         return implied_vol*100
+
+    @conditional_vectorize('date')
+    def optionality(self, date, exercise_ovrd=None):
+
+        price = self.price(date=date, exercise_ovrd=exercise_ovrd)
+        intrinsic = self.intrinsic(date=date)
+        return price - intrinsic
