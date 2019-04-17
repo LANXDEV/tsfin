@@ -24,6 +24,8 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
     ----------
     ts_collection: :py:obj:`TimeSeriesCollection`
         Collection of time series.
+    ql_process: :py:obj: 'BlackScholesMerton'
+        Class which creates the QuantLib process needed to calculate the Option.
     indices: dict, optional
         Dictionary with ``{index_name: index_time_series}``, where `index_name` is the name of the 'index' (e.g.:
         libor3m, CDI), in the INDEX attribute of a time series. `index_time_series` is a :py:obj:`TimeSeries`

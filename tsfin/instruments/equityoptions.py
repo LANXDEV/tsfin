@@ -117,15 +117,17 @@ class BaseEquityOption(Instrument):
         mid_price = mid_price
         ivol_last = 20
         self.ql_process = self.ql_process.update_missing_vol(date=dt_date, vol_value=ivol_last,
-                                                             ts_name=self.ts_name)
+                                                             ts_name=self.ts_name,
+                                                             maturity=self.ts_attributes[MATURITY_DATE])
         bsm_process = self.ql_process.process
         bsm_process_at_date = bsm_process[self.ts_name][dt_date]
-        self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 800))
+        self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
         implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=bsm_process_at_date)
-        bsm_process = self.ql_process.update_only_vol(date=dt_date, vol_value=implied_vol * 100,
-                                                      ts_name=self.ts_name).process
+        self.ql_process = self.ql_process.update_missing_vol(date=dt_date, vol_value=implied_vol * 100,
+                                                             ts_name=self.ts_name,
+                                                             maturity=self.ts_attributes[MATURITY_DATE])
 
-        return bsm_process
+        return self.ql_process
 
     @conditional_vectorize('date')
     def option_engine(self, date, exercise_ovrd=None):
@@ -135,13 +137,14 @@ class BaseEquityOption(Instrument):
         bsm_process = self.ql_process.process
         try:
             bsm_process_at_date = bsm_process[self.ts_name][dt_date]
-            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 800))
+            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
 
         except KeyError:
             mid_price = self.px_mid.ts_values.loc[dt_date]
-            bsm_process = self.implied_vol_process(date=dt_date, mid_price=mid_price, exercise_ovrd=exercise_ovrd)
+            self.ql_process = self.implied_vol_process(date=dt_date, mid_price=mid_price, exercise_ovrd=exercise_ovrd)
+            bsm_process = self.ql_process.process
             bsm_process_at_date = bsm_process[self.ts_name][dt_date]
-            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 800))
+            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
 
         return self.option
 
@@ -151,6 +154,16 @@ class BaseEquityOption(Instrument):
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
         return option.NPV()
+
+    @conditional_vectorize('date')
+    def price_future(self, date, start_date, exercise_ovrd=None):
+
+        ql.Settings.instance().evaluationDate = to_ql_date(date)
+        option = self.option_engine(date=start_date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) == self.option_maturity:
+            return self.intrinsic(date=start_date)
+        else:
+            return option.NPV()
 
     @conditional_vectorize('date')
     def delta(self, date, exercise_ovrd=None):
@@ -163,10 +176,26 @@ class BaseEquityOption(Instrument):
     def delta_underlying(self, date, spot_price, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        ql_process = self.ql_process.update_only_spot_price(date=date, spot_price=spot_price, ts_name=self.ts_name)
-        self.ql_process = ql_process
         option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+
+        bsm_process_at_date = self.ql_process.update_only_spot_price(date=date,
+                                                                     spot_price=spot_price,
+                                                                     ts_name=self.ts_name)
+        self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
         return option.delta()
+
+    @conditional_vectorize('date')
+    def delta_future(self, date, start_date, exercise_ovrd=None):
+
+        ql.Settings.instance().evaluationDate = to_ql_date(date)
+        option = self.option_engine(date=start_date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) == self.option_maturity:
+            if self.intrinsic(date=start_date) > 0:
+                return 1
+            else:
+                return 0
+        else:
+            return option.delta()
 
     @conditional_vectorize('date')
     def gamma(self, date, exercise_ovrd=None):
@@ -203,11 +232,11 @@ class BaseEquityOption(Instrument):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_date = to_datetime(date)
-        self.ql_process = self.ql_process.update_missing_vol(date=dt_date,
-                                                             vol_value=20,
-                                                             ts_name=self.ts_name)
-        bsm_process = self.ql_process.process
-        implied_vol = self.option.impliedVolatility(targetValue=target, process=bsm_process[self.ts_name][dt_date])
+        bsm_process = self.ql_process.update_missing_vol(date=dt_date,
+                                                         vol_value=20,
+                                                         ts_name=self.ts_name).process
+        bsm_process_at_date = bsm_process[self.ts_name][dt_date]
+        implied_vol = self.option.impliedVolatility(targetValue=target, process=bsm_process_at_date)
 
         return implied_vol*100
 
