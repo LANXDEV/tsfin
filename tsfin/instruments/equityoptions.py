@@ -17,6 +17,16 @@ def option_exercise_type(exercise_type, date, maturity):
         raise ValueError('Exercise type not supported')
 
 
+def ql_option_type(*args):
+
+    return ql.VanillaOption(*args)
+
+
+def ql_option_payoff(*args):
+
+    return ql.PlainVanillaPayoff(*args)
+
+
 class BaseEquityOption(Instrument):
 
     def __init__(self, timeseries, ql_process):
@@ -25,7 +35,7 @@ class BaseEquityOption(Instrument):
         self.strike = self.ts_attributes[STRIKE_PRICE]
         self.contract_size = self.ts_attributes[OPTION_CONTRACT_SIZE]
         self.option_maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
-        self.payoff = ql.PlainVanillaPayoff(to_ql_option_type(self.opt_type), self.strike)
+        self.payoff = ql_option_payoff(to_ql_option_type(self.opt_type), self.strike)
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.exercise_type = self.ts_attributes[EXERCISE_TYPE]
@@ -45,14 +55,14 @@ class BaseEquityOption(Instrument):
         return self.option_maturity
 
     @conditional_vectorize('date', 'quote')
-    def value(self, date, quote=None, exercise_ovrd=None, *args, **kwargs):
+    def value(self, date, end_date, quote=None,  exercise_ovrd=None, *args, **kwargs):
 
         dt_date = to_datetime(date)
         size = float(self.contract_size)
         if quote is not None:
             return float(quote)*size
         else:
-            return self.price(date=dt_date, exercise_ovrd=exercise_ovrd)*size
+            return self.price(date=dt_date, end_date=end_date, exercise_ovrd=exercise_ovrd)*size
 
     @conditional_vectorize('date', 'quote')
     def performance(self, date=None, quote=None, start_date=None, start_quote=None, *args, **kwargs):
@@ -97,15 +107,9 @@ class BaseEquityOption(Instrument):
         if exercise_ovrd is not None:
             self.exercise_type = exercise_ovrd.upper()
 
-        if self.exercise_type.upper() == 'AMERICAN':
-            exercise = ql.AmericanExercise(to_ql_date(dt_date), self.option_maturity)
+        exercise = option_exercise_type(self.exercise_type, date=dt_date, maturity=self.option_maturity)
 
-        elif self.exercise_type.upper() == 'EUROPEAN':
-            exercise = ql.EuropeanExercise(self.option_maturity)
-        else:
-            raise ValueError('Type not supported')
-
-        return ql.VanillaOption(self.payoff, exercise)
+        return ql_option_type(self.payoff, exercise)
 
     @conditional_vectorize('date', 'mid_price')
     def implied_vol_process(self, date, mid_price, exercise_ovrd=None):
@@ -117,15 +121,17 @@ class BaseEquityOption(Instrument):
         mid_price = mid_price
         ivol_last = 20
         self.ql_process = self.ql_process.update_missing_vol(date=dt_date, vol_value=ivol_last,
-                                                             ts_name=self.ts_name)
+                                                             ts_name=self.ts_name,
+                                                             maturity=self.ts_attributes[MATURITY_DATE])
         bsm_process = self.ql_process.process
         bsm_process_at_date = bsm_process[self.ts_name][dt_date]
-        self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 800))
+        self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
         implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=bsm_process_at_date)
-        bsm_process = self.ql_process.update_only_vol(date=dt_date, vol_value=implied_vol * 100,
-                                                      ts_name=self.ts_name).process
+        self.ql_process = self.ql_process.update_missing_vol(date=dt_date, vol_value=implied_vol * 100,
+                                                             ts_name=self.ts_name,
+                                                             maturity=self.ts_attributes[MATURITY_DATE])
 
-        return bsm_process
+        return self.ql_process
 
     @conditional_vectorize('date')
     def option_engine(self, date, exercise_ovrd=None):
@@ -135,61 +141,89 @@ class BaseEquityOption(Instrument):
         bsm_process = self.ql_process.process
         try:
             bsm_process_at_date = bsm_process[self.ts_name][dt_date]
-            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 800))
+            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
 
         except KeyError:
             mid_price = self.px_mid.ts_values.loc[dt_date]
-            bsm_process = self.implied_vol_process(date=dt_date, mid_price=mid_price, exercise_ovrd=exercise_ovrd)
+            self.ql_process = self.implied_vol_process(date=dt_date, mid_price=mid_price, exercise_ovrd=exercise_ovrd)
+            bsm_process = self.ql_process.process
             bsm_process_at_date = bsm_process[self.ts_name][dt_date]
-            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 800))
+            self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
 
         return self.option
 
     @conditional_vectorize('date')
-    def price(self, date, exercise_ovrd=None):
+    def price(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-        return option.NPV()
+        if to_datetime(date) > to_datetime(end_date):
+            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        else:
+            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) == self.option_maturity:
+            return self.intrinsic(date=end_date)
+        else:
+            return option.NPV()
 
     @conditional_vectorize('date')
-    def delta(self, date, exercise_ovrd=None):
+    def delta(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-        return option.delta()
+        if to_datetime(date) > to_datetime(end_date):
+            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        else:
+            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) == self.option_maturity:
+            if self.intrinsic(date=end_date) > 0:
+                return 1
+            else:
+                return 0
+        else:
+            return option.delta()
 
     @conditional_vectorize('date', 'spot_price')
     def delta_underlying(self, date, spot_price, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        ql_process = self.ql_process.update_only_spot_price(date=date, spot_price=spot_price, ts_name=self.ts_name)
-        self.ql_process = ql_process
         option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+
+        bsm_process_at_date = self.ql_process.update_only_spot_price(date=date,
+                                                                     spot_price=spot_price,
+                                                                     ts_name=self.ts_name)
+        self.option.setPricingEngine(ql.BinomialVanillaEngine(bsm_process_at_date, "LR", 801))
         return option.delta()
 
     @conditional_vectorize('date')
-    def gamma(self, date, exercise_ovrd=None):
+    def gamma(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+        if to_datetime(date) > to_datetime(end_date):
+            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        else:
+            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
         return option.gamma()
 
     @conditional_vectorize('date')
-    def vega(self, date, exercise_ovrd=None):
+    def vega(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+        if to_datetime(date) > to_datetime(end_date):
+            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        else:
+            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
         if isinstance(self.exercise, ql.AmericanExercise):
             return None
         else:
             return option.vega()
 
     @conditional_vectorize('date')
-    def rho(self, date, exercise_ovrd=None):
+    def rho(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+        if to_datetime(date) > to_datetime(end_date):
+            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        else:
+            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
         if isinstance(self.exercise, ql.AmericanExercise):
             return None
         else:
@@ -203,17 +237,20 @@ class BaseEquityOption(Instrument):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_date = to_datetime(date)
-        self.ql_process = self.ql_process.update_missing_vol(date=dt_date,
-                                                             vol_value=20,
-                                                             ts_name=self.ts_name)
-        bsm_process = self.ql_process.process
-        implied_vol = self.option.impliedVolatility(targetValue=target, process=bsm_process[self.ts_name][dt_date])
+        bsm_process = self.ql_process.update_missing_vol(date=dt_date,
+                                                         vol_value=20,
+                                                         ts_name=self.ts_name).process
+        bsm_process_at_date = bsm_process[self.ts_name][dt_date]
+        implied_vol = self.option.impliedVolatility(targetValue=target, process=bsm_process_at_date)
 
         return implied_vol*100
 
     @conditional_vectorize('date')
-    def optionality(self, date, exercise_ovrd=None):
+    def optionality(self, date, end_date, exercise_ovrd=None):
 
-        price = self.price(date=date, exercise_ovrd=exercise_ovrd)
-        intrinsic = self.intrinsic(date=date)
+        price = self.price(date=date, end_date=end_date, exercise_ovrd=exercise_ovrd)
+        if to_datetime(date) > to_datetime(end_date):
+            intrinsic = self.intrinsic(date=end_date)
+        else:
+            intrinsic = self.intrinsic(date=date)
         return price - intrinsic

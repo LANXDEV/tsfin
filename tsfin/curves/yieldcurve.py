@@ -144,7 +144,8 @@ class YieldCurveTimeSeries:
 
             # Instantiate the curve
             helpers = [ndhelper.helper for ndhelper in helpers_dict.values()]
-            yield_curve = ql.PiecewiseLinearZero(ql_date, helpers, self.day_counter)  # Just bootstraping the nodes
+            # Just bootstraping the nodes
+            yield_curve = ql.PiecewiseLinearZero(ql_date, helpers, self.day_counter)
 
             # Get dates and discounts
             node_dates = yield_curve.dates()
@@ -262,6 +263,22 @@ class YieldCurveTimeSeries:
             A relinkable handle to the yield term structure object.
         """
         return ql.RelinkableYieldTermStructureHandle(self.yield_curve(date))
+
+    @conditional_vectorize('future_date')
+    def implied_term_structure_handle(self, date, future_date):
+        """ A relinkable handle for a yield curve at a given date.
+
+        Parameters
+        ----------
+        date: Date of the yield curve.
+        future_date: Date of the Implied Yield Curve
+        Returns
+        -------
+        QuantLib.RelinkableYieldTermStructureHandle
+            A relinkable handle to the yield term structure object.
+        """
+        future_date = to_ql_date(future_date)
+        return ql.ImpliedTermStructure(self.yield_curve_handle(date), future_date)
 
     @conditional_vectorize('date', 'to_date')
     def discount_to_date(self, date, to_date):
