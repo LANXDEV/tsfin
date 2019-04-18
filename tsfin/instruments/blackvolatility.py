@@ -56,38 +56,28 @@ class BlackScholesMerton:
         if self.dvd_zero:
             for ts_date, ts_value in dvd_series.ts_values.iteritems():
                 dividend_handle[to_datetime(ts_date)] = ql.YieldTermStructureHandle(
-                    ql.FlatForward(0, self.calendar, to_ql_quote_handle(0), self.day_counter))
+                    ql.FlatForward(0, self.calendar, to_ql_quote_handle(0), self.day_counter, ql.Continuous))
         else:
             for ts_date, ts_value in dvd_series.ts_values.iteritems():
                 dividend_handle[to_datetime(ts_date)] = ql.YieldTermStructureHandle(
                     ql.FlatForward(0, self.calendar,  to_ql_quote_handle(ts_value / 100),
-                                   self.day_counter))
+                                   self.day_counter, ql.Continuous))
 
         return dividend_handle
 
-    def yield_curve_values(self, initial_date, final_date, curve_tag):
-
-        yield_curve = generate_yield_curve(curve_tag=curve_tag,
-                                           initial_date=initial_date,
-                                           final_date=final_date)
-
-        return yield_curve
-
     def yield_curve_flat(self, maturity, initial_date, final_date, curve_tag):
 
-        yield_curve = generate_yield_curve(curve_tag=curve_tag,
-                                           initial_date=initial_date,
-                                           final_date=final_date)
-        underlying_ts = filtered_series(self.ts_underlying.price,
-                                        initial_date=initial_date,
-                                        final_date=final_date)
+        yield_curve = generate_yield_curve(curve_tag=curve_tag, initial_date=initial_date, final_date=final_date)
+
+        underlying_ts = filtered_series(self.ts_underlying.price, initial_date=initial_date, final_date=final_date)
+
         maturity = to_ql_date(to_datetime(maturity))
         yield_handle = OrderedDict()
         for ts_date, ts_value in underlying_ts.ts_values.iteritems():
             zero_rate = yield_curve.zero_rate_to_date(date=ts_date, to_date=maturity, compounding=ql.Continuous,
                                                       frequency=ql.Annual)
             yield_handle[to_datetime(ts_date)] = ql.YieldTermStructureHandle(ql.FlatForward(
-                0, self.calendar, to_ql_quote_handle(zero_rate), self.day_counter))
+                0, self.calendar, to_ql_quote_handle(zero_rate), self.day_counter, ql.Continuous))
 
         return yield_handle
 
@@ -116,7 +106,7 @@ class BlackScholesMerton:
             vol_collection[ts.ts_name] = self.volatility_from_ts_values(ts_vol=ts.ivol_mid,
                                                                         initial_date=self.initial_date,
                                                                         final_date=self.final_date)
-            yield_collection[ts.ts_name] = self.yield_curve_flat(maturity=(ts.ts_attributes[MATURITY_DATE]),
+            yield_collection[ts.ts_name] = self.yield_curve_flat(maturity=ts.ts_attributes[MATURITY_DATE],
                                                                  initial_date=self.initial_date,
                                                                  final_date=self.final_date,
                                                                  curve_tag=self.curve_tag)
@@ -126,10 +116,6 @@ class BlackScholesMerton:
 
         self.dividend = self.dividend_yield_from_ts_values(initial_date=self.initial_date,
                                                            final_date=self.final_date)
-
-        # self.yield_curve = self.yield_curve_values(curve_tag=self.curve_tag,
-        #                                            initial_date=self.initial_date,
-        #                                            final_date=self.final_date)
 
         self.spot_price = self.underlying_quote_handler(initial_date=self.initial_date,
                                                         final_date=self.final_date)
@@ -142,48 +128,10 @@ class BlackScholesMerton:
                     self.spot_price[date_value],
                     self.dividend[date_value],
                     self.yield_curve[ts.ts_name][date_value],
-                    # self.yield_curve.yield_curve_relinkable_handle(date=date_value),
                     self.volatility[ts.ts_name][date_value])
 
         self.process = process
         return self
-
-    def update_only_yield_curve(self, curve_tag):
-
-        if self.process is None:
-            self.update_process()
-
-        yield_curve = self.yield_curve_values(curve_tag=curve_tag,
-                                              initial_date=self.initial_date,
-                                              final_date=self.final_date)
-
-        process = OrderedDict()
-        for ts in self.ts_options:
-            process[ts.ts_name] = OrderedDict()
-            for date_value in ts.ts_values.index:
-                process[ts.ts_name][date_value] = ql.BlackScholesMertonProcess(
-                    self.spot_price[date_value],
-                    self.dividend[date_value],
-                    yield_curve.yield_curve_handle(date=date_value),
-                    self.volatility[ts.ts_name][date_value])
-
-        self.process = process
-        return self
-
-    @conditional_vectorize('date, spot_price')
-    def update_only_spot_price(self, date, spot_price, ts_name):
-
-        dt_date = to_datetime(date)
-        if self.process is None:
-            self.update_process()
-
-        ql_spot_price = to_ql_quote_handle(spot_price)
-
-        process = ql.BlackScholesMertonProcess(ql_spot_price,
-                                               self.dividend[dt_date],
-                                               self.yield_curve[ts_name][dt_date],
-                                               self.volatility[ts_name][dt_date])
-        return process
 
     @conditional_vectorize('date, vol_value')
     def update_missing_vol(self, date, vol_value, ts_name, maturity):
@@ -233,6 +181,43 @@ class BlackScholesMerton:
             self.volatility[ts_name][dt_date])
 
         return self
+
+    def update_only_yield_curve(self, curve_tag, ts_name, maturity):
+
+        if self.process is None:
+            self.update_process()
+
+        yield_curve = self.yield_curve_flat(maturity=maturity,
+                                            initial_date=self.initial_date,
+                                            final_date=self.final_date,
+                                            curve_tag=curve_tag)
+
+        process = OrderedDict()
+        for ts in self.ts_options:
+            process[ts_name] = OrderedDict()
+            for date_value in ts.ts_values.index:
+                process[ts_name][date_value] = ql.BlackScholesMertonProcess(
+                    self.spot_price[date_value],
+                    self.dividend[date_value],
+                    yield_curve,
+                    self.volatility[ts_name][date_value])
+
+        return process
+
+    @conditional_vectorize('date, spot_price')
+    def update_only_spot_price(self, date, spot_price, ts_name):
+
+        dt_date = to_datetime(date)
+        if self.process is None:
+            self.update_process()
+
+        ql_spot_price = to_ql_quote_handle(spot_price)
+
+        process = ql.BlackScholesMertonProcess(ql_spot_price,
+                                               self.dividend[dt_date],
+                                               self.yield_curve[ts_name][dt_date],
+                                               self.volatility[ts_name][dt_date])
+        return process
 
     @conditional_vectorize('date, vol_value')
     def update_only_vol(self, date, vol_value, ts_name):

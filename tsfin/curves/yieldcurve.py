@@ -128,7 +128,8 @@ class YieldCurveTimeSeries:
 
             # Instantiate the curve
             helpers = [ndhelper.helper for ndhelper in helpers_dict.values()]
-            yield_curve = ql.PiecewiseLinearZero(0, self.calendar, helpers, self.day_counter)  # Just bootstraping the nodes
+            # Just bootstraping the nodes
+            yield_curve = ql.PiecewiseLinearZero(ql_date, helpers, self.day_counter)
 
             # Get dates and discounts
             node_dates = yield_curve.dates()
