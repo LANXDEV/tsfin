@@ -1,9 +1,8 @@
 import QuantLib as ql
 from collections import OrderedDict
 from tsfin.base import to_ql_date, to_ql_calendar, to_ql_day_counter, filter_series, to_datetime, \
-    conditional_vectorize, to_ql_quote_handle, to_upper_list, to_list
-from tsio import TimeSeries, TimeSeriesCollection
-from tsfin.tools import ts_values_to_dict
+    conditional_vectorize, to_ql_quote_handle, to_list
+from tsio import TimeSeriesCollection
 from ads.tools.fixedincome import generate_yield_curve
 from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER
 
@@ -27,7 +26,10 @@ class BlackScholesMerton:
         self.curve_tag = curve_tag
         self.dvd_zero = dvd_zero
         self.dvd_tax_adjust = dvd_tax_adjust
-        self.yield_curve = None
+        self.yield_curve = generate_yield_curve(curve_tag=self.curve_tag,
+                                                initial_date=self.initial_date,
+                                                final_date=self.final_date)
+        self.risk_free = None
         self.volatility = None
         self.dividend = None
         self.spot_price = None
@@ -65,9 +67,9 @@ class BlackScholesMerton:
 
         return dividend_handle
 
-    def yield_curve_flat(self, maturity, initial_date, final_date, curve_tag):
+    def yield_curve_flat(self, maturity, initial_date, final_date):
 
-        yield_curve = generate_yield_curve(curve_tag=curve_tag, initial_date=initial_date, final_date=final_date)
+        yield_curve = self.yield_curve
 
         underlying_ts = filtered_series(self.ts_underlying.price, initial_date=initial_date, final_date=final_date)
 
@@ -100,19 +102,15 @@ class BlackScholesMerton:
         if final_date is not None:
             self.final_date = to_datetime(final_date)
 
-        vol_collection = OrderedDict()
-        yield_collection = OrderedDict()
+        self.volatility = OrderedDict()
+        self.risk_free = OrderedDict()
         for ts in self.ts_options:
-            vol_collection[ts.ts_name] = self.volatility_from_ts_values(ts_vol=ts.ivol_mid,
-                                                                        initial_date=self.initial_date,
-                                                                        final_date=self.final_date)
-            yield_collection[ts.ts_name] = self.yield_curve_flat(maturity=ts.ts_attributes[MATURITY_DATE],
-                                                                 initial_date=self.initial_date,
-                                                                 final_date=self.final_date,
-                                                                 curve_tag=self.curve_tag)
-
-        self.volatility = vol_collection
-        self.yield_curve = yield_collection
+            self.volatility[ts.ts_name] = self.volatility_from_ts_values(ts_vol=ts.ivol_mid,
+                                                                         initial_date=self.initial_date,
+                                                                         final_date=self.final_date)
+            self.risk_free[ts.ts_name] = self.yield_curve_flat(maturity=ts.ts_attributes[MATURITY_DATE],
+                                                               initial_date=self.initial_date,
+                                                               final_date=self.final_date)
 
         self.dividend = self.dividend_yield_from_ts_values(initial_date=self.initial_date,
                                                            final_date=self.final_date)
@@ -127,7 +125,7 @@ class BlackScholesMerton:
                 process[ts.ts_name][date_value] = ql.BlackScholesMertonProcess(
                     self.spot_price[date_value],
                     self.dividend[date_value],
-                    self.yield_curve[ts.ts_name][date_value],
+                    self.risk_free[ts.ts_name][date_value],
                     self.volatility[ts.ts_name][date_value])
 
         self.process = process
@@ -157,14 +155,13 @@ class BlackScholesMerton:
             dividend = self.dividend[dt_date]
 
         try:
-            yield_curve = self.yield_curve[ts_name][dt_date]
+            risk_free = self.risk_free[ts_name][dt_date]
 
         except KeyError:
-            self.yield_curve[ts_name][dt_date] = self.yield_curve_flat(maturity=maturity,
-                                                                       initial_date=self.initial_date,
-                                                                       final_date=self.final_date,
-                                                                       curve_tag=self.curve_tag)
-            yield_curve = self.yield_curve[ts_name][dt_date]
+            self.risk_free[ts_name][dt_date] = self.yield_curve_flat(maturity=maturity,
+                                                                     initial_date=self.initial_date,
+                                                                     final_date=self.final_date)
+            risk_free = self.risk_free[ts_name][dt_date]
 
         try:
             spot_price = self.spot_price[dt_date]
@@ -177,20 +174,19 @@ class BlackScholesMerton:
         self.process[ts_name][dt_date] = ql.BlackScholesMertonProcess(
             spot_price,
             dividend,
-            yield_curve,
+            risk_free,
             self.volatility[ts_name][dt_date])
 
         return self
 
-    def update_only_yield_curve(self, curve_tag, ts_name, maturity):
+    def update_only_yield_curve(self, ts_name, maturity):
 
         if self.process is None:
             self.update_process()
 
-        yield_curve = self.yield_curve_flat(maturity=maturity,
-                                            initial_date=self.initial_date,
-                                            final_date=self.final_date,
-                                            curve_tag=curve_tag)
+        risk_free = self.yield_curve_flat(maturity=maturity,
+                                          initial_date=self.initial_date,
+                                          final_date=self.final_date)
 
         process = OrderedDict()
         for ts in self.ts_options:
@@ -199,7 +195,7 @@ class BlackScholesMerton:
                 process[ts_name][date_value] = ql.BlackScholesMertonProcess(
                     self.spot_price[date_value],
                     self.dividend[date_value],
-                    yield_curve,
+                    risk_free,
                     self.volatility[ts_name][date_value])
 
         return process
@@ -215,7 +211,7 @@ class BlackScholesMerton:
 
         process = ql.BlackScholesMertonProcess(ql_spot_price,
                                                self.dividend[dt_date],
-                                               self.yield_curve[ts_name][dt_date],
+                                               self.risk_free[ts_name][dt_date],
                                                self.volatility[ts_name][dt_date])
         return process
 
@@ -234,7 +230,7 @@ class BlackScholesMerton:
         process = ql.BlackScholesMertonProcess(
             self.spot_price[dt_date],
             self.dividend[dt_date],
-            self.yield_curve[ts_name][dt_date],
+            self.risk_free[ts_name][dt_date],
             volatility_term)
 
         return process
