@@ -204,6 +204,11 @@ def filter_series(df, initial_date=None, final_date=None):
         df.drop(df[(df.index < initial_date) | (df.index > final_date)].index, inplace=True)
 
 
+def filter_series_by_value(df, col, value):
+
+    return df.query(col == value)
+
+
 def to_list(arg):
     """Make the object iterable in a 'reasonable way'.
 
