@@ -76,8 +76,11 @@ class BlackScholesMerton:
         maturity = to_ql_date(to_datetime(maturity))
         yield_handle = OrderedDict()
         for ts_date, ts_value in underlying_ts.ts_values.iteritems():
-            zero_rate = yield_curve.zero_rate_to_date(date=ts_date, to_date=maturity, compounding=ql.Continuous,
-                                                      frequency=ql.Annual)
+            if to_datetime(ts_date) > to_datetime(maturity):
+                zero_rate = 0
+            else:
+                zero_rate = yield_curve.zero_rate_to_date(date=ts_date, to_date=maturity, compounding=ql.Continuous,
+                                                          frequency=ql.Annual)
             yield_handle[to_datetime(ts_date)] = ql.YieldTermStructureHandle(ql.FlatForward(
                 0, self.calendar, to_ql_quote_handle(zero_rate), self.day_counter, ql.Continuous))
 

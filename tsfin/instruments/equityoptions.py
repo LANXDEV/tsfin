@@ -163,13 +163,13 @@ class BaseEquityOption(Instrument):
     def price(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(end_date):
-            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) >= self.option_maturity:
+            return self.intrinsic(date=self.option_maturity)
         else:
-            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-        if to_ql_date(date) == self.option_maturity:
-            return self.intrinsic(date=end_date)
-        else:
+            if to_datetime(date) > to_datetime(end_date):
+                option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+            else:
+                option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
             return option.NPV()
 
     @conditional_vectorize('date', 'spot_price')
@@ -188,16 +188,16 @@ class BaseEquityOption(Instrument):
     def delta(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(end_date):
-            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
-        else:
-            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-        if to_ql_date(date) == self.option_maturity:
-            if self.intrinsic(date=end_date) > 0:
+        if to_ql_date(date) >= self.option_maturity:
+            if self.intrinsic(date=self.option_maturity) > 0:
                 return 1
             else:
                 return 0
         else:
+            if to_datetime(date) > to_datetime(end_date):
+                option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+            else:
+                option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
             return option.delta()
 
     @conditional_vectorize('date', 'spot_price')
@@ -216,37 +216,46 @@ class BaseEquityOption(Instrument):
     def gamma(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(end_date):
-            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) >= self.option_maturity:
+            return 0
         else:
-            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-        return option.gamma()
+            if to_datetime(date) > to_datetime(end_date):
+                option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+            else:
+                option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+            return option.gamma()
 
     @conditional_vectorize('date')
     def vega(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(end_date):
-            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) >= self.option_maturity:
+            return 0
         else:
-            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-        if isinstance(self.exercise, ql.AmericanExercise):
-            return None
-        else:
-            return option.vega()
+            if to_datetime(date) > to_datetime(end_date):
+                option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+            else:
+                option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+            if isinstance(self.exercise, ql.AmericanExercise):
+                return None
+            else:
+                return option.vega()
 
     @conditional_vectorize('date')
     def rho(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(end_date):
-            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+        if to_ql_date(date) >= self.option_maturity:
+            return 0
         else:
-            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-        if isinstance(self.exercise, ql.AmericanExercise):
-            return None
-        else:
-            return option.rho()
+            if to_datetime(date) > to_datetime(end_date):
+                option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+            else:
+                option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+            if isinstance(self.exercise, ql.AmericanExercise):
+                return None
+            else:
+                return option.rho()
 
     @conditional_vectorize('date', 'target')
     def implied_vol(self, date, target, exercise_ovrd=None):
@@ -267,9 +276,12 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def optionality(self, date, end_date, exercise_ovrd=None):
 
-        price = self.price(date=date, end_date=end_date, exercise_ovrd=exercise_ovrd)
-        if to_datetime(date) > to_datetime(end_date):
-            intrinsic = self.intrinsic(date=end_date)
+        if to_ql_date(date) >= self.option_maturity:
+            return 0
         else:
-            intrinsic = self.intrinsic(date=date)
-        return price - intrinsic
+            price = self.price(date=date, end_date=end_date, exercise_ovrd=exercise_ovrd)
+            if to_datetime(date) > to_datetime(end_date):
+                intrinsic = self.intrinsic(date=end_date)
+            else:
+                intrinsic = self.intrinsic(date=date)
+            return price - intrinsic
