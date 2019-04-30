@@ -104,6 +104,25 @@ def ts_values_to_dict(*args):
     return params
 
 
+def ts_to_dict(*args):
+    """ Produce a date-indexed dictionary of tuples from the values of multiple time series.
+
+    Parameters
+    ----------
+    args: time series names (each time series represents a parameter).
+
+    Returns
+    -------
+    dict
+        Dictionary of parameter tuples, indexed by dates.
+    """
+    params_df = pd.concat([ts for ts in args], axis=1)
+    params = dict()
+    for data in params_df.itertuples():
+        params[to_ql_date(data[0])] = tuple(data[i] for i in range(1, len(data)))
+    return params
+
+
 def filter_series(df, initial_date=None, final_date=None):
     """ Filter inplace a pandas.Series to keep its index between an initial and a final date.
 
