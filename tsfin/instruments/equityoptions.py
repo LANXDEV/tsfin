@@ -86,6 +86,11 @@ class BaseEquityOption(Instrument):
 
         return (value / start_value) - 1
 
+    @conditional_vectorize('date')
+    def cash_to_date(self, start_date, date, *args, **kwargs):
+
+        return 0
+
     def notional(self):
 
         return float(self.contract_size)*float(self.strike)
