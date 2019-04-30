@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import collections
 from tsio.tools import at_index
-from tsfin.base.qlconverters import to_ql_date
+from tsfin.base.qlconverters import to_ql_date, to_ql_duration
 
 trade = collections.namedtuple('trade', 'qty price')
 
@@ -256,13 +256,67 @@ class Portfolio:
         return result, result_dict
 
     def mac_duration_to_mat(self, date, security_objects=None, **kwargs):
-        pass
+        if security_objects is None:
+            security_objects = self.security_objects
+        self.carry_to(date, security_objects)
+        result_dict = dict()
+        value, value_dict = self.value(date, security_objects)
+        for security_name in self.positions[date].keys():
+            try:
+                unit_result = self.get_security(security_name, security_objects).duration_to_mat(
+                    duration_type=to_ql_duration('Macaulay'), date=date)
+                if np.isnan(unit_result):
+                    print("Security {0} is returning null mod_duration_to_mat {1}, replacing by "
+                          "zero..".format(security_name, date))
+                    unit_result = 0
+            except AttributeError:
+                unit_result = 0
+            result_dict[security_name] = unit_result
+
+        result = sum(value_dict[name] * result_dict[name] / value for name in self.positions[date])
+        return result, result_dict
 
     def mac_duration_to_worst(self, date, security_objects=None, **kwargs):
-        pass
+        if security_objects is None:
+            security_objects = self.security_objects
+        self.carry_to(date, security_objects)
+        result_dict = dict()
+        value, value_dict = self.value(date, security_objects)
+        for security_name in self.positions[date].keys():
+            try:
+                unit_result = self.get_security(security_name, security_objects).duration_to_worst(
+                    duration_type=to_ql_duration('Macaulay'), date=date)
+                if np.isnan(unit_result):
+                    print("Security {0} is returning null mod_duration_to_worst {1}, replacing by "
+                          "zero..".format(security_name, date))
+                    unit_result = 0
+            except AttributeError:
+                unit_result = 0
+            result_dict[security_name] = unit_result
+
+        result = sum(value_dict[name] * result_dict[name] / value for name in self.positions[date])
+        return result, result_dict
 
     def mac_duration_to_worst_rolling_call(self, date, security_objects=None, **kwargs):
-        pass
+        if security_objects is None:
+            security_objects = self.security_objects
+        self.carry_to(date, security_objects)
+        result_dict = dict()
+        value, value_dict = self.value(date, security_objects)
+        for security_name in self.positions[date].keys():
+            try:
+                unit_result = self.get_security(security_name, security_objects).duration_to_worst_rolling_call(
+                    duration_type=to_ql_duration('Macaulay'), date=date)
+                if np.isnan(unit_result):
+                    print("Security {0} is returning null mod_duration_to_worst_rolling_call {1}, replacing by "
+                          "zero..".format(security_name, date))
+                    unit_result = 0
+            except AttributeError:
+                unit_result = 0
+            result_dict[security_name] = unit_result
+
+        result = sum(value_dict[name] * result_dict[name] / value for name in self.positions[date])
+        return result, result_dict
 
     def mod_duration_to_mat(self, date, security_objects=None, **kwargs):
         if security_objects is None:
@@ -272,7 +326,8 @@ class Portfolio:
         value, value_dict = self.value(date, security_objects)
         for security_name in self.positions[date].keys():
             try:
-                unit_result = self.get_security(security_name, security_objects).mod_duration_to_mat(date=date)
+                unit_result = self.get_security(security_name, security_objects).duration_to_mat(
+                    duration_type=to_ql_duration('Modified'), date=date)
                 if np.isnan(unit_result):
                     print("Security {0} is returning null mod_duration_to_mat {1}, replacing by "
                           "zero..".format(security_name, date))
@@ -292,7 +347,8 @@ class Portfolio:
         value, value_dict = self.value(date, security_objects)
         for security_name in self.positions[date].keys():
             try:
-                unit_result = self.get_security(security_name, security_objects).mod_duration_to_worst(date=date)
+                unit_result = self.get_security(security_name, security_objects).duration_to_worst(
+                    duration_type=to_ql_duration('Modified'), date=date)
                 if np.isnan(unit_result):
                     print("Security {0} is returning null mod_duration_to_worst {1}, replacing by "
                           "zero..".format(security_name, date))
@@ -312,8 +368,8 @@ class Portfolio:
         value, value_dict = self.value(date, security_objects)
         for security_name in self.positions[date].keys():
             try:
-                unit_result = self.get_security(security_name, security_objects).mod_duration_to_worst_rolling_call(
-                    date=date)
+                unit_result = self.get_security(security_name, security_objects).duration_to_worst_rolling_call(
+                    duration_type=to_ql_duration('Modified'), date=date)
                 if np.isnan(unit_result):
                     print("Security {0} is returning null mod_duration_to_worst_rolling_call {1}, replacing by "
                           "zero..".format(security_name, date))

@@ -291,3 +291,11 @@ def to_ql_quote_handle(arg):
 
     return ql.QuoteHandle(ql.SimpleQuote(arg))
 
+
+def to_ql_duration(arg):
+
+    if arg.upper() == 'MODIFIED':
+        return ql.Duration.Modified
+    else:
+        return ql.Duration.Macaulay
+
