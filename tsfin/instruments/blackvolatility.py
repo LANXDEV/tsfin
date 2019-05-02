@@ -15,7 +15,7 @@ def filtered_series(timeseries, initial_date, final_date):
 class BlackScholesMerton:
 
     def __init__(self, ts_options, ts_underlying, initial_date, final_date,
-                 curve_tag, dvd_zero=False, dvd_tax_adjust=1):
+                 yield_curve, dvd_zero=False, dvd_tax_adjust=1):
 
         self.ts_options = TimeSeriesCollection(to_list(ts_options))
         self.ts_underlying = ts_underlying
@@ -23,12 +23,9 @@ class BlackScholesMerton:
         self.final_date = final_date
         self.calendar = to_ql_calendar(ts_options[0].ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(ts_options[0].ts_attributes[DAY_COUNTER])
-        self.curve_tag = curve_tag
         self.dvd_zero = dvd_zero
         self.dvd_tax_adjust = dvd_tax_adjust
-        self.yield_curve = generate_yield_curve(curve_tag=self.curve_tag,
-                                                initial_date=self.initial_date,
-                                                final_date=self.final_date)
+        self.yield_curve = yield_curve
         self.risk_free = None
         self.volatility = None
         self.dividend = None

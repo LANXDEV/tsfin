@@ -168,8 +168,12 @@ class BaseEquityOption(Instrument):
     def price(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_ql_date(date) >= self.option_maturity:
-            return self.intrinsic(date=self.option_maturity)
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(date) >= dt_maturity:
+            if dt_maturity > to_datetime(end_date):
+                return self.intrinsic(date=end_date)
+            else:
+                return self.intrinsic(date=dt_maturity)
         else:
             if to_datetime(date) > to_datetime(end_date):
                 option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
@@ -193,8 +197,11 @@ class BaseEquityOption(Instrument):
     def delta(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_ql_date(date) >= self.option_maturity:
-            if self.intrinsic(date=self.option_maturity) > 0:
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(date) >= dt_maturity:
+            if dt_maturity > to_datetime(end_date):
+                dt_maturity = end_date
+            if self.intrinsic(date=dt_maturity) > 0:
                 return 1
             else:
                 return 0
@@ -221,7 +228,8 @@ class BaseEquityOption(Instrument):
     def gamma(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_ql_date(date) >= self.option_maturity:
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(date) >= dt_maturity:
             return 0
         else:
             if to_datetime(date) > to_datetime(end_date):
@@ -234,7 +242,8 @@ class BaseEquityOption(Instrument):
     def vega(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_ql_date(date) >= self.option_maturity:
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(date) >= dt_maturity:
             return 0
         else:
             if to_datetime(date) > to_datetime(end_date):
@@ -250,7 +259,8 @@ class BaseEquityOption(Instrument):
     def rho(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_ql_date(date) >= self.option_maturity:
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(date) >= dt_maturity:
             return 0
         else:
             if to_datetime(date) > to_datetime(end_date):
@@ -281,7 +291,8 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def optionality(self, date, end_date, exercise_ovrd=None):
 
-        if to_ql_date(date) >= self.option_maturity:
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(date) >= dt_maturity:
             return 0
         else:
             price = self.price(date=date, end_date=end_date, exercise_ovrd=exercise_ovrd)
