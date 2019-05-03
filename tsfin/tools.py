@@ -277,8 +277,8 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
     # TODO: Make all the below depend on parameters of the swaption_vol_ts_collection
     index = ql.USDLibor(ql.Period(3, ql.Months), term_structure)
     fixed_leg_tenor = ql.Period(3, ql.Months)
-    fixed_leg_daycounter = ql.Actual360()
-    floating_leg_daycounter = ql.Actual360()
+    fixed_leg_day_counter = ql.Actual360()
+    floating_leg_day_counter = ql.Actual360()
     calendar = ql.UnitedStates(ql.UnitedStates.NYSE)
 
     ql.Settings.instance().evaluationDate = date
@@ -292,7 +292,7 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
         vol_handle = ql.QuoteHandle(ql.SimpleQuote(vol))
         helper = ql.SwaptionHelper(calendar.advance(date, ql.PeriodParser.parse(swaption.get_attribute('MATURITY'))),
                                    ql.PeriodParser.parse(swaption.get_attribute("TENOR")), vol_handle, index,
-                                   fixed_leg_tenor, fixed_leg_daycounter, floating_leg_daycounter, term_structure)
+                                   fixed_leg_tenor, fixed_leg_day_counter, floating_leg_day_counter, term_structure)
         helper.setPricingEngine(engine)
         swaption_helpers.append(helper)
 

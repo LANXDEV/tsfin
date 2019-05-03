@@ -47,7 +47,7 @@ class BaseEquityOption(Instrument):
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.exercise_type = self.ts_attributes[EXERCISE_TYPE]
         self.underlying_instrument = self.ts_attributes[UNDERLYING_INSTRUMENT]
-        self.ql_process = ql_process
+        self.ql_process = ql_process[self.underlying_instrument]
         self.option = None
 
     def is_expired(self, date, *args, **kwargs):
@@ -239,6 +239,20 @@ class BaseEquityOption(Instrument):
             return option.gamma()
 
     @conditional_vectorize('date')
+    def theta(self, date, end_date, exercise_ovrd=None):
+
+        ql.Settings.instance().evaluationDate = to_ql_date(date)
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(date) >= dt_maturity:
+            return 0
+        else:
+            if to_datetime(date) > to_datetime(end_date):
+                option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+            else:
+                option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+            return option.theta()
+
+    @conditional_vectorize('date')
     def vega(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
@@ -250,10 +264,11 @@ class BaseEquityOption(Instrument):
                 option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
             else:
                 option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-            if isinstance(self.exercise, ql.AmericanExercise):
+            if self.exercise_type == 'AMERICAN':
                 return None
             else:
-                return option.vega()
+                # return option.vega()
+                return 0
 
     @conditional_vectorize('date')
     def rho(self, date, end_date, exercise_ovrd=None):
@@ -267,10 +282,11 @@ class BaseEquityOption(Instrument):
                 option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
             else:
                 option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-            if isinstance(self.exercise, ql.AmericanExercise):
+            if self.exercise_type == 'AMERICAN':
                 return None
             else:
-                return option.rho()
+                # return option.vega()
+                return 0
 
     @conditional_vectorize('date', 'target')
     def implied_vol(self, date, target, exercise_ovrd=None):
