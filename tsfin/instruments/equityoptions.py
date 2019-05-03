@@ -118,7 +118,6 @@ class BaseEquityOption(Instrument):
         dt_date = to_datetime(date)
         if exercise_ovrd is not None:
             self.exercise_type = exercise_ovrd.upper()
-            print(self.exercise_type)
 
         exercise = option_exercise_type(self.exercise_type, date=dt_date, maturity=self.option_maturity)
 
