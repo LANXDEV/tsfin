@@ -63,6 +63,8 @@ def to_ql_frequency(arg):
         return ql.Bimonthly
     elif arg.upper() == "MONTHLY":
         return ql.Monthly
+    elif arg.upper() == "AT_MATURITY":
+        return ql.Once
     else:
         raise ValueError("Unable to convert {} to a QuantLib frequency".format(arg))
 
