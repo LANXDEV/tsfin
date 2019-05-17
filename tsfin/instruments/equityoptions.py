@@ -322,14 +322,19 @@ class BaseEquityOption(Instrument):
     def underlying_price(self, date, end_date, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(end_date):
-            option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
-            spot_price = self.ql_process.spot_price[to_datetime(end_date)].value()
+        dt_maturity = to_datetime(self.option_maturity)
+        if to_datetime(end_date) > dt_maturity:
+            end_date = dt_maturity
+        if to_datetime(date) >= dt_maturity:
+            return 0
         else:
-            option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
-            spot_price = self.ql_process.spot_price[to_datetime(date)].value()
-
-        return spot_price
+            if to_datetime(date) > to_datetime(end_date):
+                option = self.option_engine(date=end_date, exercise_ovrd=exercise_ovrd)
+                spot_price = self.ql_process.spot_price[to_datetime(end_date)].value()
+            else:
+                option = self.option_engine(date=date, exercise_ovrd=exercise_ovrd)
+                spot_price = self.ql_process.spot_price[to_datetime(date)].value()
+            return spot_price
 
     @conditional_vectorize('date')
     def delta_value(self, date, end_date, exercise_ovrd=None):
