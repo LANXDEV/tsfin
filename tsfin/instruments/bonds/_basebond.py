@@ -1242,6 +1242,8 @@ class _BaseBond(Instrument):
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         if self.is_expired(settlement_date):
             return np.nan
+        if self.yield_quote_compounding == ql.Simple:
+            duration_type = ql.Duration.Simple
         return ql.BondFunctions_duration(self.bond, ytm, self.day_counter, self.yield_quote_compounding,
                                          self.yield_quote_frequency, duration_type, settlement_date)
 
@@ -1289,6 +1291,8 @@ class _BaseBond(Instrument):
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         if self.is_expired(settlement_date):
             return np.nan
+        if self.yield_quote_compounding == ql.Simple:
+            duration_type = ql.Duration.Simple
         return ql.BondFunctions_duration(self.bond_components[worst_date], ytw, self.day_counter,
                                          self.yield_quote_compounding, self.yield_quote_frequency,
                                          duration_type, settlement_date)
@@ -1338,6 +1342,8 @@ class _BaseBond(Instrument):
         if self.is_expired(settlement_date):
             return np.nan
         bond = self._create_call_component(to_date=worst_date)
+        if self.yield_quote_compounding == ql.Simple:
+            duration_type = ql.Duration.Simple
         return ql.BondFunctions_duration(bond, ytw, self.day_counter, self.yield_quote_compounding,
                                          self.yield_quote_frequency, duration_type, settlement_date)
 

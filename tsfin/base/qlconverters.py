@@ -298,6 +298,8 @@ def to_ql_duration(arg):
 
     if arg.upper() == 'MODIFIED':
         return ql.Duration.Modified
+    if arg.upper() == 'SIMPLE':
+        return ql.Duration.Simple
     else:
         return ql.Duration.Macaulay
 
