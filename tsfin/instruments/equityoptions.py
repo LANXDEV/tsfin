@@ -135,8 +135,8 @@ class BaseEquityOption(Instrument):
         self.ql_process = self.ql_process.update_missing_vol(date=dt_date, vol_value=ivol_last,
                                                              ts_name=self.ts_name,
                                                              maturity=self.ts_attributes[MATURITY_DATE])
-        bsm_process = self.ql_process.process
-        bsm_process_at_date = bsm_process[self.ts_name][dt_date]
+
+        bsm_process_at_date = self.ql_process.process[self.ts_name][dt_date]
         self.option.setPricingEngine(ql_option_engine(bsm_process_at_date))
         implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=bsm_process_at_date)
         self.ql_process = self.ql_process.update_missing_vol(date=dt_date, vol_value=implied_vol * 100,
@@ -150,16 +150,14 @@ class BaseEquityOption(Instrument):
 
         dt_date = to_datetime(date)
         self.option = self.ql_option(date=dt_date, exercise_ovrd=exercise_ovrd)
-        bsm_process = self.ql_process.process
         try:
-            bsm_process_at_date = bsm_process[self.ts_name][dt_date]
+            bsm_process_at_date = self.ql_process.process[self.ts_name][dt_date]
             self.option.setPricingEngine(ql_option_engine(bsm_process_at_date))
 
         except KeyError:
             mid_price = self.px_mid.ts_values.loc[dt_date]
             self.ql_process = self.implied_vol_process(date=dt_date, mid_price=mid_price, exercise_ovrd=exercise_ovrd)
-            bsm_process = self.ql_process.process
-            bsm_process_at_date = bsm_process[self.ts_name][dt_date]
+            bsm_process_at_date = self.ql_process.process[self.ts_name][dt_date]
             self.option.setPricingEngine(ql_option_engine(bsm_process_at_date))
 
         return self.option

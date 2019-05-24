@@ -3,7 +3,6 @@ from collections import OrderedDict
 from tsfin.base import to_ql_date, to_ql_calendar, to_ql_day_counter, filter_series, to_datetime, \
     conditional_vectorize, to_ql_quote_handle, to_list
 from tsio import TimeSeriesCollection
-from ads.tools.fixedincome import generate_yield_curve
 from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER
 
 
@@ -72,7 +71,7 @@ class BlackScholesMerton:
 
         maturity = to_ql_date(to_datetime(maturity))
         yield_handle = OrderedDict()
-        for ts_date, ts_value in underlying_ts.ts_values.iteritems():
+        for ts_date in underlying_ts.ts_values.index:
             if to_datetime(ts_date) > to_datetime(maturity):
                 zero_rate = 0
             else:
@@ -148,7 +147,6 @@ class BlackScholesMerton:
 
         try:
             dividend = self.dividend[dt_date]
-
         except KeyError:
             self.dividend[dt_date] = self.dividend_yield_from_ts_values(initial_date=dt_date,
                                                                         final_date=self.final_date)
@@ -156,7 +154,6 @@ class BlackScholesMerton:
 
         try:
             risk_free = self.risk_free[ts_name][dt_date]
-
         except KeyError:
             self.risk_free[ts_name][dt_date] = self.yield_curve_flat(maturity=maturity,
                                                                      initial_date=self.initial_date,
@@ -165,7 +162,6 @@ class BlackScholesMerton:
 
         try:
             spot_price = self.spot_price[dt_date]
-
         except KeyError:
             self.spot_price[dt_date] = self.underlying_quote_handler(initial_date=dt_date,
                                                                      final_date=self.final_date)
