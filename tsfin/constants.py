@@ -88,6 +88,7 @@ EQUITY_OPTION = 'EQUITY_OPTION'
 RATE_INDEX = 'RATE_INDEX'
 FUND = 'FUND'
 EQUITY = 'EQUITY'
+CDS = 'CDS'
 
 '''
 Configuration for yield curve classes

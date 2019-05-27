@@ -29,7 +29,7 @@ from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.swaprate import SwapRate
 from tsfin.instruments.equityoptions import BaseEquityOption
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
-    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY
+    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS
 
 
 def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
@@ -82,7 +82,7 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
                 instrument_list.append(ts)
                 continue
 
-        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE, RATE_INDEX):
+        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE, RATE_INDEX, CDS):
             instrument = DepositRate(ts)
         elif ts_type == CURRENCY_FUTURE:
             instrument = CurrencyFuture(ts)
