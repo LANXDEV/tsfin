@@ -303,3 +303,10 @@ def to_ql_duration(arg):
     else:
         return ql.Duration.Macaulay
 
+
+def to_ql_float_index(index, tenor, yield_curve_handle):
+
+    if index.upper() == "USDLIBOR":
+        return ql.USDLibor(tenor, yield_curve_handle)
+    elif index.upper() == "FEDFUNDS":
+        return ql.FedFunds(tenor, yield_curve_handle)
