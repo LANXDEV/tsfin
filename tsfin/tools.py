@@ -28,6 +28,7 @@ from tsfin.instruments.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.swaprate import SwapRate
 from tsfin.instruments.equityoptions import BaseEquityOption
+from tsfin.instruments.cds import CDSRate
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS
 
@@ -72,7 +73,7 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             bond_type = str(ts.get_attribute(BOND_TYPE)).upper()
             if bond_type == FLOATINGRATE:
                 # Floating rate bonds need some special treatment.
-                index_tag = ts.get_attribute(INDEX)
+                index_tag = curve_tag_from_index(ts.get_attribute(INDEX))
                 instrument = FloatingRateBond(ts, reference_curve=index_tag)
             elif bond_type == FIXEDRATE:
                 instrument = FixedRateBond(ts)
@@ -82,7 +83,7 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
                 instrument_list.append(ts)
                 continue
 
-        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE, RATE_INDEX, CDS):
+        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE, RATE_INDEX):
             instrument = DepositRate(ts)
         elif ts_type == CURRENCY_FUTURE:
             instrument = CurrencyFuture(ts)
@@ -94,6 +95,8 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             instrument = BaseEquityOption(ts, ql_process=ql_process)
         elif ts_type == EQUITY:
             instrument = Instrument(ts)
+        elif ts_type == CDS:
+            instrument = CDSRate(ts)
         else:
             instrument = TimeSeries(ts)
 
@@ -300,3 +303,11 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
     end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
     model.calibrate(swaption_helpers, optimization_method, end_criteria)
     return model
+
+
+def curve_tag_from_index(index):
+    index = str(index)
+    if index.upper() == 'USDLIBOR':
+        return 'LIBOR.USD'
+    elif index.upper() == 'FEDFUNDS':
+        return 'ZERO.USD'

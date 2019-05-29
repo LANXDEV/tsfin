@@ -190,6 +190,12 @@ def to_ql_date_generation(arg):
         return ql.DateGeneration.Forward
     elif arg.upper() == "BACKWARD":
         return ql.DateGeneration.Backward
+    elif arg.upper() == "CDS20IMM":
+        return ql.DateGeneration.TwentiethIMM
+    elif arg.upper() == "CDS2015":
+        return ql.DateGeneration.CDS2015
+    elif arg.upper() == "CDS":
+        return ql.DateGeneration.CDS
     else:
         raise ValueError("Unable to convert {} to a QuantLib date generation specification".format(arg))
 
@@ -197,7 +203,7 @@ def to_ql_date_generation(arg):
 def to_ql_compounding(arg):
     """Converts a string with compounding convention name to the corresponding QuantLib object.
 
-    Parameters
+    # Parameters
     ----------
     arg: str
 
