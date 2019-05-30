@@ -22,7 +22,7 @@ import numpy as np
 import QuantLib as ql
 from tsfin.instruments.depositrate import DepositRate
 from tsfin.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_date_generation
-from tsfin.constants import FREQUENCY, QUOTE_TYPE, DATE_GENERATION, RECOVERY_RATE, COUPONS
+from tsfin.constants import FREQUENCY, QUOTE_TYPE, DATE_GENERATION, RECOVERY_RATE, COUPONS, BASE_SPREAD_TAG
 from tsfin.base.basetools import conditional_vectorize
 
 
@@ -43,6 +43,7 @@ class CDSRate(DepositRate):
         self.coupon_frequency = ql.Period(to_ql_frequency(self.ts_attributes[FREQUENCY]))
         self.recovery_rate = float(self.ts_attributes[RECOVERY_RATE])
         self.coupon = float(self.ts_attributes[COUPONS])
+        self.base_yield = self.ts_attributes[BASE_SPREAD_TAG]
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
@@ -59,13 +60,15 @@ class CDSRate(DepositRate):
         """
         return False
 
-    def rate_helper(self, date, last_available=True, *args, **kwargs):
+    def cds_rate_helper(self, date, base_yield_curve_handle, last_available=True, *args, **kwargs):
         """ Helper for yield curve construction.
 
         Parameters
         ----------
         date: QuantLib.Date
             Reference date.
+        base_yield_curve_handle: YieldCurveTimeSeries.yield_curve_handle
+            Yield curve used as base for discounting cash flows
         last_available: bool, optional
             Whether to use last available quotes if missing data.
 
@@ -85,17 +88,20 @@ class CDSRate(DepositRate):
             return None
         return ql.SpreadCdsHelper(ql.QuoteHandle(ql.SimpleQuote(rate)), self._tenor, 0, self.calendar, self.frequency,
                                   self.business_convention, self.date_generation, self.day_counter, self.recovery_rate,
-                                  *args)
+                                  base_yield_curve_handle)
 
     @conditional_vectorize('date')
-    def credit_default_swap(self, date, notional, hazard_curve, upfront_price=1, last_available=True, *args, **kwargs):
+    def credit_default_swap(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,
+                            last_available=True, *args, **kwargs):
 
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date
         :param notional: float
             Size of the contract
-        :param hazard_curve:
+        :param probability_handle: QuantLib.DefaultProbabilityTermStructureHandle
+            the curve used for the calculation
+        :param base_yield_curve_handle: QuantLib.YieldTermStructureHandle
             the curve used for the calculation
         :param upfront_price: float
             The par value of the upfront payment.
@@ -126,21 +132,24 @@ class CDSRate(DepositRate):
 
         cds = ql.CreditDefaultSwap(ql.Protection.Buyer, notional, upfront, rate, schedule, self.business_convention,
                                    self.day_counter)
-        probability = ql.DefaultProbabilityTermStructureHandle(hazard_curve)
-        engine = ql.MidPointCdsEngine(probability, recovery_rate, *args)
+
+        engine = ql.MidPointCdsEngine(probability_handle, recovery_rate, base_yield_curve_handle)
         cds.setPricingEngine(engine)
 
         return cds
 
     @conditional_vectorize('date')
-    def net_present_value(self, date, notional, hazard_curve, upfront_price=1, last_available=True, *args, **kwargs):
+    def net_present_value(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,
+                          last_available=True, *args, **kwargs):
 
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date
         :param notional: float
             Size of the contract
-        :param hazard_curve:
+        :param probability_handle: QuantLib.DefaultProbabilityTermStructureHandle
+            the curve used for the calculation
+        :param base_yield_curve_handle: QuantLib.YieldTermStructureHandle
             the curve used for the calculation
         :param upfront_price: float
             The par value of the upfront payment.
@@ -152,19 +161,22 @@ class CDSRate(DepositRate):
         """
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        cds = self.credit_default_swap(date, notional, hazard_curve, upfront_price, last_available, *args, **kwargs)
-
+        cds = self.credit_default_swap(date, notional, probability_handle, base_yield_curve_handle, upfront_price,
+                                       last_available, *args, **kwargs)
         return cds.NPV()
 
     @conditional_vectorize('date')
-    def cds_spread(self, date, notional, hazard_curve, upfront_price=1, last_available=True, *args, **kwargs):
+    def cds_spread(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,
+                   last_available=True, *args, **kwargs):
 
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date
         :param notional: float
             Size of the contract
-        :param hazard_curve:
+        :param probability_handle: QuantLib.DefaultProbabilityTermStructureHandle
+            the curve used for the calculation
+        :param base_yield_curve_handle: QuantLib.YieldTermStructureHandle
             the curve used for the calculation
         :param upfront_price: float
             The par value of the upfront payment.
@@ -176,19 +188,22 @@ class CDSRate(DepositRate):
         """
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        cds = self.credit_default_swap(date, notional, hazard_curve, upfront_price, last_available, *args, **kwargs)
-
+        cds = self.credit_default_swap(date, notional, probability_handle, base_yield_curve_handle, upfront_price,
+                                       last_available, *args, **kwargs)
         return cds.fairSpread()
 
     @conditional_vectorize('date')
-    def default_leg_npv(self, date, notional, hazard_curve, upfront_price=1, last_available=True, *args, **kwargs):
+    def default_leg_npv(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,
+                        last_available=True, *args, **kwargs):
 
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date
         :param notional: float
             Size of the contract
-        :param hazard_curve:
+        :param probability_handle: QuantLib.DefaultProbabilityTermStructureHandle
+            the curve used for the calculation
+        :param base_yield_curve_handle: QuantLib.YieldTermStructureHandle
             the curve used for the calculation
         :param upfront_price: float
             The par value of the upfront payment.
@@ -200,19 +215,22 @@ class CDSRate(DepositRate):
         """
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        cds = self.credit_default_swap(date, notional, hazard_curve, upfront_price, last_available, *args, **kwargs)
-
+        cds = self.credit_default_swap(date, notional, probability_handle, base_yield_curve_handle, upfront_price,
+                                       last_available, *args, **kwargs)
         return cds.defaultLegNPV()
 
     @conditional_vectorize('date')
-    def coupon_leg_npv(self, date, notional, hazard_curve, upfront_price=1, last_available=True, *args, **kwargs):
+    def coupon_leg_npv(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,
+                       last_available=True, *args, **kwargs):
 
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date
         :param notional: float
             Size of the contract
-        :param hazard_curve:
+        :param probability_handle: QuantLib.DefaultProbabilityTermStructureHandle
+            the curve used for the calculation
+        :param base_yield_curve_handle: QuantLib.YieldTermStructureHandle
             the curve used for the calculation
         :param upfront_price: float
             The par value of the upfront payment.
@@ -224,19 +242,23 @@ class CDSRate(DepositRate):
         """
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        cds = self.credit_default_swap(date, notional, hazard_curve, upfront_price, last_available, *args, **kwargs)
+        cds = self.credit_default_swap(date, notional, probability_handle, base_yield_curve_handle, upfront_price,
+                                       last_available, *args, **kwargs)
 
         return cds.couponLegNPV()
 
     @conditional_vectorize('date')
-    def upfront_npv(self, date, notional, hazard_curve, upfront_price=1, last_available=True, *args, **kwargs):
+    def upfront_npv(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,
+                    last_available=True, *args, **kwargs):
 
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date
         :param notional: float
             Size of the contract
-        :param hazard_curve:
+        :param probability_handle: QuantLib.DefaultProbabilityTermStructureHandle
+            the curve used for the calculation
+        :param base_yield_curve_handle: QuantLib.YieldTermStructureHandle
             the curve used for the calculation
         :param upfront_price: float
             The par value of the upfront payment.
@@ -248,6 +270,6 @@ class CDSRate(DepositRate):
         """
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        cds = self.credit_default_swap(date, notional, hazard_curve, upfront_price, last_available, *args, **kwargs)
-
+        cds = self.credit_default_swap(date, notional, probability_handle, base_yield_curve_handle, upfront_price,
+                                       last_available, *args, **kwargs)
         return cds.upfrontNPV()
