@@ -155,7 +155,7 @@ class BaseEquityOption(Instrument):
             self.option.setPricingEngine(ql_option_engine(bsm_process_at_date))
 
         except KeyError:
-            mid_price = self.px_mid.ts_values.loc[dt_date]
+            mid_price = self.px_mid.get_values(index=dt_date, last_available=True)
             self.ql_process = self.implied_vol_process(date=dt_date, mid_price=mid_price, exercise_ovrd=exercise_ovrd)
             bsm_process_at_date = self.ql_process.process[self.ts_name][dt_date]
             self.option.setPricingEngine(ql_option_engine(bsm_process_at_date))
