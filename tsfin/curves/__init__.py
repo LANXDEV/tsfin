@@ -1,3 +1,4 @@
 from tsfin.curves.yieldcurve import YieldCurveTimeSeries
 from tsfin.curves.hybridyieldcurve import HybridYieldCurveTimeSeries
 from tsfin.curves.currencycurve import CurrencyCurveTimeSeries
+from tsfin.curves.cdscurve import CDSCurveTimeSeries
