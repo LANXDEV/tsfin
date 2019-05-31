@@ -316,3 +316,11 @@ def to_ql_float_index(index, tenor, yield_curve_handle):
         return ql.USDLibor(tenor, yield_curve_handle)
     elif index.upper() == "FEDFUNDS":
         return ql.FedFunds(tenor, yield_curve_handle)
+
+
+def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
+                     yield_curve_handle):
+
+    return ql.IborIndex(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
+                        yield_curve_handle)
+

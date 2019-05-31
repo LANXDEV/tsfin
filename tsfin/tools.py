@@ -30,7 +30,8 @@ from tsfin.instruments.swaprate import SwapRate
 from tsfin.instruments.equityoptions import BaseEquityOption
 from tsfin.instruments.cds import CDSRate
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
-    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS
+    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS, \
+    INDEX_TIME_SERIES
 
 
 def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
@@ -73,8 +74,10 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             bond_type = str(ts.get_attribute(BOND_TYPE)).upper()
             if bond_type == FLOATINGRATE:
                 # Floating rate bonds need some special treatment.
-                index_tag = curve_tag_from_index(ts.get_attribute(INDEX))
-                instrument = FloatingRateBond(ts, reference_curve=index_tag)
+                reference_curve = index_curves[str(ts.get_attribute(INDEX)).upper()]
+                index_timeseries = indices[str(ts.get_attribute(INDEX_TIME_SERIES)).upper()]
+                instrument = FloatingRateBond(ts, reference_curve=reference_curve,
+                                              index_timeseries=index_timeseries)
             elif bond_type == FIXEDRATE:
                 instrument = FixedRateBond(ts)
             elif bond_type == CALLABLEFIXEDRATE:
