@@ -21,7 +21,7 @@ import QuantLib as ql
 from operator import itemgetter
 from datetime import timedelta
 from tsfin.base.qlconverters import to_ql_date,  to_ql_float_index, to_ql_calendar, to_ql_currency, to_ql_ibor_index
-from tsfin.base.basetools import conditional_vectorize, to_datetime
+from tsfin.base.basetools import conditional_vectorize, to_datetime, adjust_rate_from_quote_type
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_schedule_for_component
 from tsfin.constants import INDEX, INDEX_TENOR, FIXING_DAYS, QUOTE_TYPE, CALENDAR, YIELD, CLEAN_PRICE, DIRTY_PRICE
 
@@ -32,6 +32,16 @@ def rate_if_available(cash_flow):
     except:
         rate = None
     return rate if rate is not None else ''
+
+
+def clear_history_and_set_date(date, index, **kwargs):
+
+    date = to_ql_date(date)
+    if kwargs.get('bypass_set_floating_rate_index'):
+        ql.Settings.instance().evaluationDate = date
+    else:
+        ql.IndexManager.instance().clearHistory(index.name())
+        ql.Settings.instance().evaluationDate = date
 
 
 def set_floating_rate_index(f):
@@ -102,17 +112,14 @@ class FloatingRateBond(_BaseBond):
     ----
     See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
     """
-    # def __init__(self, timeseries, index_timeseries, reference_curve):
     def __init__(self, timeseries, reference_curve, index_timeseries):
         super().__init__(timeseries)
-        # self.reference_curve = reference_curve
         self.reference_curve = reference_curve
         self.index_timeseries = index_timeseries
         self.forecast_curve = ql.RelinkableYieldTermStructureHandle()
         self.index_reference_curve = ql.RelinkableYieldTermStructureHandle()
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         self.fixing_days = self.ts_attributes[FIXING_DAYS]
-        # self.index = to_ql_float_index(self.ts_attributes[INDEX], self._index_tenor, self.index_reference_curve)
         self.index = to_ql_ibor_index('{0}_{1}_Libor'.format(self.ts_name, self.currency), self._index_tenor,
                                       self.fixing_days, to_ql_currency(self.currency), self.calendar,
                                       self.business_convention, self.month_end, self.day_counter,
@@ -177,19 +184,33 @@ class FloatingRateBond(_BaseBond):
         return None
 
     @conditional_vectorize('date')
-    def add_fixings(self, date):
+    def add_fixings(self, date, **kwargs):
 
+        """
+        Create the coupon fixings before the evaluation date
+        :param date: QuantLib.Date, optional, (c-vectorized)
+            The date of the calculation.
+        :return:
+        """
+        if kwargs.get('bypass_set_floating_rate_index'):
+            return
         date = to_ql_date(date)
         for dt in self.fixing_dates:
             if dt <= self.calendar.advance(date, self.fixing_days, ql.Days):
-                rate = self.index_timeseries.get_values(index=dt)
-                quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-                quote_type = self.index_timeseries.get_attribute(QUOTE_TYPE)
-                rate /= float(quote_type_dict.get(quote_type, 100))
+                rate = adjust_rate_from_quote_type(self.index_timeseries, dates=date)
                 self.index.addFixing(dt, rate)
 
     @conditional_vectorize('date')
-    def link_to_curves(self, date):
+    def link_to_curves(self, date, **kwargs):
+
+        """
+
+        :param date: QuantLib.Date, optional, (c-vectorized)
+            The date of the calculation.
+        :return:
+        """
+        if kwargs.get('bypass_set_floating_rate_index'):
+            return
 
         date = to_ql_date(date)
         reference_curve = self.reference_curve.yield_curve(date)
@@ -217,11 +238,9 @@ class FloatingRateBond(_BaseBond):
 
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         if date >= self.maturity_date:
             return np.nan
@@ -252,11 +271,9 @@ class FloatingRateBond(_BaseBond):
 
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         start_date = to_ql_date(start_date)
         return sum(cf.amount() for cf in self.bond.cashflows() if start_date <= cf.date() <= date) / self.face_amount
@@ -288,11 +305,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         if self.quote_type == CLEAN_PRICE:
             return quote
@@ -341,11 +356,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         if self.quote_type == CLEAN_PRICE:
             date = to_ql_date(date)
@@ -392,11 +405,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         if last_available:
             quote = self.price.get_values(index=date, last_available=last_available)
@@ -433,11 +444,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         first_available_date = self.quotes().first_valid_index()
         if start_date is None:
@@ -488,11 +497,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         bond = kwargs.get('bond', self.bond)  # Useful to pass bonds other than self as arguments.
         date = to_ql_date(date)
@@ -549,11 +556,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
@@ -600,11 +605,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
@@ -653,11 +656,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         if date < list(self.bond_components.keys())[0]:
             # If date is before the first call dates, rolling calls are NOT possible.
@@ -751,15 +752,14 @@ class FloatingRateBond(_BaseBond):
         date = to_ql_date(date)
         to_date = to_ql_date(to_date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         self.bond_components = {to_date: self._create_call_component(to_date=to_date)}
         result = self.ytw(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                          frequency=frequency, settlement_days=settlement_days, **kwargs)
+                          frequency=frequency, settlement_days=settlement_days, bypass_set_floating_rate_index=True,
+                          **kwargs)
         self._restore_bond_components()
         return result
 
@@ -871,11 +871,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
@@ -920,11 +918,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         if self.is_expired(settlement_date):
@@ -967,11 +963,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(self.settlement_days, ql.Days),
                                                 self.business_convention)
@@ -1017,11 +1011,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         if self.is_expired(settlement_date):
@@ -1072,6 +1064,11 @@ class FloatingRateBond(_BaseBond):
         See Balaraman G., Ballabio L. QuantLib Python Cookbook [ch. Duration of floating-rate bonds].
         """
         date = to_ql_date(date)
+
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
+
         ytm = self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
                        frequency=frequency, settlement_days=settlement_days, bypass_set_floating_rate_index=True,
                        **kwargs)
@@ -1158,6 +1155,11 @@ class FloatingRateBond(_BaseBond):
         """
 
         date = to_ql_date(date)
+
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
+
         ytm = self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
                        frequency=frequency, settlement_days=settlement_days, bypass_set_floating_rate_index=True)
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
@@ -1242,8 +1244,7 @@ class FloatingRateBond(_BaseBond):
         See Balaraman G., Ballabio L. QuantLib Python Cookbook [ch. Duration of floating-rate bonds].
         """
         return self.duration_to_mat(duration_type=duration_type, last=last, quote=quote, day_counter=day_counter,
-                                    compounding=compounding, frequency=frequency, settlement_days=settlement_days,
-                                    bypass_set_floating_rate_index=True)
+                                    compounding=compounding, frequency=frequency, settlement_days=settlement_days)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
@@ -1406,11 +1407,9 @@ class FloatingRateBond(_BaseBond):
 
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         yield_curve = yield_curve_timeseries.yield_curve(date=date)
         ql.Settings.instance().evaluationDate = date
@@ -1423,7 +1422,8 @@ class FloatingRateBond(_BaseBond):
                                             settlement_date)
         elif self.quote_type == DIRTY_PRICE:
             # TODO: This part needs testing.
-            clean_quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
+            clean_quote = quote - self.accrued_interest(last=last, date=settlement_date,
+                                                        bypass_set_floating_rate_index=True, **kwargs)
             return ql.BondFunctions_zSpread(bond, clean_quote, yield_curve, day_counter, compounding, frequency,
                                             settlement_date)
         elif self.quote_type == YIELD:
@@ -1473,11 +1473,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         if self.is_expired(settlement_date):
@@ -1529,11 +1527,9 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        ql.IndexManager.instance().clearHistory(self.index.name())
-        ql.Settings.instance().evaluationDate = date
-
-        self.link_to_curves(date=date)
-        self.add_fixings(date=date)
+        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        self.link_to_curves(date=date, **kwargs)
+        self.add_fixings(date=date, **kwargs)
 
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         if self.is_expired(settlement_date):
@@ -1596,8 +1592,7 @@ class FloatingRateBond(_BaseBond):
         """
         return self.zspread_to_mat(yield_curve_timeseries=yield_curve_timeseries, last=last, quote=quote,
                                    date=date, day_counter=day_counter, compounding=compounding,
-                                   frequency=frequency, settlement_days=settlement_days,
-                                   bypass_set_floating_rate_index=True,  **kwargs)
+                                   frequency=frequency, settlement_days=settlement_days, **kwargs)
 
 
 
@@ -1610,29 +1605,29 @@ in the wrapper chain.
 '''
 
 # Methods to redecorate with set_floating_rate_index.
-methods_to_redecorate = ['accrued_interest',
-                         'cash_to_date',
-                         'clean_price',
-                         'dirty_price',
-                         'value',
-                         'performance',
-                         'ytm',
-                         'ytw_and_worst_date',
-                         'ytw',
-                         'ytw_and_worst_date_rolling_call',
-                         'ytw_rolling_call',
-                         'yield_to_date',
-                         'worst_date',
-                         'worst_date_rolling_call',
-                         'clean_price_from_ytm',
-                         'clean_price_from_yield_to_date',
-                         'dirty_price_from_ytm',
-                         'dirty_price_from_yield_to_date',
-                         'zspread_to_mat',
-                         'zspread_to_worst',
-                         'zspread_to_worst_rolling_call',
-                         'oas',
-                         ]
+# methods_to_redecorate = ['accrued_interest',
+#                          'cash_to_date',
+#                          'clean_price',
+#                          'dirty_price',
+#                          'value',
+#                          'performance',
+#                          'ytm',
+#                          'ytw_and_worst_date',
+#                          'ytw',
+#                          'ytw_and_worst_date_rolling_call',
+#                          'ytw_rolling_call',
+#                          'yield_to_date',
+#                          'worst_date',
+#                          'worst_date_rolling_call',
+#                          'clean_price_from_ytm',
+#                          'clean_price_from_yield_to_date',
+#                          'dirty_price_from_ytm',
+#                          'dirty_price_from_yield_to_date',
+#                          'zspread_to_mat',
+#                          'zspread_to_worst',
+#                          'zspread_to_worst_rolling_call',
+#                          'oas',
+#                          ]
 
 
 # def redecorate_with_set_floating_rate_index(cls, method):
