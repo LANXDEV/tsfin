@@ -480,7 +480,7 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('date')
-    def accrued_interest(self, last, date, **kwags):
+    def accrued_interest(self, last, date, **kwargs):
         """
         Parameters
         ----------
