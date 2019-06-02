@@ -20,18 +20,10 @@ import numpy as np
 import QuantLib as ql
 from operator import itemgetter
 from datetime import timedelta
-from tsfin.base.qlconverters import to_ql_date,  to_ql_float_index, to_ql_calendar, to_ql_currency, to_ql_ibor_index
+from tsfin.base.qlconverters import to_ql_date, to_ql_calendar, to_ql_currency, to_ql_ibor_index
 from tsfin.base.basetools import conditional_vectorize, to_datetime, adjust_rate_from_quote_type
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_schedule_for_component
-from tsfin.constants import INDEX, INDEX_TENOR, FIXING_DAYS, QUOTE_TYPE, CALENDAR, YIELD, CLEAN_PRICE, DIRTY_PRICE
-
-
-def rate_if_available(cash_flow):
-    try:
-        rate = ql.as_coupon(cash_flow).rate()
-    except:
-        rate = None
-    return rate if rate is not None else ''
+from tsfin.constants import INDEX_TENOR, FIXING_DAYS, CALENDAR, YIELD, CLEAN_PRICE, DIRTY_PRICE
 
 
 def clear_history_and_set_date(date, index, **kwargs):
@@ -44,56 +36,57 @@ def clear_history_and_set_date(date, index, **kwargs):
         ql.Settings.instance().evaluationDate = date
 
 
-def set_floating_rate_index(f):
-    """ Decorator to set values of the floating rate bond's index.
-
-    This is needed for correct cash flow projection. Does nothing if the bond has no floating coupon.
-
-    Parameters
-    ----------
-    f: method
-        A method that needs the bond to have its past index values set.
-
-    Returns
-    -------
-    function
-        `f` itself. Only the bond instance is modified with this decorator.
-
-    Note
-    ----
-    If the wrapped function is called with a True-like optional argument 'bypass_set_floating_rate_index',
-    the effects of this wrapper is bypassed. This is useful for nested calling of methods that are wrapped by function.
-    """
-    @wraps(f)
-    def new_f(self, **kwargs):
-        if kwargs.get('bypass_set_floating_rate_index'):
-            return f(self, **kwargs)
-        try:
-            date = to_ql_date(kwargs['date'][0])
-        except:
-            date = to_ql_date(kwargs['date'])
-        ql.Settings.instance().evaluationDate = date
-        index_timeseries = getattr(self, 'index_timeseries')
-        calendar = getattr(self, 'calendar')
-        index = getattr(self, 'index')
-        forecast_curve = getattr(self, 'forecast_curve')
-        reference_curve = getattr(self, 'reference_curve')
-        index_reference_curve = getattr(self, 'index_reference_curve')
-        forecast_curve.linkTo(reference_curve.yield_curve(date))
-        index_reference_curve.linkTo(reference_curve.yield_curve(date))
-        fixing_days = getattr(self, 'fixing_days')
-        for dt in getattr(self, 'fixing_dates'):
-            if dt <= calendar.advance(date, fixing_days, ql.Days):
-                rate = index_timeseries.get_values(index=dt)
-                quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-                quote_type = index_timeseries.get_attribute(QUOTE_TYPE)
-                rate /= float(quote_type_dict.get(quote_type, 100))
-                index.addFixing(dt, rate)
-        result = f(self, **kwargs)
-        ql.IndexManager.instance().clearHistory(index.name())
-        return result
-    new_f._decorated_by_floating_rate_index_ = True
-    return new_f
+# def set_floating_rate_index(f):
+#     """ Decorator to set values of the floating rate bond's index.
+#
+#     This is needed for correct cash flow projection. Does nothing if the bond has no floating coupon.
+#
+#     Parameters
+#     ----------
+#     f: method
+#         A method that needs the bond to have its past index values set.
+#
+#     Returns
+#     -------
+#     function
+#         `f` itself. Only the bond instance is modified with this decorator.
+#
+#     Note
+#     ----
+#     If the wrapped function is called with a True-like optional argument 'bypass_set_floating_rate_index',
+#     the effects of this wrapper is bypassed. This is useful for nested calling of methods that are wrapped by
+#     function.
+#     """
+#     @wraps(f)
+#     def new_f(self, **kwargs):
+#         if kwargs.get('bypass_set_floating_rate_index'):
+#             return f(self, **kwargs)
+#         try:
+#             date = to_ql_date(kwargs['date'][0])
+#         except:
+#             date = to_ql_date(kwargs['date'])
+#         ql.Settings.instance().evaluationDate = date
+#         index_timeseries = getattr(self, 'index_timeseries')
+#         calendar = getattr(self, 'calendar')
+#         index = getattr(self, 'index')
+#         forecast_curve = getattr(self, 'forecast_curve')
+#         reference_curve = getattr(self, 'reference_curve')
+#         index_reference_curve = getattr(self, 'index_reference_curve')
+#         forecast_curve.linkTo(reference_curve.yield_curve(date))
+#         index_reference_curve.linkTo(reference_curve.yield_curve(date))
+#         fixing_days = getattr(self, 'fixing_days')
+#         for dt in getattr(self, 'fixing_dates'):
+#             if dt <= calendar.advance(date, fixing_days, ql.Days):
+#                 rate = index_timeseries.get_values(index=dt)
+#                 quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
+#                 quote_type = index_timeseries.get_attribute(QUOTE_TYPE)
+#                 rate /= float(quote_type_dict.get(quote_type, 100))
+#                 index.addFixing(dt, rate)
+#         result = f(self, **kwargs)
+#         ql.IndexManager.instance().clearHistory(index.name())
+#         return result
+#     new_f._decorated_by_floating_rate_index_ = True
+#     return new_f
 
 
 class FloatingRateBond(_BaseBond):
@@ -153,6 +146,46 @@ class FloatingRateBond(_BaseBond):
         self.bond_components[self.maturity_date] = self.bond
         self._bond_components_backup = self.bond_components.copy()
 
+    @conditional_vectorize('date')
+    def add_fixings(self, date, **kwargs):
+
+        """
+        Create the coupon fixings before the evaluation date
+        :param date: QuantLib.Date, optional, (c-vectorized)
+            The date of the calculation.
+        bypass_set_floating_rate_index: bool
+             If true it avoids recalculating the index. Useful for nested calls.
+        :return:
+        """
+        if kwargs.get('bypass_set_floating_rate_index'):
+            return
+
+        date = to_ql_date(date)
+        ql.IndexManager.instance().clearHistory(self.index.name())
+        for dt in self.fixing_dates:
+            if dt <= self.calendar.advance(date, self.fixing_days, ql.Days):
+                rate = adjust_rate_from_quote_type(self.index_timeseries, dates=date)
+                self.index.addFixing(dt, rate)
+
+    @conditional_vectorize('date')
+    def link_to_curves(self, date, **kwargs):
+
+        """
+
+        :param date: QuantLib.Date, optional, (c-vectorized)
+            The date of the calculation.
+        bypass_set_floating_rate_index: bool
+             If true it avoids recalculating the index. Useful for nested calls.
+        :return:
+        """
+        if kwargs.get('bypass_set_floating_rate_index'):
+            return
+
+        date = to_ql_date(date)
+        reference_curve = self.reference_curve.yield_curve(date)
+        self.forecast_curve.linkTo(reference_curve)
+        self.index_reference_curve.linkTo(reference_curve)
+
     def rate_helper(self, date, last_available=True, yield_type='ytm', curve_type='zero', max_inactive_days=3,
                     reference_date_for_worst_date=None, **kwargs):
         """
@@ -181,41 +214,75 @@ class FloatingRateBond(_BaseBond):
             Object used to build yield curves.
         """
 
-        return None
-
-    @conditional_vectorize('date')
-    def add_fixings(self, date, **kwargs):
-
-        """
-        Create the coupon fixings before the evaluation date
-        :param date: QuantLib.Date, optional, (c-vectorized)
-            The date of the calculation.
-        :return:
-        """
-        if kwargs.get('bypass_set_floating_rate_index'):
-            return
+        if self.is_expired(date):
+            return None
+        if self.quotes.ts_values.last_valid_index() is None:
+            return None
+        if self.quotes.ts_values.last_valid_index() <= to_datetime(date) - timedelta(max_inactive_days):
+            # To avoid returning bond helper for bonds that have been called, exchanged, etc...
+            # print("Returning none..")
+            return None
+        quote = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if np.isnan(quote):
+            return None
         date = to_ql_date(date)
-        for dt in self.fixing_dates:
-            if dt <= self.calendar.advance(date, self.fixing_days, ql.Days):
-                rate = adjust_rate_from_quote_type(self.index_timeseries, dates=date)
-                self.index.addFixing(dt, rate)
+        if reference_date_for_worst_date is not None:
+            reference_date_for_worst_date = to_ql_date(reference_date_for_worst_date)
+            reference_quote_for_worst_date = self.price.get_values(index=reference_date_for_worst_date,
+                                                                   last_available=last_available,
+                                                                   fill_value=np.nan)
+        else:
+            reference_date_for_worst_date = date
+            reference_quote_for_worst_date = quote
+        if curve_type == 'zero':
+            if yield_type == 'ytw':
+                maturity = self.worst_date(date=reference_date_for_worst_date, quote=reference_quote_for_worst_date)
+                schedule = create_schedule_for_component(maturity, self.schedule, self.calendar,
+                                                         self.business_convention, self.coupon_frequency,
+                                                         self.date_generation, self.month_end)
+            elif yield_type == 'ytw_rolling_call':
+                maturity = self.worst_date_rolling_call(date=reference_date_for_worst_date,
+                                                        quote=reference_quote_for_worst_date)
+                schedule = create_schedule_for_component(maturity, self.schedule, self.calendar,
+                                                         self.business_convention, self.coupon_frequency,
+                                                         self.date_generation, self.month_end)
+            else:
+                schedule = self.schedule
+            clean_price = self.clean_price(date=date, quote=quote)
+            ql.Settings.instance().evaluationDate = date
+            return ql.FixedRateBondHelper(ql.QuoteHandle(ql.SimpleQuote(clean_price)), self.settlement_days,
+                                          self.face_amount, schedule, self.coupons, self.day_counter,
+                                          self.business_convention, self.redemption, self.issue_date)
+        elif curve_type == 'par':
+            if yield_type == 'ytw':
+                maturity = self.worst_date(date=reference_date_for_worst_date,
+                                           quote=reference_quote_for_worst_date)
+                yld = self.yield_to_date(to_date=maturity,
+                                         date=date,
+                                         quote=quote)
 
-    @conditional_vectorize('date')
-    def link_to_curves(self, date, **kwargs):
-
-        """
-
-        :param date: QuantLib.Date, optional, (c-vectorized)
-            The date of the calculation.
-        :return:
-        """
-        if kwargs.get('bypass_set_floating_rate_index'):
-            return
-
-        date = to_ql_date(date)
-        reference_curve = self.reference_curve.yield_curve(date)
-        self.forecast_curve.linkTo(reference_curve)
-        self.index_reference_curve.linkTo(reference_curve)
+            elif yield_type == 'ytw_rolling_call':
+                maturity = self.worst_date_rolling_call(date=reference_date_for_worst_date,
+                                                        quote=reference_quote_for_worst_date)
+                yld = self.yield_to_date(to_date=maturity,
+                                         date=date,
+                                         quote=quote)
+            else:
+                yld, maturity = self.ytm(date=date, quote=quote), self.maturity_date
+            # Convert rate to simple compounding because DepositRateHelper expects simple rates.
+            time = self.day_counter.yearFraction(date, maturity)
+            tenor = ql.Period(self.calendar.businessDaysBetween(date, maturity), ql.Days)
+            simple_yld = ql.InterestRate(yld,
+                                         self.day_counter,
+                                         self.yield_quote_compounding,
+                                         self.yield_quote_frequency).equivalentRate(ql.Simple,
+                                                                                    ql.Annual,
+                                                                                    time).rate()
+            ql.Settings.instance().evaluationDate = date
+            return ql.DepositRateHelper(ql.QuoteHandle(ql.SimpleQuote(simple_yld)), tenor, 0, self.calendar,
+                                        self.business_convention, False, self.day_counter)
+        else:
+            raise ValueError("Bond class rate_helper method does not support curve_type = {}".format(curve_type))
 
     @default_arguments
     @conditional_vectorize('date')
@@ -238,7 +305,7 @@ class FloatingRateBond(_BaseBond):
 
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -271,7 +338,7 @@ class FloatingRateBond(_BaseBond):
 
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -305,7 +372,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -356,7 +423,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -405,7 +472,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -444,7 +511,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -497,7 +564,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -556,7 +623,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -605,7 +672,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -656,7 +723,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -752,7 +819,7 @@ class FloatingRateBond(_BaseBond):
         date = to_ql_date(date)
         to_date = to_ql_date(to_date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -871,7 +938,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -918,7 +985,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -963,7 +1030,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -1011,7 +1078,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -1065,7 +1132,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -1156,51 +1223,20 @@ class FloatingRateBond(_BaseBond):
 
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
         ytm = self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                       frequency=frequency, settlement_days=settlement_days, bypass_set_floating_rate_index=True)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
-        if self.is_expired(settlement_date):
-            return np.nan
-        P = self.dirty_price(last=last, quote=quote, date=date, day_counter=day_counter,
-                             compounding=compounding, frequency=frequency, settlement_days=settlement_days,
-                             bypass_set_floating_rate_index=True)
-        dy = 1e-5
-        forecast_curve_timeseries = self.reference_curve
-        node_dates = forecast_curve_timeseries.yield_curve(date=date).dates()
-        node_rates = forecast_curve_timeseries.zero_rate_to_date(date=date, to_date=node_dates,
-                                                                 compounding=ql.Simple,
-                                                                 frequency=ql.Annual)
-        lower_shifted_curve = ql.LogLinearZeroCurve(list(node_dates), [r - dy for r in node_rates],
-                                                    forecast_curve_timeseries.day_counter,
-                                                    forecast_curve_timeseries.calendar,
-                                                    ql.LogLinear(),
-                                                    ql.Simple,
-                                                    )
-        upper_shifted_curve = ql.LogLinearZeroCurve(list(node_dates), [r + dy for r in node_rates],
-                                                    forecast_curve_timeseries.day_counter,
-                                                    forecast_curve_timeseries.calendar,
-                                                    ql.LogLinear(),
-                                                    ql.Simple,
-                                                    )
-        self.forecast_curve.linkTo(lower_shifted_curve)
-        P_m = ql.CashFlows.npv(self.bond.cashflows(),
-                               ql.InterestRate(ytm - dy,
-                                               self.day_counter,
-                                               self.yield_quote_compounding,
-                                               self.yield_quote_frequency),
-                               True, settlement_date, settlement_date)
-        self.forecast_curve.linkTo(upper_shifted_curve)
-        P_p = ql.CashFlows.npv(self.bond.cashflows(),
-                               ql.InterestRate(ytm + dy,
-                                               self.day_counter,
-                                               self.yield_quote_compounding,
-                                               self.yield_quote_frequency),
-                               True, settlement_date, settlement_date)
-        return (1 + ytm / self.yield_quote_frequency) * -(1/P)*(P_p - P_m)/(2*dy)
+                       frequency=frequency, settlement_days=settlement_days, bypass_set_floating_rate_index=True,
+                       **kwargs)
+
+        mac_duration = self.duration_to_mat(duration_type=duration_type, last=last, quote=quote, date=date,
+                                            day_counter=day_counter, compounding=compounding, frequency=frequency,
+                                            settlement_days=settlement_days, bypass_set_floating_rate_index=True,
+                                            **kwargs)
+
+        return (1 + ytm / self.yield_quote_frequency) * mac_duration
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
@@ -1407,7 +1443,7 @@ class FloatingRateBond(_BaseBond):
 
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -1473,7 +1509,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
@@ -1527,7 +1563,7 @@ class FloatingRateBond(_BaseBond):
         """
         date = to_ql_date(date)
 
-        clear_history_and_set_date(date=date, index=self.index, **kwargs)
+        ql.Settings.instance().evaluationDate = date
         self.link_to_curves(date=date, **kwargs)
         self.add_fixings(date=date, **kwargs)
 
