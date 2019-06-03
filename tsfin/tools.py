@@ -27,7 +27,7 @@ from tsfin.instruments.depositrate import DepositRate
 from tsfin.instruments.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.swaprate import SwapRate
-from tsfin.instruments.equityoptions import BaseEquityOption
+from tsfin.instruments.baseequityoption import BaseEquityOption
 from tsfin.instruments.cds import CDSRate
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS, \
@@ -306,11 +306,3 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
     end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
     model.calibrate(swaption_helpers, optimization_method, end_criteria)
     return model
-
-
-def curve_tag_from_index(index):
-    index = str(index)
-    if index.upper() == 'USDLIBOR':
-        return 'LIBOR.USD'
-    elif index.upper() == 'FEDFUNDS':
-        return 'ZERO.USD'
