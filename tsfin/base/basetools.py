@@ -461,3 +461,32 @@ class ExtendedArray(np.ndarray):
             return
         self.meta = getattr(obj, 'meta', None)
 
+
+def adjust_rate_from_quote_type(timeseries, dates):
+    """
+
+    :param timeseries: :py:class:`TimeSeries`
+        The timeseries from which the ts_values will be transformed.
+    :param dates: datetime.datetime
+        Date(s) to be searched.
+    :return: TimeSeries.ts_values
+    """
+    dates = to_list(to_datetime(dates))
+    rate = timeseries.get_values(index=dates)
+    quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
+    quote_type = timeseries.get_attribute('QUOTE_TYPE')
+    rate /= float(quote_type_dict.get(quote_type, 100))
+    return rate
+
+
+def rate_if_available(c):
+
+    c = ql.as_coupon(c)
+    return c.rate() if c else ''
+
+
+def floating_coupon_dates_and_rate(cash_flow):
+
+    df = pd.DataFrame([(c.dates(), rate_if_available(c), c.amount()) for c in cash_flow],
+                      columns=['Date', 'Rate', 'Amount'])
+    return df
