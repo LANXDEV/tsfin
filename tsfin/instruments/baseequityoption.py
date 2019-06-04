@@ -180,14 +180,19 @@ class BaseEquityOption(Instrument):
         return option.NPV()
 
     @conditional_vectorize('date', 'spot_price')
-    def price_underlying(self, date, spot_price, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                         exercise_ovrd=None):
+    def price_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
+                         last_available=True, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         underlying_name = "{} EQUITY".format(self.underlying_instrument)
-        option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                    dvd_tax_adjust=dvd_tax_adjust,  last_available=last_available,
-                                    exercise_ovrd=exercise_ovrd)
+        if to_datetime(date) > to_datetime(base_date):
+            option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd)
+        else:
+            option = self.option_engine(date=date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd)
 
         self.ql_process.spot_price_update(date=date, underlying_name=underlying_name, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
@@ -200,8 +205,6 @@ class BaseEquityOption(Instrument):
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
-            if dt_maturity > to_datetime(base_date):
-                dt_maturity = base_date
             if self.intrinsic(date=dt_maturity) > 0:
                 return 1
             else:
@@ -218,14 +221,19 @@ class BaseEquityOption(Instrument):
             return option.delta()
 
     @conditional_vectorize('date', 'spot_price')
-    def delta_underlying(self, date, spot_price, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                         exercise_ovrd=None):
+    def delta_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
+                         last_available=True, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         underlying_name = "{} EQUITY".format(self.underlying_instrument)
-        option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                    exercise_ovrd=exercise_ovrd)
+        if to_datetime(date) > to_datetime(base_date):
+            option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd)
+        else:
+            option = self.option_engine(date=date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd)
 
         self.ql_process.spot_price_update(date=date, underlying_name=underlying_name, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
