@@ -181,10 +181,6 @@ class DepositRate(Instrument):
         if self.is_expired(date):
             return None
         rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
-        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-        quote_type = self.get_attribute(QUOTE_TYPE)
-        rate /= float(quote_type_dict.get(quote_type, 100))
-        # print("{0} is returning a rate helper with rate {1}".format(self.ts_name, rate))
         if np.isnan(rate):
             return None
         date = to_ql_date(date)

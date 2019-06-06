@@ -80,10 +80,6 @@ class CDSRate(DepositRate):
         # Returns None if impossible to obtain a rate helper from this time series
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
 
-        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-        quote_type = self.get_attribute(QUOTE_TYPE)
-        rate /= float(quote_type_dict.get(quote_type, 100))
-
         if np.isnan(rate):
             return None
         return ql.SpreadCdsHelper(ql.QuoteHandle(ql.SimpleQuote(rate)), self._tenor, 0, self.calendar, self.frequency,
@@ -122,10 +118,6 @@ class CDSRate(DepositRate):
         upfront = 1 - upfront_price
 
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
-        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-        quote_type = self.get_attribute(QUOTE_TYPE)
-        rate /= float(quote_type_dict.get(quote_type, 100))
-
         maturity = to_ql_date(date) + self._tenor
         schedule = ql.Schedule(to_ql_date(date), maturity, self.coupon_frequency, self.calendar,
                                self.business_convention, ql.Unadjusted, self.date_generation, False)

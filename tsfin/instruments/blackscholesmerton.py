@@ -38,9 +38,9 @@ class BlackScholesMerton:
         dt_date = to_datetime(date)
         dvd_ts = self.ts_underlying.get(underlying_name).eqy_dvd_yld_12m
         if dividend_yield is None:
-            dividend_yield = dvd_ts.get_values(index=dt_date, last_available=last_available) / 100
+            dividend_yield = dvd_ts.get_values(index=dt_date, last_available=last_available)
         else:
-            dividend_yield = dividend_yield / 100
+            dividend_yield = dividend_yield
 
         dividend_yield = dividend_yield * dvd_tax_adjust
         dividend = ql.FlatForward(0, calendar, to_ql_quote_handle(dividend_yield), day_counter, compounding)
@@ -74,7 +74,7 @@ class BlackScholesMerton:
                 volatility_value = 0
                 vol_updated = False
 
-        back_constant_vol = ql.BlackConstantVol(0, calendar, to_ql_quote_handle(volatility_value / 100), day_counter)
+        back_constant_vol = ql.BlackConstantVol(0, calendar, to_ql_quote_handle(volatility_value), day_counter)
         self.volatility_handle.linkTo(back_constant_vol)
         self.vol_updated[underlying_name][to_ql_date(date)] = vol_updated
 

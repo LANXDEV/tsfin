@@ -92,6 +92,7 @@ RATE_INDEX = 'RATE_INDEX'
 FUND = 'FUND'
 EQUITY = 'EQUITY'
 CDS = 'CDS'
+ZERO_RATE = 'ZERO_RATE'
 
 '''
 Configuration for yield curve classes
