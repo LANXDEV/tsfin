@@ -158,6 +158,8 @@ def to_ql_day_counter(arg):
     """
     if arg.upper() == "THIRTY360E":
         return ql.Thirty360(ql.Thirty360.European)
+    elif arg.upper() == "THIRTY360":
+        return ql.Thirty360()
     elif arg.upper() == "ACTUAL360":
         return ql.Actual360()
     elif arg.upper() == "ACTUAL365":

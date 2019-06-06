@@ -131,12 +131,11 @@ class BaseEquityOption(Instrument):
 
         dt_date = to_datetime(date)
         self.option = self.ql_option(date=dt_date, exercise_ovrd=exercise_ovrd)
-        underlying_name = "{} EQUITY".format(self.underlying_instrument)
         vol_updated = self.ql_process.update_process(date=date, calendar=self.calendar,
                                                      day_counter=self.day_counter,
                                                      ts_option_name=self.ts_name,
                                                      maturity=self.option_maturity,
-                                                     underlying_name=underlying_name,
+                                                     underlying_name=self.underlying_instrument,
                                                      vol_last_available=vol_last_available,
                                                      dvd_tax_adjust=dvd_tax_adjust,
                                                      last_available=last_available)
@@ -147,12 +146,12 @@ class BaseEquityOption(Instrument):
             return self.option
         else:
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              ts_option_name=self.ts_name, underlying_name=underlying_name,
+                                              ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
                                               vol_value=20)
             mid_price = self.px_mid.get_values(index=dt_date, last_available=True)
             implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process)
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              ts_option_name=self.ts_name, underlying_name=underlying_name,
+                                              ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
                                               vol_value=implied_vol*100)
             self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
             return self.option
@@ -184,7 +183,6 @@ class BaseEquityOption(Instrument):
                          last_available=True, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        underlying_name = "{} EQUITY".format(self.underlying_instrument)
         if to_datetime(date) > to_datetime(base_date):
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
@@ -194,7 +192,7 @@ class BaseEquityOption(Instrument):
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                         exercise_ovrd=exercise_ovrd)
 
-        self.ql_process.spot_price_update(date=date, underlying_name=underlying_name, spot_price=spot_price)
+        self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
         return option.NPV()
 
@@ -225,7 +223,6 @@ class BaseEquityOption(Instrument):
                          last_available=True, exercise_ovrd=None):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
-        underlying_name = "{} EQUITY".format(self.underlying_instrument)
         if to_datetime(date) > to_datetime(base_date):
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
@@ -235,7 +232,7 @@ class BaseEquityOption(Instrument):
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                         exercise_ovrd=exercise_ovrd)
 
-        self.ql_process.spot_price_update(date=date, underlying_name=underlying_name, spot_price=spot_price)
+        self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
         return option.delta()
 
@@ -330,7 +327,6 @@ class BaseEquityOption(Instrument):
     def implied_vol(self, date, target, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
                     exercise_ovrd=None):
 
-        underlying_name = "{} EQUITY".format(self.underlying_instrument)
         if self.option is None:
             self.option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                              dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
@@ -338,7 +334,8 @@ class BaseEquityOption(Instrument):
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                          ts_option_name=self.ts_name, underlying_name=underlying_name, vol_value=20)
+                                          ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
+                                          vol_value=20)
         implied_vol = self.option.impliedVolatility(target, self.ql_process.bsm_process)
 
         return implied_vol*100
