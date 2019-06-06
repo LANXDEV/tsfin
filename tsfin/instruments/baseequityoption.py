@@ -147,12 +147,12 @@ class BaseEquityOption(Instrument):
         else:
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
                                               ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
-                                              vol_value=20)
+                                              vol_value=0.2)
             mid_price = self.px_mid.get_values(index=dt_date, last_available=True)
             implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process)
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
                                               ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
-                                              vol_value=implied_vol*100)
+                                              vol_value=implied_vol)
             self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
             return self.option
 
@@ -335,10 +335,10 @@ class BaseEquityOption(Instrument):
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
                                           ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
-                                          vol_value=20)
+                                          vol_value=0.2)
         implied_vol = self.option.impliedVolatility(target, self.ql_process.bsm_process)
 
-        return implied_vol*100
+        return implied_vol
 
     @conditional_vectorize('date')
     def optionality(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,

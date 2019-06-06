@@ -76,11 +76,8 @@ class SwapRate(DepositRate):
             Rate helper for yield curve construction.
         """
         # Returns None if impossible to obtain a rate helper from this time series
-        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
 
-        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-        quote_type = self.get_attribute(QUOTE_TYPE)
-        rate /= float(quote_type_dict.get(quote_type, 100))
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
 
         if np.isnan(rate):
             return None
