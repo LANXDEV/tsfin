@@ -164,7 +164,7 @@ class FloatingRateBond(_BaseBond):
         ql.IndexManager.instance().clearHistory(self.index.name())
         for dt in self.fixing_dates:
             if dt <= self.calendar.advance(date, self.fixing_days, ql.Days):
-                rate = adjust_rate_from_quote_type(self.index_timeseries, dates=date)
+                rate = self.index_timeseries.get_values(index=date)
                 self.index.addFixing(dt, rate)
 
     @conditional_vectorize('date')
