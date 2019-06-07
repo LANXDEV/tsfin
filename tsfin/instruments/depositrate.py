@@ -152,9 +152,6 @@ class DepositRate(Instrument):
         fixing_dates, maturity_dates = self._get_fixing_maturity_dates(start_date, date)
         fixings = self.timeseries.get_values(index=[to_datetime(fixing_date) for fixing_date in fixing_dates])
 
-        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-        quote_type = self.get_attribute(QUOTE_TYPE)
-        fixings /= float(quote_type_dict.get(quote_type, 100))
         if spread is not None:
             fixings += spread
 
