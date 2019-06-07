@@ -301,12 +301,6 @@ class Instrument:
         if np.isnan(rate):
             return None
 
-        # TODO: This part is to provisionally transform the rate from bps or percent quoting...
-        # TODO: until we have implemented specific classes for each type of instrument.
-        quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-        quote_type = self.get_attribute(QUOTE_TYPE)
-        rate /= float(quote_type_dict.get(quote_type, 100))
-
         # Convert rate to simple compounding because DepositRateHelper expects simple rates.
         date = to_ql_date(date)
         time = day_counter.yearFraction(date, date + tenor)
