@@ -1,11 +1,28 @@
-
+# Copyright (C) 2016-2018 Lanx Capital Investimentos LTDA.
+#
+# This file is part of Time Series Finance (tsfin).
+#
+# Time Series Finance (tsfin) is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your option)
+# any later version.
+#
+# Time Series Finance (tsfin) is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
+"""
+A class for modelling Equity Options
+"""
 import QuantLib as ql
 import numpy as np
 from tsfin.constants import CALENDAR, MATURITY_DATE, \
     DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE
-from tsfin.base.instrument import default_arguments
-from tsfin.base import Instrument, to_ql_option_type, to_ql_date, conditional_vectorize, \
-    to_ql_calendar, to_ql_day_counter, to_datetime
+from tsfin.base import Instrument, to_ql_option_type, to_ql_date, conditional_vectorize, to_ql_calendar, \
+    to_ql_day_counter, to_datetime
 
 
 def option_exercise_type(exercise_type, date, maturity):
@@ -35,6 +52,17 @@ def ql_option_engine(process):
 
 
 class BaseEquityOption(Instrument):
+    """ Model for Equity Options using the Black Scholes Merton model.
+
+    :param timeseries: :py:class:`TimeSeries`
+        The TimeSeries representing the option.
+    :param ql_process: :py:class:'BlackScholesMerton'
+        A class used to handle the Black Scholes Merton model from QuantLib.
+
+    Note
+    ----
+    See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
+    """
 
     def __init__(self, timeseries, ql_process):
         super().__init__(timeseries)
@@ -51,20 +79,49 @@ class BaseEquityOption(Instrument):
         self.option = None
 
     def is_expired(self, date, *args, **kwargs):
-
+        """
+        :param date: date-like
+            The date.
+        :return bool
+            True if the instrument is expired or matured, False otherwise.
+        """
         ql_date = to_ql_date(date)
         if ql_date >= self.option_maturity:
             return True
         return False
 
     def maturity(self, date, *args, **kwargs):
-
+        """
+        :param date: date-like
+            The date.
+        :return QuantLib.Date, None
+            Date representing the maturity or expiry of the instrument. Returns None if there is no maturity.
+        """
         return self.option_maturity
 
     @conditional_vectorize('date', 'quote')
     def value(self, date, base_date, quote=None, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
               exercise_ovrd=None, *args, **kwargs):
+        """Try to deduce dirty value for a unit of the time series (as a financial instrument).
 
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param quote: scalar, optional
+            The quote.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return scalar, None
+            The unit dirty value of the instrument.
+        """
         size = float(self.contract_size)
         if quote is not None:
             return float(quote)*size
@@ -75,7 +132,24 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date', 'quote')
     def performance(self, date=None, quote=None, start_date=None, start_quote=None, *args, **kwargs):
-
+        """
+        Parameters
+        ----------
+        :param start_date: datetime-like, optional
+            The starting date of the period.
+            Default: The first date in ``self.quotes``.
+        :param date: datetime-like, optional, (c-vectorized)
+            The ending date of the period.
+            Default: see :py:func:`default_arguments`.
+        :param start_quote: scalar, optional, (c-vectorized)
+            The quote of the instrument in `start_date`.
+            Default: the quote in `start_date`.
+        :param quote: scalar, optional, (c-vectorized)
+            The quote of the instrument in `date`.
+            Default: see :py:func:`default_arguments`.
+        :return scalar, None
+            Performance of a unit of the option.
+        """
         first_available_date = self.ivol_mid.ts_values.first_valid_index()
         if start_date is None:
             start_date = first_available_date
@@ -88,17 +162,21 @@ class BaseEquityOption(Instrument):
 
         return (value / start_value) - 1
 
-    @conditional_vectorize('date')
-    def cash_to_date(self, start_date, date, *args, **kwargs):
-
-        return 0
-
     def notional(self):
-
+        """
+        :return: float
+            The notional of the contract based on the option contract size and strike.
+        """
         return float(self.contract_size)*float(self.strike)
 
+    @conditional_vectorize('date')
     def intrinsic(self, date):
-
+        """
+        :param date: date-like
+            The date
+        :return: float
+            The intrinsic value o the option at date.
+        """
         strike = self.strike
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -117,7 +195,17 @@ class BaseEquityOption(Instrument):
             else:
                 return intrinsic
 
+    @conditional_vectorize('date')
     def ql_option(self, date, exercise_ovrd=None):
+
+        """
+        :param date: date-like
+            The date
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: QuantLib.VanillaOption
+        """
 
         if exercise_ovrd is not None:
             self.exercise_type = exercise_ovrd.upper()
@@ -129,11 +217,27 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def option_engine(self, date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None):
 
+        """
+        :param date: date-like
+            The date.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: QuantLib.VanillaOption
+            This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
+            and greeks.
+        """
         dt_date = to_datetime(date)
         self.option = self.ql_option(date=dt_date, exercise_ovrd=exercise_ovrd)
         vol_updated = self.ql_process.update_process(date=date, calendar=self.calendar,
                                                      day_counter=self.day_counter,
-                                                     ts_option_name=self.ts_name,
+                                                     ts_option=self.timeseries,
                                                      maturity=self.option_maturity,
                                                      underlying_name=self.underlying_instrument,
                                                      vol_last_available=vol_last_available,
@@ -146,12 +250,12 @@ class BaseEquityOption(Instrument):
             return self.option
         else:
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
+                                              ts_option=self.timeseries, underlying_name=self.underlying_instrument,
                                               vol_value=0.2)
             mid_price = self.px_mid.get_values(index=dt_date, last_available=True)
             implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process)
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
+                                              ts_option=self.timeseries, underlying_name=self.underlying_instrument,
                                               vol_value=implied_vol)
             self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
             return self.option
@@ -159,7 +263,23 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def price(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
               exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option price at date.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -181,7 +301,25 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date', 'spot_price')
     def price_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
                          last_available=True, exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param spot_price: float
+            The underlying spot prices used for evaluation.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option price based on the date and underlying spot price.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         if to_datetime(date) > to_datetime(base_date):
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
@@ -199,7 +337,23 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def delta(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
               exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option delta at date.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -221,7 +375,25 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date', 'spot_price')
     def delta_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
                          last_available=True, exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param spot_price: float
+            The underlying spot prices used for evaluation.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option delta based on the date and underlying spot price.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         if to_datetime(date) > to_datetime(base_date):
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
@@ -239,7 +411,23 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def gamma(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
               exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option gamma at date.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -258,7 +446,23 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def theta(self, date,  base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
               exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option theta at date.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -275,9 +479,25 @@ class BaseEquityOption(Instrument):
             return option.theta()
 
     @conditional_vectorize('date')
-    def vega(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1,last_available=True,
+    def vega(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
              exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option vega at date.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -301,7 +521,23 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date')
     def rho(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option rho at date.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -323,18 +559,40 @@ class BaseEquityOption(Instrument):
                 except:
                     return 0
 
-    @conditional_vectorize('date', 'target')
-    def implied_vol(self, date, target, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                    exercise_ovrd=None):
-
+    @conditional_vectorize('date', 'target', 'spot_price')
+    def implied_vol(self, date, target, spot_price=None, vol_last_available=False, dvd_tax_adjust=1,
+                    last_available=True, exercise_ovrd=None):
+        """
+        :param date: date-like
+            The date.
+        :param target: float
+           The option price used to calculate the implied volatility.
+        :param spot_price: float, optional
+            The underlying spot prices used for evaluation.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option volatility based on the option price and date.
+        """
         if self.option is None:
             self.option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                              dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                              exercise_ovrd=exercise_ovrd)
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
+        if spot_price is not None:
+            self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument,
+                                              spot_price=spot_price)
+
         self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                          ts_option_name=self.ts_name, underlying_name=self.underlying_instrument,
+                                          ts_option=self.timeseries, underlying_name=self.underlying_instrument,
                                           vol_value=0.2)
         implied_vol = self.option.impliedVolatility(target, self.ql_process.bsm_process)
 
@@ -343,7 +601,23 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def optionality(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
                     exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option optionality at date.
+        """
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
             return 0
@@ -367,7 +641,23 @@ class BaseEquityOption(Instrument):
     @conditional_vectorize('date')
     def underlying_price(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
                          exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option underlying spot price.
+        """
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         dt_maturity = to_datetime(self.option_maturity)
         if to_datetime(date) >= dt_maturity:
@@ -375,20 +665,36 @@ class BaseEquityOption(Instrument):
         else:
             ql.Settings.instance().evaluationDate = to_ql_date(date)
             if to_datetime(date) > to_datetime(base_date):
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                self.option_engine(date=base_date, vol_last_available=vol_last_available,
+                                   dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                   exercise_ovrd=exercise_ovrd)
             else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                self.option_engine(date=date, vol_last_available=vol_last_available,
+                                   dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                   exercise_ovrd=exercise_ovrd)
 
             return self.ql_process.spot_price_handle.value()
 
     @conditional_vectorize('date')
     def delta_value(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
                     exercise_ovrd=None):
-
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param vol_last_available: bool, optional
+            Whether to use last available data in case dates are missing in volatility values.
+        :param dvd_tax_adjust: float, default=1
+            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+        :param exercise_ovrd: str, optional
+            Used to force the option model to use a specific type of option. Only working for American and European
+            option types.
+        :return: float
+            The option delta notional value.
+        """
         delta = self.delta(date=date, base_date=base_date, vol_last_available=vol_last_available,
                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available, exercise_ovrd=exercise_ovrd)
         spot = self.ql_process.spot_price_handle.value()
