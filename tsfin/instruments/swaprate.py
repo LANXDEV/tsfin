@@ -39,11 +39,13 @@ class SwapRate(DepositRate):
     def __init__(self, timeseries):
         super().__init__(timeseries)
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
-        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self.fixed_calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        self.index_calendar = self.index.fixingCalendar()
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
+        self.calendar = ql.JointCalendar(self.fixed_calendar, self.index_calendar)
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
