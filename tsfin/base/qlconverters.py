@@ -299,7 +299,7 @@ def to_ql_rate_index(arg, *args):
 
 def to_ql_quote_handle(arg):
 
-    return ql.QuoteHandle(ql.SimpleQuote(arg))
+    return ql.RelinkableQuoteHandle(ql.SimpleQuote(arg))
 
 
 def to_ql_duration(arg):
