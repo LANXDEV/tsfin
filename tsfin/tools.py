@@ -27,11 +27,12 @@ from tsfin.instruments.depositrate import DepositRate
 from tsfin.instruments.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.swaprate import SwapRate
+from tsfin.instruments.swaption import SwapOption
 from tsfin.instruments.baseequityoption import BaseEquityOption
 from tsfin.instruments.cds import CDSRate
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS, \
-    INDEX_TIME_SERIES, ZERO_RATE
+    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL
 
 
 def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
@@ -92,6 +93,8 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             instrument = CurrencyFuture(ts)
         elif ts_type == SWAP_RATE:
             instrument = SwapRate(ts)
+        elif ts_type == SWAP_VOL:
+            instrument = SwapOption(ts)
         elif ts_type == OIS_RATE:
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
@@ -279,26 +282,18 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
     # This has only been tested for model_class = HullWhite
     date = to_ql_date(date)
     print("Calibrating Hull-White 1F short rate model for date = {}".format(date))
-    term_structure = term_structure_ts.yield_curve_handle(date=date)
-    # TODO: Make all the below depend on parameters of the swaption_vol_ts_collection
-    index = ql.USDLibor(ql.Period(3, ql.Months), term_structure)
-    fixed_leg_tenor = ql.Period(3, ql.Months)
-    fixed_leg_day_counter = ql.Actual360()
-    floating_leg_day_counter = ql.Actual360()
-    calendar = ql.UnitedStates(ql.UnitedStates.NYSE)
+    yield_curve = term_structure_ts.yield_curve(date=date)
 
     ql.Settings.instance().evaluationDate = date
-    model = model_class(term_structure)
+    model = model_class(ql.YieldTermStructureHandle(yield_curve))
     engine = ql.JamshidianSwaptionEngine(model)
 
     # Create the swaption helpers
     swaption_helpers = list()
-    for swaption in swaption_vol_ts_collection:
-        vol = swaption.get_values(index=to_datetime(date)) / 100
-        vol_handle = ql.QuoteHandle(ql.SimpleQuote(vol))
-        helper = ql.SwaptionHelper(calendar.advance(date, ql.PeriodParser.parse(swaption.get_attribute('MATURITY'))),
-                                   ql.PeriodParser.parse(swaption.get_attribute("TENOR")), vol_handle, index,
-                                   fixed_leg_tenor, fixed_leg_day_counter, floating_leg_day_counter, term_structure)
+    swaption_vol = generate_instruments(swaption_vol_ts_collection)
+    for swaption in swaption_vol:
+        swaption.set_yield_curve(yield_curve=yield_curve)
+        helper = swaption.rate_helper(date=date)
         helper.setPricingEngine(engine)
         swaption_helpers.append(helper)
 

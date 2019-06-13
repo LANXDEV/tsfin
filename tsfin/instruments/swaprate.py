@@ -21,7 +21,8 @@ from functools import wraps
 import numpy as np
 import QuantLib as ql
 from tsfin.instruments.depositrate import DepositRate
-from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_rate_index, to_ql_business_convention
+from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_rate_index, to_ql_business_convention, \
+    to_ql_quote_handle
 from tsfin.constants import CALENDAR, INDEX, DAY_COUNTER, TENOR_PERIOD, BUSINESS_CONVENTION, INDEX_TENOR, QUOTE_TYPE
 
 
@@ -83,5 +84,5 @@ class SwapRate(DepositRate):
 
         if np.isnan(rate):
             return None
-        return ql.SwapRateHelper(ql.QuoteHandle(ql.SimpleQuote(rate)), self._tenor, self.calendar, self.frequency,
+        return ql.SwapRateHelper(to_ql_quote_handle(rate), self._tenor, self.calendar, self.frequency,
                                  self.business_convention, self.day_counter, self.index)

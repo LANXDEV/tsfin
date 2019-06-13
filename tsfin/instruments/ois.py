@@ -20,7 +20,7 @@ A class for modelling OIS (Overnight Indexed Swap) rates.
 import numpy as np
 import QuantLib as ql
 from tsfin.instruments.depositrate import DepositRate
-from tsfin.base.qlconverters import to_ql_date, to_ql_rate_index, to_ql_calendar
+from tsfin.base.qlconverters import to_ql_date, to_ql_rate_index, to_ql_calendar, to_ql_quote_handle
 from tsfin.constants import INDEX, TENOR_PERIOD, SETTLEMENT_DAYS, PAYMENT_LAG, CALENDAR
 
 
@@ -67,7 +67,7 @@ class OISRate(DepositRate):
         except ValueError:
             # Return none if the deposit rate can't retrieve a tenor (i.e. is expired).
             return None
-        # Convert rate to simple compounding because DepositRateHelper expects simple rates.
-        return ql.OISRateHelper(self.settlement_days, tenor, ql.QuoteHandle(ql.SimpleQuote(rate)),
+
+        return ql.OISRateHelper(self.settlement_days, tenor, to_ql_quote_handle(rate),
                                 self.overnight_index, ql.YieldTermStructureHandle(), False, 0,
                                 self.business_convention)

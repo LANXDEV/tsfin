@@ -29,7 +29,7 @@ from tsfin.base.basetools import to_list, conditional_vectorize, find_le, find_g
 DEFAULT_ISSUE_DATE = ql.Date.minDate()
 
 # ExtRateHelpers are a named tuples containing QuantLib RateHelpers objects and other meta-information.
-ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'tenor', 'maturity_date', 'helper'])
+ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_date', 'helper'])
 
 
 class YieldCurveTimeSeries:
@@ -83,24 +83,17 @@ class YieldCurveTimeSeries:
             self.issue_dates[ts.ts_name] = issue_date
 
     def _get_helpers(self, date):
-        helpers = dict()
-        ql_date = to_ql_date(date)
 
+        helpers = dict()
         for ts in self.ts_collection:
             ts_name = ts.ts_name
             issue_date = self.issue_dates[ts_name]
             helper = ts.rate_helper(date=date, **self.other_rate_helper_args)
+
             if helper is not None:
-                tenor = ts.tenor(date)
-                maturity_date = self.calendar.advance(ql_date, tenor)
-                '''
-                TODO: Wrap this ``ExtRateHelper`` inside a (properly named) class or namedtuple and always
-                return these objects from the instrument classes. This prevents this method from calling ``ts.tenor``
-                and recalculating the ``maturity_date``, because these were already calculated inside each instrument's
-                ``rate_helper`` method.
-                '''
-                helper = ExtRateHelper(ts_name=ts_name, issue_date=issue_date, tenor=tenor,
-                                       maturity_date=maturity_date, helper=helper)
+                maturity_date = helper.maturityDate()
+                helper = ExtRateHelper(ts_name=ts_name, issue_date=issue_date, maturity_date=maturity_date,
+                                       helper=helper)
                 # Remove Helpers with the same maturity date (or tenor), keeping the last issued one - This is to avoid
                 # error in QuantLib when trying to instantiate a yield curve with two helpers with same maturity
                 # date or tenor.
@@ -121,8 +114,7 @@ class YieldCurveTimeSeries:
                 if existing_helper is None:
                     month_end_helpers[month_year] = helper
                 else:
-                    month_end_helpers[month_year] = max((helper, existing_helper),
-                                                        key=attrgetter('issue_date'))
+                    month_end_helpers[month_year] = max((helper, existing_helper), key=attrgetter('issue_date'))
             helpers = {ndhelper.maturity_date: ndhelper for ndhelper in month_end_helpers.values()}
 
         return helpers
@@ -230,12 +222,11 @@ class YieldCurveTimeSeries:
         QuantLib.ZeroSpreadedTermStructure
             The spreaded yield curve.
         """
-        # TODO: Check if this is working.
         curve_handle = ql.YieldTermStructureHandle(self.yield_curve(date=date))
         spread_handle = ql.QuoteHandle(spread)
         return ql.ZeroSpreadedTermStructure(curve_handle, spread_handle, compounding, frequency, self.day_counter)
 
-    def spreaded_interpolated_curve(self, date, spread_handle):
+    def spreaded_interpolated_curve(self, date, spread_handle, compounding, frequency):
         """ Get yield curve at a date, added to a spread.
 
         Parameters
@@ -244,7 +235,10 @@ class YieldCurveTimeSeries:
             The date of the spreaded yield curve.
         spread_handle: :py:obj:'SpreadHandle'
             The spread to be added to the yield curve rates.
-
+        compounding: QuantLib.Compounding
+            Compounding convention for the rate.
+        frequency: QuantLib.Frequency
+            Frequency convention for the rate.
         Returns
         -------
         QuantLib.ZeroSpreadedTermStructure
@@ -258,9 +252,10 @@ class YieldCurveTimeSeries:
 
         for date in sorted(spread_dict.keys()):
             dates.append(date)
-            spreads.append(spread_dict[date].quote_handle)
+            spreads.append(spread_dict[date].quote_handle())
 
-        spreaded_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spreads, dates)
+        spreaded_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spreads, dates, compounding,
+                                                                        frequency, self.day_counter)
         spreaded_curve.enableExtrapolation()
 
         return spreaded_curve
@@ -376,7 +371,8 @@ class YieldCurveTimeSeries:
             Zero rate for `to_date`, implied by the spreaded yield curve at `date`.
         """
         to_date = to_ql_date(to_date)
-        spread_curve = self.spreaded_interpolated_curve(date=date, spread_handle=spread_handle)
+        spread_curve = self.spreaded_interpolated_curve(date=date, spread_handle=spread_handle, compounding=compounding,
+                                                        frequency=frequency)
 
         return spread_curve.zeroRate(to_date, self.day_counter, compounding, frequency, extrapolate).rate()
 

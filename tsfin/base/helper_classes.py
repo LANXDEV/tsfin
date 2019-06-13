@@ -8,20 +8,23 @@ from tsfin.base.basetools import conditional_vectorize
 class QuoteHandle:
 
     def __init__(self, value):
-        self.value = ql.SimpleQuote(value)
-        self.quote_handle = ql.RelinkableQuoteHandle(self.value)
+        self._value = ql.SimpleQuote(value)
+        self._quote_handle = ql.RelinkableQuoteHandle(self._value)
 
     def set_value(self, value):
-        self.value = ql.SimpleQuote(value)
+        self._value = ql.SimpleQuote(value)
 
     def link_to(self, simple_quote):
-        self.quote_handle.linkTo(simple_quote)
+        if isinstance(simple_quote, ql.SimpleQuote):
+            self._quote_handle.linkTo(simple_quote)
+        else:
+            self._quote_handle.linkTo(ql.SimpleQuote(simple_quote))
 
     def quote_value(self):
-        return self.quote_handle.value()
+        return self._quote_handle.value()
 
     def quote_handle(self):
-        return self.quote_handle
+        return self._quote_handle
 
 
 class SpreadHandle:
