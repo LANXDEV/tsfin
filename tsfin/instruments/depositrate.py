@@ -114,9 +114,30 @@ class DepositRate(Instrument):
             if self.is_expired(date):
                 raise ValueError("The requested date is equal or higher than the instrument's maturity: {}".format(
                     self.name))
-            # TODO: Check if the below calculation yields correct results when creating deposit rate helpers.
-            # return ql.Period(self.maturity - date, ql.Days)
-            return ql.Period(self.calendar.businessDaysBetween(date, self.maturity), ql.Days)
+
+            return ql.Period(self._maturity - date, ql.Days)
+
+    def maturity(self, date, *args, **kwargs):
+        """Get maturity based on a date and tenor of the deposit rate.
+
+        Parameters
+        ----------
+        date: QuantLib.Date
+            Reference date.
+
+        Returns
+        -------
+        QuantLib.Date
+            The maturity based on the reference date and tenor of the deposit rate.
+        """
+        try:
+            assert self._maturity
+            return self._maturity
+        except (AttributeError, AssertionError):
+            date = to_ql_date(date)
+            tenor = self._tenor
+            maturity = self.calendar.advance(date, tenor)
+            return maturity
 
     @default_arguments
     @conditional_vectorize('date')
