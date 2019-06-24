@@ -260,6 +260,22 @@ def returns(ts, calc_type='D', force=False):
         return df / df.loc[first_index] - 1
 
 
+def ql_swaption_engine(model_class, term_structure):
+
+    if model_class == 'BlackKarasinski':
+        model = ql.BlackKarasinski(term_structure)
+        engine = ql.TreeSwaptionEngine(model, 100)
+        return model, engine
+    elif model_class == 'HullWhite':
+        model = ql.HullWhite(term_structure)
+        engine = ql.JamshidianSwaptionEngine(model)
+        return model, engine
+    elif model_class == 'G2':
+        model = ql.G2(term_structure)
+        engine = ql.TreeSwaptionEngine(model, 25)
+        return model, engine
+
+
 def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vol_ts_collection):
     """ Calibrate a Hull-White QuantLib model.
 
@@ -281,14 +297,16 @@ def calibrate_hull_white_model(date, model_class, term_structure_ts, swaption_vo
     """
     # This has only been tested for model_class = HullWhite
     date = to_ql_date(date)
-    print("Calibrating Hull-White 1F short rate model for date = {}".format(date))
+    print("Calibrating {0} 1F short rate model for date = {1}".format(model_class, date))
     yield_curve = term_structure_ts.yield_curve(date=date)
+    term_structure = ql.YieldTermStructureHandle(yield_curve)
 
     ql.Settings.instance().evaluationDate = date
-    model = model_class(ql.YieldTermStructureHandle(yield_curve))
-    engine = ql.JamshidianSwaptionEngine(model)
+    # model = model_class(term_structure)
+    # engine = ql.JamshidianSwaptionEngine(model)
 
-    # Create the swaption helpers
+    model, engine = ql_swaption_engine(model_class=model_class, term_structure=term_structure)
+
     swaption_helpers = list()
     swaption_vol = generate_instruments(swaption_vol_ts_collection)
     for swaption in swaption_vol:
