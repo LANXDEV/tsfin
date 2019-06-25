@@ -22,7 +22,7 @@ class SwapOption(SwapRate):
 
         if np.isnan(rate):
             return None
-        rate /= 100
+
         return ql.SwaptionHelper(self.maturity_tenor, self._tenor, to_ql_quote_handle(rate), self.index,
                                  self.fixed_leg_tenor, self.day_counter, self.index.dayCounter(), self.term_structure)
 
