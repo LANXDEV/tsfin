@@ -16,7 +16,7 @@
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 
 import QuantLib as ql
-from tsfin.base.qlconverters import to_ql_date
+from tsfin.base.qlconverters import to_ql_date, to_ql_short_rate_model
 from tsfin.base.basetools import conditional_vectorize, to_datetime
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_call_component
 
@@ -75,8 +75,8 @@ class CallableFixedRateBond(_BaseBond):
         ----------
         yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
             The yield curve object against which the z-spreads will be calculated.
-        model: QuantLib.ShortRateModel
-            A class reference (not an instance) of a QuantLib model, for simulating evolution of rates.
+        model: str
+            A string representing one of QuantLib Short Rate models, for simulating evolution of rates.
             **Currently only tested with QuantLib.HullWhite.**
         model_params: tuple, dict
             Parameter set for the model.
@@ -114,18 +114,19 @@ class CallableFixedRateBond(_BaseBond):
         scalar
             Bond's option-adjusted spread relative to `yield_curve_timeseries`.
         """
-        # TODO: Test this with other QuantLib short-rate models.
+
         bond = self.bond
         date = to_ql_date(date)
         yield_curve_relinkable_handle = yield_curve_timeseries.yield_curve_relinkable_handle(date=date)
+        ql_model = to_ql_short_rate_model(model)
         ql.Settings.instance().evaluationDate = date
         if isinstance(model_params, dict):
             # Assumes model parameters are given for each date.
-            model = model(yield_curve_relinkable_handle, *model_params[date])
+            ql_model = ql_model(yield_curve_relinkable_handle, *model_params[date])
         else:
             # Only one set of model parameters are given (calibrated for, say, a specific date).
-            model = model(yield_curve_relinkable_handle, *model_params)
-        engine = ql.TreeCallableFixedRateBondEngine(model, 40)
+            ql_model = ql_model(yield_curve_relinkable_handle, *model_params)
+        engine = ql.TreeCallableFixedRateBondEngine(ql_model, 40)
         bond.setPricingEngine(engine)
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         return bond.OAS(quote, yield_curve_relinkable_handle, day_counter, compounding, frequency, settlement_date)
