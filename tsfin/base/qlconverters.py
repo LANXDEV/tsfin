@@ -326,3 +326,12 @@ def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_con
     return ql.IborIndex(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
                         yield_curve_handle)
 
+
+def to_ql_short_rate_model(arg):
+
+    if arg.upper() == 'HULL_WHITE':
+        return ql.HullWhite
+    elif arg.upper() == 'BLACK_KARASINSKI':
+        return ql.BlackKarasinski
+    elif arg.upper() == 'G2':
+        return ql.G2
