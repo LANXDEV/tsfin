@@ -272,7 +272,7 @@ def ql_swaption_engine(model_class, term_structure):
         return model, engine
     elif model_class == 'G2':
         model = ql.G2(term_structure)
-        engine = ql.TreeSwaptionEngine(model, 25)
+        engine = ql.G2SwaptionEngine(model, 10, 400)
         return model, engine
 
 

@@ -57,10 +57,11 @@ class Portfolio:
 
     """
 
-    def __init__(self, currency, security_objects=None):
+    def __init__(self, currency, security_objects=None, base_yield_curve=None):
         self.positions = dict()
         self.trades = dict()
         self.currency = currency
+        self.base_yield_curve = base_yield_curve
         if security_objects is None:
             self.security_objects = []
         else:
