@@ -19,6 +19,7 @@ import QuantLib as ql
 from tsfin.base.qlconverters import to_ql_date, to_ql_short_rate_model
 from tsfin.base.basetools import conditional_vectorize, to_datetime
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_call_component
+from tsfin.constants import CALLED_DATE, EXPIRE_DATE_OVRD
 
 
 class CallableFixedRateBond(_BaseBond):
@@ -42,6 +43,9 @@ class CallableFixedRateBond(_BaseBond):
         # TODO: Here we assume that the call prices are always clean prices. Fix this!
         # TODO: Implement an option to reduce (some kind of 'telescopic') call dates.
         # if there are too much. This is useful in case we are treating a callable perpetual bond, for example.
+        called_date = self.ts_attributes[CALLED_DATE]
+        if called_date:
+            self.expire_date = to_ql_date(to_datetime(called_date))
         self.callability_schedule = ql.CallabilitySchedule()
         for call_date, call_price in self.call_schedule.ts_values.iteritems():
             # The original bond (with maturity at self.maturity will be added to the components after its

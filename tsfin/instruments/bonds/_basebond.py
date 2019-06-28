@@ -25,7 +25,7 @@ from tsfin.base.instrument import Instrument
 from tsfin.constants import BOND_TYPE, QUOTE_TYPE, CURRENCY, YIELD_QUOTE_COMPOUNDING, \
     YIELD_QUOTE_FREQUENCY, ISSUE_DATE, FIRST_ACCRUAL_DATE, MATURITY_DATE, CALENDAR, \
     BUSINESS_CONVENTION, DATE_GENERATION, SETTLEMENT_DAYS, FACE_AMOUNT, COUPONS, DAY_COUNTER, REDEMPTION, DISCOUNT, \
-    YIELD, CLEAN_PRICE, DIRTY_PRICE, COUPON_FREQUENCY
+    YIELD, CLEAN_PRICE, DIRTY_PRICE, COUPON_FREQUENCY, EXPIRE_DATE_OVRD
 from tsfin.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_business_convention, to_ql_calendar, \
     to_ql_compounding, to_ql_date_generation, to_ql_day_counter
 from tsfin.base.basetools import conditional_vectorize, find_le, to_datetime
@@ -256,7 +256,13 @@ class _BaseBond(Instrument):
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
         self.date_generation = to_ql_date_generation(self.ts_attributes[DATE_GENERATION])
         self.month_end = False  # TODO: Add support for this variable.
-
+        self.expire_date = self.maturity_date
+        try:
+            expire_date_ovrd = self.ts_attributes[EXPIRE_DATE_OVRD]
+            if expire_date_ovrd:
+                self.expire_date = to_ql_date(to_datetime(expire_date_ovrd))
+        except KeyError:
+            pass
         self.schedule = ql.Schedule(self.first_accrual_date, self.maturity_date, self.coupon_frequency, self.calendar,
                                     self.business_convention, self.business_convention, self.date_generation,
                                     self.month_end)
@@ -363,7 +369,9 @@ class _BaseBond(Instrument):
             True if the bond is past maturity date, False otherwise.
         """
         date = to_ql_date(date)
-        if date >= self.maturity_date:
+        if date >= self.expire_date:
+            return True
+        elif date >= self.maturity_date:
             return True
         return False
 

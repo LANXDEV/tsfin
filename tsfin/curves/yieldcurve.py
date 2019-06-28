@@ -252,7 +252,7 @@ class YieldCurveTimeSeries:
 
         for date in sorted(spread_dict.keys()):
             dates.append(date)
-            spreads.append(spread_dict[date].quote_handle())
+            spreads.append(spread_dict[date])
 
         spreaded_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spreads, dates, compounding,
                                                                         frequency, self.day_counter)
