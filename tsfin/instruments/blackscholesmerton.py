@@ -20,7 +20,7 @@ A class for modelling Black Scholes Merton
 import QuantLib as ql
 import numpy as np
 from collections import OrderedDict
-from tsfin.base import to_ql_date, to_datetime, to_ql_quote_handle
+from tsfin.base import to_ql_date, to_datetime
 
 
 class BlackScholesMerton:
@@ -95,8 +95,9 @@ class BlackScholesMerton:
         else:
             dividend_yield = dividend_yield
 
-        dividend_yield = dividend_yield * dvd_tax_adjust
-        dividend = ql.FlatForward(0, calendar, to_ql_quote_handle(dividend_yield), day_counter, compounding)
+        final_dividend = ql.SimpleQuote(dividend_yield * dvd_tax_adjust)
+
+        dividend = ql.FlatForward(0, calendar, ql.QuoteHandle(final_dividend), day_counter, compounding)
         self.dividend_handle.linkTo(dividend)
 
     def yield_curve_update(self, date, calendar, day_counter, maturity, risk_free=None, compounding=ql.Continuous,
@@ -122,11 +123,12 @@ class BlackScholesMerton:
         ql_date = to_ql_date(date)
         mat_date = to_ql_date(maturity)
         if risk_free is not None:
-            zero_rate = risk_free
+            zero_rate = ql.SimpleQuote(risk_free)
         else:
-            zero_rate = self.yield_curve.zero_rate_to_date(date=ql_date, to_date=mat_date, compounding=compounding,
-                                                           frequency=frequency)
-        yield_curve = ql.FlatForward(0, calendar, to_ql_quote_handle(zero_rate), day_counter, compounding)
+            zero_rate = ql.SimpleQuote(self.yield_curve.zero_rate_to_date(date=ql_date, to_date=mat_date,
+                                                                          compounding=compounding,
+                                                                          frequency=frequency))
+        yield_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(zero_rate), day_counter, compounding)
         self.risk_free_handle.linkTo(yield_curve)
 
     def volatility_update(self, date, calendar, day_counter, ts_option, underlying_name, vol_value=None,
@@ -154,14 +156,16 @@ class BlackScholesMerton:
         vol_updated = True
 
         if vol_value is not None:
-            volatility_value = vol_value
+            volatility_value = ql.SimpleQuote(vol_value)
         else:
-            volatility_value = ts_option.ivol_mid.get_values(index=dt_date, last_available=last_available)
-            if np.isnan(volatility_value):
-                volatility_value = 0
+            ts_volatility = ts_option.ivol_mid.get_values(index=dt_date, last_available=last_available)
+            if np.isnan(ts_volatility):
+                volatility_value = ql.SimpleQuote(0)
                 vol_updated = False
+            else:
+                volatility_value = ql.SimpleQuote(ts_volatility)
 
-        back_constant_vol = ql.BlackConstantVol(0, calendar, to_ql_quote_handle(volatility_value), day_counter)
+        back_constant_vol = ql.BlackConstantVol(0, calendar, ql.QuoteHandle(volatility_value), day_counter)
         self.volatility_handle.linkTo(back_constant_vol)
         self.vol_updated[underlying_name][to_ql_date(date)] = vol_updated
 

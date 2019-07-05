@@ -34,8 +34,8 @@ ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_
 
 class YieldCurveTimeSeries:
 
-    def __init__(self, ts_collection, calendar, day_counter, keep_only_on_the_run_month=False, ignore_errors=False,
-                 **other_rate_helper_args):
+    def __init__(self, ts_collection=None, calendar=None, day_counter=None, keep_only_on_the_run_month=False,
+                 ignore_errors=False, **other_rate_helper_args):
         """Time series of QuantLib YieldTermStructures objects.
 
         The QuantLib YieldTermStructure objects are stored in the dict self.yield_curves and are 'lazy' created and
@@ -226,15 +226,15 @@ class YieldCurveTimeSeries:
         spread_handle = ql.QuoteHandle(spread)
         return ql.ZeroSpreadedTermStructure(curve_handle, spread_handle, compounding, frequency, self.day_counter)
 
-    def spreaded_interpolated_curve(self, date, spread_handle, compounding, frequency):
+    def spreaded_interpolated_curve(self, date, spread_dict, compounding, frequency):
         """ Get yield curve at a date, added to a spread.
 
         Parameters
         ----------
         date: QuantLib.Date
             The date of the spreaded yield curve.
-        spread_handle: :py:obj:'SpreadHandle'
-            The spread to be added to the yield curve rates.
+        spread_dict: dict
+            The dict with spreads and tenors
         compounding: QuantLib.Compounding
             Compounding convention for the rate.
         frequency: QuantLib.Frequency
@@ -245,14 +245,14 @@ class YieldCurveTimeSeries:
             The spreaded yield curve.
         """
 
+        date = to_ql_date(date)
         curve_handle = self.yield_curve_handle(date=date)
         spreads = list()
         dates = list()
-        spread_dict = spread_handle.spread_handle(date=date)
-
-        for date in sorted(spread_dict.keys()):
-            dates.append(date)
-            spreads.append(spread_dict[date])
+        spread_dict_at_date = spread_dict[date]
+        for tenor_date in sorted(spread_dict_at_date.keys()):
+            dates.append(tenor_date)
+            spreads.append(ql.QuoteHandle(spread_dict_at_date[tenor_date]))
 
         spreaded_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spreads, dates, compounding,
                                                                         frequency, self.day_counter)
@@ -274,6 +274,31 @@ class YieldCurveTimeSeries:
             A handle to the yield term structure object.
         """
         return ql.YieldTermStructureHandle(self.yield_curve(date))
+
+    def spreaded_interpolated_curve_handle(self, date, spread_dict, compounding, frequency):
+        """ Handle for a spreaded interpolated yield curve at a given date.
+
+        Parameters
+        ----------
+        date: QuantLib.Date
+            Date of the yield curve.
+        spread_dict: dict
+            The dict with spreads and tenors
+        compounding: QuantLib.Compounding
+            Compounding convention for the rate.
+        frequency: QuantLib.Frequency
+            Frequency convention for the rate.
+
+        Returns
+        -------
+        QuantLib.YieldTermStructureHandle
+            A handle to the yield term structure object.
+        """
+
+        spreaded_curve = self.spreaded_interpolated_curve(date=date, spread_dict=spread_dict,
+                                                          compounding=compounding, frequency=frequency)
+
+        return ql.YieldTermStructureHandle(spreaded_curve)
 
     def yield_curve_relinkable_handle(self, date):
         """ A relinkable handle for a yield curve at a given date.
@@ -348,7 +373,7 @@ class YieldCurveTimeSeries:
         return self.yield_curve(date).zeroRate(to_date, self.day_counter, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date')
-    def spreaded_zero_rate_to_date(self, date, to_date, compounding, frequency, spread_handle, extrapolate=True):
+    def spreaded_zero_rate_to_date(self, date, to_date, compounding, frequency, spread_dict, extrapolate=True):
         """
         Parameters
         ----------
@@ -360,8 +385,8 @@ class YieldCurveTimeSeries:
             Compounding convention for the rate.
         frequency: QuantLib.Frequency
             Frequency convention for the rate.
-        spread_handle: :py:obj:'SpreadHandle'
-            The spread to be added to the yield curve rates.
+        spread_dict: dict
+            The dict with spreads and tenors.
         extrapolate: bool, optional
             Whether to enable extrapolation.
 
@@ -371,7 +396,7 @@ class YieldCurveTimeSeries:
             Zero rate for `to_date`, implied by the spreaded yield curve at `date`.
         """
         to_date = to_ql_date(to_date)
-        spread_curve = self.spreaded_interpolated_curve(date=date, spread_handle=spread_handle, compounding=compounding,
+        spread_curve = self.spreaded_interpolated_curve(date=date, spread_dict=spread_dict, compounding=compounding,
                                                         frequency=frequency)
 
         return spread_curve.zeroRate(to_date, self.day_counter, compounding, frequency, extrapolate).rate()

@@ -215,7 +215,8 @@ class BaseEquityOption(Instrument):
         return ql_option_type(self.payoff, exercise)
 
     @conditional_vectorize('date')
-    def option_engine(self, date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None):
+    def option_engine(self, date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
+                      volatility=None):
 
         """
         :param date: date-like
@@ -229,6 +230,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: QuantLib.VanillaOption
             This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
             and greeks.
@@ -246,7 +249,13 @@ class BaseEquityOption(Instrument):
 
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
 
-        if vol_updated:
+        if volatility is not None:
+            self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
+                                              ts_option=self.timeseries, underlying_name=self.underlying_instrument,
+                                              vol_value=volatility)
+            self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
+            return self.option
+        elif vol_updated:
             return self.option
         else:
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
@@ -262,7 +271,7 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date')
     def price(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None):
+              exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -277,6 +286,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option price at date.
         """
@@ -291,16 +302,16 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust,  last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
         return option.NPV()
 
     @conditional_vectorize('date', 'spot_price')
     def price_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
-                         last_available=True, exercise_ovrd=None):
+                         last_available=True, exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -317,6 +328,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option price based on the date and underlying spot price.
         """
@@ -324,11 +337,11 @@ class BaseEquityOption(Instrument):
         if to_datetime(date) > to_datetime(base_date):
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd)
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
         else:
             option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd)
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
 
         self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
@@ -336,7 +349,7 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date')
     def delta(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None):
+              exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -351,6 +364,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option delta at date.
         """
@@ -365,16 +380,16 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             return option.delta()
 
     @conditional_vectorize('date', 'spot_price')
     def delta_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
-                         last_available=True, exercise_ovrd=None):
+                         last_available=True, exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -391,6 +406,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option delta based on the date and underlying spot price.
         """
@@ -398,11 +415,11 @@ class BaseEquityOption(Instrument):
         if to_datetime(date) > to_datetime(base_date):
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd)
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
         else:
             option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd)
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
 
         self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
@@ -410,7 +427,7 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date')
     def gamma(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None):
+              exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -425,6 +442,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option gamma at date.
         """
@@ -436,16 +455,16 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             return option.gamma()
 
     @conditional_vectorize('date')
     def theta(self, date,  base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None):
+              exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -460,6 +479,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option theta at date.
         """
@@ -471,16 +492,16 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             return option.theta()
 
     @conditional_vectorize('date')
     def vega(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-             exercise_ovrd=None):
+             exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -495,6 +516,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option vega at date.
         """
@@ -506,11 +529,11 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -520,7 +543,8 @@ class BaseEquityOption(Instrument):
                     return 0
 
     @conditional_vectorize('date')
-    def rho(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None):
+    def rho(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
+            volatility=None):
         """
         :param date: date-like
             The date.
@@ -535,6 +559,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option rho at date.
         """
@@ -546,11 +572,11 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -561,7 +587,7 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date', 'target', 'spot_price')
     def implied_vol(self, date, target, spot_price=None, vol_last_available=False, dvd_tax_adjust=1,
-                    last_available=True, exercise_ovrd=None):
+                    last_available=True, exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -578,13 +604,15 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option volatility based on the option price and date.
         """
         if self.option is None:
             self.option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                              dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                             exercise_ovrd=exercise_ovrd)
+                                             exercise_ovrd=exercise_ovrd, volatility=volatility)
 
         ql.Settings.instance().evaluationDate = to_ql_date(date)
         if spot_price is not None:
@@ -600,7 +628,7 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date')
     def optionality(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                    exercise_ovrd=None):
+                    exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -615,6 +643,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option optionality at date.
         """
@@ -626,11 +656,11 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
             price = option.NPV()
             if to_datetime(date) > to_datetime(base_date):
                 intrinsic = self.intrinsic(date=base_date)
@@ -640,7 +670,7 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date')
     def underlying_price(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                         exercise_ovrd=None):
+                         exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -655,6 +685,8 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option underlying spot price.
         """
@@ -667,17 +699,17 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                   exercise_ovrd=exercise_ovrd)
+                                   exercise_ovrd=exercise_ovrd, volatility=volatility)
             else:
                 self.option_engine(date=date, vol_last_available=vol_last_available,
                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                   exercise_ovrd=exercise_ovrd)
+                                   exercise_ovrd=exercise_ovrd, volatility=volatility)
 
             return self.ql_process.spot_price_handle.value()
 
     @conditional_vectorize('date')
     def delta_value(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                    exercise_ovrd=None):
+                    exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
@@ -692,11 +724,14 @@ class BaseEquityOption(Instrument):
         :param exercise_ovrd: str, optional
             Used to force the option model to use a specific type of option. Only working for American and European
             option types.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :return: float
             The option delta notional value.
         """
         delta = self.delta(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                           dvd_tax_adjust=dvd_tax_adjust, last_available=last_available, exercise_ovrd=exercise_ovrd)
+                           dvd_tax_adjust=dvd_tax_adjust, last_available=last_available, exercise_ovrd=exercise_ovrd,
+                           volatility=volatility)
         spot = self.ql_process.spot_price_handle.value()
         size = float(self.contract_size)
 

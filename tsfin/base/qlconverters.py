@@ -276,7 +276,6 @@ def to_ql_rate_index(arg, *args):
     Parameters
     ----------
     arg: str
-    arg2: ql.Period
 
     Returns
     -------
@@ -297,12 +296,17 @@ def to_ql_rate_index(arg, *args):
         raise ValueError("Unable to convert {} to a QuantLib index".format(arg))
 
 
-def to_ql_quote_handle(arg):
-
-    return ql.QuoteHandle(ql.SimpleQuote(arg))
-
-
 def to_ql_duration(arg):
+    """Converts a string with duration name to the corresponding QuantLib object.
+
+    Parameters
+    ----------
+    arg: str
+
+    Returns
+    -------
+    QuantLib.Duration
+    """
 
     if arg.upper() == 'MODIFIED':
         return ql.Duration.Modified
@@ -335,3 +339,8 @@ def to_ql_short_rate_model(arg):
         return ql.BlackKarasinski
     elif arg.upper() == 'G2':
         return ql.G2
+
+
+def ql_tenor_to_maturity_date(base_date, tenor):
+    maturity_date = to_ql_date(base_date) + ql.PeriodParser.parse(tenor)
+    return maturity_date
