@@ -20,10 +20,10 @@ DepositRate class, to represent deposit rates.
 import numpy as np
 import QuantLib as ql
 from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
-    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS, QUOTE_TYPE
+    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS
 from tsfin.base.instrument import default_arguments
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
-    to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter, to_ql_quote_handle
+    to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter
 
 
 class DepositRate(Instrument):
@@ -211,5 +211,6 @@ class DepositRate(Instrument):
         time = self.day_counter.yearFraction(date, self.calendar.advance(date, tenor))
         rate = ql.InterestRate(rate, self.day_counter, self.compounding,
                                self.frequency).equivalentRate(ql.Simple, ql.Annual, time).rate()
-        return ql.DepositRateHelper(to_ql_quote_handle(rate), tenor, self.fixing_days, self.calendar,
+        final_rate = ql.SimpleQuote(rate)
+        return ql.DepositRateHelper(ql.QuoteHandle(final_rate), tenor, self.fixing_days, self.calendar,
                                     self.business_convention, False, self.day_counter)

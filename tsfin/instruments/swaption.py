@@ -1,7 +1,7 @@
 import numpy as np
 import QuantLib as ql
 from tsfin.instruments.swaprate import SwapRate
-from tsfin.base.qlconverters import to_ql_float_index, to_ql_quote_handle, to_ql_currency
+from tsfin.base.qlconverters import to_ql_float_index, to_ql_currency
 from tsfin.constants import MATURITY_TENOR, CURRENCY, FIXED_LEG_TENOR, INDEX
 
 
@@ -23,7 +23,8 @@ class SwapOption(SwapRate):
         if np.isnan(rate):
             return None
 
-        return ql.SwaptionHelper(self.maturity_tenor, self._tenor, to_ql_quote_handle(rate), self.index,
+        final_rate = ql.SimpleQuote(rate)
+        return ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(final_rate), self.index,
                                  self.fixed_leg_tenor, self.day_counter, self.index.dayCounter(), self.term_structure)
 
     def set_yield_curve(self, yield_curve):

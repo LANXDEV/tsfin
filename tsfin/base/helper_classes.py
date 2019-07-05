@@ -1,7 +1,7 @@
 
 import QuantLib as ql
 from tsfin.constants import TENOR_PERIOD, MATURITY_DATE
-from tsfin.base.qlconverters import to_ql_date, to_ql_quote_handle
+from tsfin.base.qlconverters import to_ql_date
 from tsfin.base.basetools import conditional_vectorize
 
 
@@ -23,7 +23,7 @@ class SpreadHandle:
             except AttributeError:
                 spread_date_or_tenor = to_ql_date(ts.ts_attributes[MATURITY_DATE])
 
-            self.spreads[date][spread_date_or_tenor] = to_ql_quote_handle(spread)
+            self.spreads[date][spread_date_or_tenor] = ql.SimpleQuote(spread)
 
     @conditional_vectorize('date')
     def spread_handle(self, date, last_available=True):
@@ -41,5 +41,5 @@ class SpreadHandle:
 
         date = to_ql_date(date)
         self.spreads[date] = dict()
-        self.spreads[date][tenor_date] = to_ql_quote_handle(spread)
+        self.spreads[date][tenor_date] = ql.SimpleQuote(spread)
         return self

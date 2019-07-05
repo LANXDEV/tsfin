@@ -25,7 +25,7 @@ from tsfin.base.instrument import Instrument
 from tsfin.constants import BOND_TYPE, QUOTE_TYPE, CURRENCY, YIELD_QUOTE_COMPOUNDING, \
     YIELD_QUOTE_FREQUENCY, ISSUE_DATE, FIRST_ACCRUAL_DATE, MATURITY_DATE, CALENDAR, \
     BUSINESS_CONVENTION, DATE_GENERATION, SETTLEMENT_DAYS, FACE_AMOUNT, COUPONS, DAY_COUNTER, REDEMPTION, DISCOUNT, \
-    YIELD, CLEAN_PRICE, DIRTY_PRICE, COUPON_FREQUENCY, EXPIRE_DATE_OVRD
+    YIELD, CLEAN_PRICE, DIRTY_PRICE, COUPON_FREQUENCY, EXPIRE_DATE_OVRD, YIELD_CURVE
 from tsfin.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_business_convention, to_ql_calendar, \
     to_ql_compounding, to_ql_date_generation, to_ql_day_counter
 from tsfin.base.basetools import conditional_vectorize, find_le, to_datetime
@@ -537,7 +537,7 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def clean_price(self, last, quote, date, settlement_days, **kwargs):
+    def clean_price(self, last, quote, date, settlement_days, quote_type=None, yield_curve=None, **kwargs):
         """
         Parameters
         ----------
@@ -553,6 +553,9 @@ class _BaseBond(Instrument):
         settlement_days: int, optional
             Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
+        quote_type: str, optional
+            The quote type for calculation ex: CLEAN_PRICE, DIRTY_PRICE, YIELD
+            Default: None
 
         Returns
         -------
@@ -560,9 +563,12 @@ class _BaseBond(Instrument):
             The bond's clean price.
 
         """
-        if self.quote_type == CLEAN_PRICE:
+        if quote_type is None:
+            quote_type = self.quote_type
+
+        if quote_type == CLEAN_PRICE:
             return quote
-        elif self.quote_type == DIRTY_PRICE:
+        elif quote_type == DIRTY_PRICE:
             # TODO: This part needs testing.
             date = to_ql_date(date)
             settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
@@ -570,20 +576,26 @@ class _BaseBond(Instrument):
             if self.is_expired(settlement_date):
                 return np.nan
             return quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
-        elif self.quote_type == YIELD:
-            # TODO: This part needs testing.
+        elif quote_type == YIELD:
             date = to_ql_date(date)
             settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                     self.business_convention)
             if self.is_expired(settlement_date):
                 return np.nan
-            ql.Settings.instance().evaluationDate = settlement_date
             return self.bond.cleanPrice(quote, self.day_counter, self.yield_quote_compounding,
-                                        self.yield_quote_frequency)
+                                        self.yield_quote_frequency, settlement_date)
+        elif quote_type == YIELD_CURVE:
+            date = to_ql_date(date)
+            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
+                                                    self.business_convention)
+            yield_curve = yield_curve.yield_curve(date=date)
+            if self.is_expired(settlement_date):
+                return np.nan
+            return ql.BondFunctions.cleanPrice(self.bond, yield_curve, settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def dirty_price(self, last, quote, date, settlement_days, **kwargs):
+    def dirty_price(self, last, quote, date, settlement_days, quote_type=None, yield_curve=None, **kwargs):
         """
         Parameters
         ----------
@@ -599,23 +611,31 @@ class _BaseBond(Instrument):
         settlement_days: int, optional
             Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
+        quote_type: str, optional
+            The quote type for calculation ex: CLEAN_PRICE, DIRTY_PRICE, YIELD
+            Default: None
+        yield_curve: :py:func:`YieldCurveTimeSeries`
+            The yield curve object to be used to get the price from yield curve.
 
         Returns
         -------
         scalar
             The bond's dirty price.
         """
-        if self.quote_type == CLEAN_PRICE:
+
+        if quote_type is None:
+            quote_type = self.quote_type
+
+        if quote_type == CLEAN_PRICE:
             date = to_ql_date(date)
             settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                     self.business_convention)
             if self.is_expired(settlement_date):
                 return np.nan
             return quote + self.accrued_interest(last=last, date=settlement_date, **kwargs)
-        elif self.quote_type == DIRTY_PRICE:
+        elif quote_type == DIRTY_PRICE:
             return quote
-        elif self.quote_type == YIELD:
-            # TODO: This part needs testing.
+        elif quote_type == YIELD:
             date = to_ql_date(date)
             settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                     self.business_convention)
@@ -623,6 +643,15 @@ class _BaseBond(Instrument):
                 return np.nan
             return self.bond.dirtyPrice(quote, self.day_counter, self.yield_quote_compounding,
                                         self.yield_quote_frequency, settlement_date)
+        elif quote_type == YIELD_CURVE:
+            date = to_ql_date(date)
+            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
+                                                    self.business_convention)
+            yield_curve = yield_curve.yield_curve(date=date)
+            if self.is_expired(settlement_date):
+                return np.nan
+            clean_price = ql.BondFunctions.cleanPrice(self.bond, yield_curve, settlement_date)
+            return clean_price + self.accrued_interest(last=last, date=settlement_date, **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
