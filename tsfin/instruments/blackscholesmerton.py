@@ -45,7 +45,7 @@ class BlackScholesMerton:
                                                         self.volatility_handle)
         self.vol_updated = OrderedDict()
 
-    def spot_price_update(self, date, underlying_name, spot_price=None, last_available=True):
+    def spot_price_update(self, date, underlying_name, spot_price=None, last_available=True, **kwargs):
         """
 
         :param date: date-like
@@ -68,7 +68,7 @@ class BlackScholesMerton:
         self.spot_price_handle.linkTo(ql.SimpleQuote(spot_price))
 
     def dividend_yield_update(self, date, calendar, day_counter, underlying_name, dividend_yield=None, dvd_tax_adjust=1,
-                              last_available=True, compounding=ql.Continuous):
+                              last_available=True, compounding=ql.Continuous, **kwargs):
         """
 
         :param date: date-like
@@ -101,7 +101,7 @@ class BlackScholesMerton:
         self.dividend_handle.linkTo(dividend)
 
     def yield_curve_update(self, date, calendar, day_counter, maturity, risk_free=None, compounding=ql.Continuous,
-                           frequency=ql.Once):
+                           frequency=ql.Once, **kwargs):
         """
 
         :param date: date-like
@@ -132,7 +132,7 @@ class BlackScholesMerton:
         self.risk_free_handle.linkTo(yield_curve)
 
     def volatility_update(self, date, calendar, day_counter, ts_option, underlying_name, vol_value=None,
-                          last_available=False):
+                          last_available=False, **kwargs):
 
         """
 
@@ -203,15 +203,15 @@ class BlackScholesMerton:
         if vol_updated:
             return self.vol_updated[underlying_name][to_ql_date(date)]
         else:
-            self.spot_price_update(date=date, underlying_name=underlying_name, last_available=last_available)
+            self.spot_price_update(date=date, underlying_name=underlying_name, last_available=last_available, **kwargs)
 
             self.dividend_yield_update(date=date, calendar=calendar, day_counter=day_counter,
                                        underlying_name=underlying_name, dvd_tax_adjust=dvd_tax_adjust,
-                                       last_available=last_available)
+                                       last_available=last_available, **kwargs)
 
             self.yield_curve_update(date=date, calendar=calendar, day_counter=day_counter, maturity=maturity, **kwargs)
 
             self.volatility_update(date=date, calendar=calendar, day_counter=day_counter, ts_option=ts_option,
-                                   underlying_name=underlying_name, last_available=vol_last_available)
+                                   underlying_name=underlying_name, last_available=vol_last_available, **kwargs)
 
             return self.vol_updated[underlying_name][to_ql_date(date)]

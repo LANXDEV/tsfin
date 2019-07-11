@@ -179,7 +179,7 @@ class BaseEquityOption(Instrument):
         """
         strike = self.strike
         dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
+        if to_datetime(date) > dt_maturity:
             return 0
         else:
             spot = self.ql_process.spot_price_handle.value()
@@ -214,9 +214,8 @@ class BaseEquityOption(Instrument):
 
         return ql_option_type(self.payoff, exercise)
 
-    @conditional_vectorize('date')
     def option_engine(self, date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
-                      volatility=None):
+                      volatility=None, underlying_price=None):
 
         """
         :param date: date-like
@@ -232,6 +231,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: QuantLib.VanillaOption
             This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
             and greeks.
@@ -245,7 +246,8 @@ class BaseEquityOption(Instrument):
                                                      underlying_name=self.underlying_instrument,
                                                      vol_last_available=vol_last_available,
                                                      dvd_tax_adjust=dvd_tax_adjust,
-                                                     last_available=last_available)
+                                                     last_available=last_available,
+                                                     spot_price=underlying_price)
 
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
 
@@ -269,9 +271,9 @@ class BaseEquityOption(Instrument):
             self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
             return self.option
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def price(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None):
+              exercise_ovrd=None, volatility=None, underlying_price=None):
         """
         :param date: date-like
             The date.
@@ -288,6 +290,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: float
             The option price at date.
         """
@@ -302,11 +306,13 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust,  last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
         return option.NPV()
 
     @conditional_vectorize('date', 'spot_price')
@@ -347,9 +353,9 @@ class BaseEquityOption(Instrument):
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
         return option.NPV()
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def delta(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None):
+              exercise_ovrd=None, volatility=None, underlying_price=None):
         """
         :param date: date-like
             The date.
@@ -366,6 +372,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: float
             The option delta at date.
         """
@@ -380,11 +388,13 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             return option.delta()
 
     @conditional_vectorize('date', 'spot_price')
@@ -425,9 +435,9 @@ class BaseEquityOption(Instrument):
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
         return option.delta()
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def gamma(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None):
+              exercise_ovrd=None, volatility=None, underlying_price=None):
         """
         :param date: date-like
             The date.
@@ -444,6 +454,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: float
             The option gamma at date.
         """
@@ -455,16 +467,18 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             return option.gamma()
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def theta(self, date,  base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None):
+              exercise_ovrd=None, volatility=None, underlying_price=None):
         """
         :param date: date-like
             The date.
@@ -481,6 +495,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: float
             The option theta at date.
         """
@@ -492,16 +508,18 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             return option.theta()
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def vega(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-             exercise_ovrd=None, volatility=None):
+             exercise_ovrd=None, volatility=None, underlying_price=None):
         """
         :param date: date-like
             The date.
@@ -518,6 +536,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: float
             The option vega at date.
         """
@@ -529,11 +549,13 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -542,9 +564,9 @@ class BaseEquityOption(Instrument):
                 except:
                     return 0
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def rho(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
-            volatility=None):
+            volatility=None, underlying_price=None):
         """
         :param date: date-like
             The date.
@@ -561,6 +583,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: float
             The option rho at date.
         """
@@ -572,11 +596,13 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -626,9 +652,9 @@ class BaseEquityOption(Instrument):
 
         return implied_vol
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def optionality(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                    exercise_ovrd=None, volatility=None):
+                    exercise_ovrd=None, volatility=None, underlying_price=None):
         """
         :param date: date-like
             The date.
@@ -645,6 +671,8 @@ class BaseEquityOption(Instrument):
             option types.
         :param volatility: float, optional
             Volatility override value to calculate the option.
+        :param underlying_price: float, optional
+            Underlying price override value to calculate the option.
         :return: float
             The option optionality at date.
         """
@@ -656,11 +684,13 @@ class BaseEquityOption(Instrument):
             if to_datetime(date) > to_datetime(base_date):
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             else:
                 option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility)
+                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                            underlying_price=underlying_price)
             price = option.NPV()
             if to_datetime(date) > to_datetime(base_date):
                 intrinsic = self.intrinsic(date=base_date)
@@ -707,7 +737,7 @@ class BaseEquityOption(Instrument):
 
             return self.ql_process.spot_price_handle.value()
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('date', 'volatility', 'underlying_price')
     def delta_value(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
                     exercise_ovrd=None, volatility=None):
         """

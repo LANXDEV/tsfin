@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 """
-SpreadedYieldCurveTimeSeries, a class to handle a time series of spreaded yield curves.
+InterpolatedSpreadYieldCurveTimeSeries, a class to handle a time series of spreaded yield curves.
+SingleSpreadYieldCurveTimeSeries, a class to handle a time series of single spread yield curves.
 """
 
 import QuantLib as ql
