@@ -139,7 +139,7 @@ def create_schedule_for_component(call_date, main_bond_schedule, calendar, busin
         Business day convention of the parent bond.
     tenor: QuantLib.Period
         Coupon frequency of the parent bond.
-    date_generation: int
+    date_generation: QuantLib.DateGeneration
         Date-generation pattern of the parent bond's schedule.
     month_end: bool
         endOfMonth parameter of the parent bond's schedule.
@@ -186,10 +186,10 @@ def create_call_component(call_date, call_price, main_bond_schedule, calendar, b
         Business-day convention of the parent bond.
     tenor: QuantLib.Period
         Coupon payment frequency of the parent bond.
-    date_generation: int
+    date_generation: QuantLib.DateGeneration
         Date-generation pattern of the parent bond's schedule.
     month_end: bool
-        endofmonth parameter of the parent bond's schedule.
+        End of month parameter of the parent bond's schedule.
     settlement_days: int
         Default settlement days for trades in the parent bond.
     face_amount: scalar
@@ -556,6 +556,8 @@ class _BaseBond(Instrument):
         quote_type: str, optional
             The quote type for calculation ex: CLEAN_PRICE, DIRTY_PRICE, YIELD
             Default: None
+        yield_curve: :py:func:`YieldCurveTimeSeries`
+            The yield curve object to be used to get the price from yield curve.
 
         Returns
         -------
@@ -569,7 +571,6 @@ class _BaseBond(Instrument):
         if quote_type == CLEAN_PRICE:
             return quote
         elif quote_type == DIRTY_PRICE:
-            # TODO: This part needs testing.
             date = to_ql_date(date)
             settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                     self.business_convention)
@@ -688,7 +689,7 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def performance(self, start_date=None, start_quote=None, date=None, quote=None, last=False, **kwargs):
+    def performance(self, start_date=None, start_quote=None, date=None, quote=None, last_available=False, **kwargs):
         """
         Parameters
         ----------
@@ -704,6 +705,9 @@ class _BaseBond(Instrument):
         quote: scalar, optional, (c-vectorized)
             The quote of the instrument in `date`.
             Default: see :py:func:`default_arguments`.
+        last_available: bool, optional
+            Whether to use last available data.
+            Default: False.
 
         Returns
         -------
