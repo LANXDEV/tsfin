@@ -20,7 +20,7 @@ A class for modelling Black Scholes Merton
 import QuantLib as ql
 import numpy as np
 from collections import OrderedDict
-from tsfin.base import to_ql_date, to_datetime
+from tsfin.base import to_ql_date
 
 
 class BlackScholesMerton:
@@ -58,10 +58,10 @@ class BlackScholesMerton:
             Whether to use last available data in case dates are missing in ``quotes``.
         """
 
-        dt_date = to_datetime(date)
+        date = to_ql_date(date)
         ts_underlying = self.ts_underlying.get(underlying_name).price
         if spot_price is None:
-            spot_price = ts_underlying.get_values(index=dt_date, last_available=last_available)
+            spot_price = ts_underlying.get_values(index=date, last_available=last_available)
         else:
             spot_price = spot_price
 
@@ -88,10 +88,10 @@ class BlackScholesMerton:
         :param compounding: QuantLib.Compounding, default=Continuous
             The compounding used to interpolate the curve.
         """
-        dt_date = to_datetime(date)
+        date = to_ql_date(date)
         dvd_ts = self.ts_underlying.get(underlying_name).eqy_dvd_yld_12m
         if dividend_yield is None:
-            dividend_yield = dvd_ts.get_values(index=dt_date, last_available=last_available)
+            dividend_yield = dvd_ts.get_values(index=date, last_available=last_available)
         else:
             dividend_yield = dividend_yield
 
@@ -120,12 +120,12 @@ class BlackScholesMerton:
             The frequency of the quoted yield.
         """
 
-        ql_date = to_ql_date(date)
+        date = to_ql_date(date)
         mat_date = to_ql_date(maturity)
         if risk_free is not None:
             zero_rate = ql.SimpleQuote(risk_free)
         else:
-            zero_rate = ql.SimpleQuote(self.yield_curve.zero_rate_to_date(date=ql_date, to_date=mat_date,
+            zero_rate = ql.SimpleQuote(self.yield_curve.zero_rate_to_date(date=date, to_date=mat_date,
                                                                           compounding=compounding,
                                                                           frequency=frequency))
         yield_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(zero_rate), day_counter, compounding)
@@ -152,13 +152,13 @@ class BlackScholesMerton:
             Whether to use last available data in case dates are missing in ``quotes``.
         :return:
         """
-        dt_date = to_datetime(date)
+        date = to_ql_date(date)
         vol_updated = True
 
         if vol_value is not None:
             volatility_value = ql.SimpleQuote(vol_value)
         else:
-            ts_volatility = ts_option.ivol_mid.get_values(index=dt_date, last_available=last_available)
+            ts_volatility = ts_option.ivol_mid.get_values(index=date, last_available=last_available)
             if np.isnan(ts_volatility):
                 volatility_value = ql.SimpleQuote(0)
                 vol_updated = False
@@ -167,7 +167,7 @@ class BlackScholesMerton:
 
         back_constant_vol = ql.BlackConstantVol(0, calendar, ql.QuoteHandle(volatility_value), day_counter)
         self.volatility_handle.linkTo(back_constant_vol)
-        self.vol_updated[underlying_name][to_ql_date(date)] = vol_updated
+        self.vol_updated[underlying_name][date] = vol_updated
 
     def update_process(self, date, calendar, day_counter, ts_option, maturity, underlying_name,
                        vol_last_available=False, dvd_tax_adjust=1, last_available=True, **kwargs):
@@ -194,24 +194,27 @@ class BlackScholesMerton:
         :return: bool
             Return True if the volatility timeseries was updated.
         """
+        date = to_ql_date(date)
         self.vol_updated[underlying_name] = OrderedDict()
-        if to_ql_date(date) in self.vol_updated[underlying_name].keys():
-            vol_updated = self.vol_updated[underlying_name][to_ql_date(date)]
+        if date in self.vol_updated[underlying_name].keys():
+            vol_updated = self.vol_updated[underlying_name][date]
         else:
             vol_updated = False
 
         if vol_updated:
-            return self.vol_updated[underlying_name][to_ql_date(date)]
+            return self.vol_updated[underlying_name][date]
         else:
-            self.spot_price_update(date=date, underlying_name=underlying_name, last_available=last_available, **kwargs)
+            self.spot_price_update(date=date, underlying_name=underlying_name, last_available=last_available,
+                                   **kwargs)
 
             self.dividend_yield_update(date=date, calendar=calendar, day_counter=day_counter,
                                        underlying_name=underlying_name, dvd_tax_adjust=dvd_tax_adjust,
                                        last_available=last_available, **kwargs)
 
-            self.yield_curve_update(date=date, calendar=calendar, day_counter=day_counter, maturity=maturity, **kwargs)
+            self.yield_curve_update(date=date, calendar=calendar, day_counter=day_counter, maturity=maturity,
+                                    **kwargs)
 
             self.volatility_update(date=date, calendar=calendar, day_counter=day_counter, ts_option=ts_option,
                                    underlying_name=underlying_name, last_available=vol_last_available, **kwargs)
 
-            return self.vol_updated[underlying_name][to_ql_date(date)]
+            return self.vol_updated[underlying_name][date]

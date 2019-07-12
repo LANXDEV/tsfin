@@ -27,9 +27,9 @@ from tsfin.base import Instrument, to_ql_option_type, to_ql_date, conditional_ve
 
 def option_exercise_type(exercise_type, date, maturity):
     if exercise_type.upper() == 'AMERICAN':
-        return ql.AmericanExercise(to_ql_date(date), to_ql_date(maturity))
+        return ql.AmericanExercise(date, maturity)
     elif exercise_type.upper() == 'EUROPEAN':
-        return ql.EuropeanExercise(to_ql_date(maturity))
+        return ql.EuropeanExercise(maturity)
     else:
         raise ValueError('Exercise type not supported')
 
@@ -122,11 +122,13 @@ class BaseEquityOption(Instrument):
         :return scalar, None
             The unit dirty value of the instrument.
         """
+        ql_date = to_ql_date(date)
+        ql_base_date = to_ql_date(base_date)
         size = float(self.contract_size)
         if quote is not None:
             return float(quote)*size
         else:
-            return self.price(date=date, base_date=base_date, vol_last_available=vol_last_available,
+            return self.price(date=ql_date, base_date=ql_base_date, vol_last_available=vol_last_available,
                               dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                               exercise_ovrd=exercise_ovrd)*size
 
@@ -177,9 +179,9 @@ class BaseEquityOption(Instrument):
         :return: float
             The intrinsic value o the option at date.
         """
+        ql_date = to_ql_date(date)
         strike = self.strike
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) > dt_maturity:
+        if ql_date > self.option_maturity:
             return 0
         else:
             spot = self.ql_process.spot_price_handle.value()
@@ -207,10 +209,11 @@ class BaseEquityOption(Instrument):
         :return: QuantLib.VanillaOption
         """
 
+        ql_date = to_ql_date(date)
         if exercise_ovrd is not None:
             self.exercise_type = exercise_ovrd.upper()
 
-        exercise = option_exercise_type(self.exercise_type, date=date, maturity=self.option_maturity)
+        exercise = option_exercise_type(self.exercise_type, date=ql_date, maturity=self.option_maturity)
 
         return ql_option_type(self.payoff, exercise)
 
@@ -218,7 +221,7 @@ class BaseEquityOption(Instrument):
                       volatility=None, underlying_price=None):
 
         """
-        :param date: date-like
+        :param date: QuantLib.Date
             The date.
         :param vol_last_available: bool, optional
             Whether to use last available data in case dates are missing in volatility values.
@@ -237,8 +240,7 @@ class BaseEquityOption(Instrument):
             This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
             and greeks.
         """
-        dt_date = to_datetime(date)
-        self.option = self.ql_option(date=dt_date, exercise_ovrd=exercise_ovrd)
+        self.option = self.ql_option(date=date, exercise_ovrd=exercise_ovrd)
         vol_updated = self.ql_process.update_process(date=date, calendar=self.calendar,
                                                      day_counter=self.day_counter,
                                                      ts_option=self.timeseries,
@@ -263,8 +265,9 @@ class BaseEquityOption(Instrument):
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
                                               ts_option=self.timeseries, underlying_name=self.underlying_instrument,
                                               vol_value=0.2)
-            mid_price = self.px_mid.get_values(index=dt_date, last_available=True)
-            implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process)
+            mid_price = self.px_mid.get_values(index=date, last_available=True)
+            implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
+                                                        accuracy=1.0e-4, maxEvaluations=100)
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
                                               ts_option=self.timeseries, underlying_name=self.underlying_instrument,
                                               vol_value=implied_vol)
@@ -295,15 +298,16 @@ class BaseEquityOption(Instrument):
         :return: float
             The option price at date.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
-            if dt_maturity > to_datetime(base_date):
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date >= self.option_maturity:
+            if self.option_maturity > base_date:
                 return self.intrinsic(date=base_date)
             else:
-                return self.intrinsic(date=dt_maturity)
+                return self.intrinsic(date=self.option_maturity)
         else:
-            if to_datetime(date) > to_datetime(base_date):
+            if date > base_date:
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
@@ -339,8 +343,10 @@ class BaseEquityOption(Instrument):
         :return: float
             The option price based on the date and underlying spot price.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(base_date):
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date > base_date:
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                         exercise_ovrd=exercise_ovrd, volatility=volatility)
@@ -377,15 +383,16 @@ class BaseEquityOption(Instrument):
         :return: float
             The option delta at date.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
-            if self.intrinsic(date=dt_maturity) > 0:
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date >= self.option_maturity:
+            if self.intrinsic(date=self.option_maturity) > 0:
                 return 1
             else:
                 return 0
         else:
-            if to_datetime(date) > to_datetime(base_date):
+            if date > base_date:
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
@@ -421,8 +428,10 @@ class BaseEquityOption(Instrument):
         :return: float
             The option delta based on the date and underlying spot price.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        if to_datetime(date) > to_datetime(base_date):
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date > base_date:
             option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                         dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                         exercise_ovrd=exercise_ovrd, volatility=volatility)
@@ -459,12 +468,13 @@ class BaseEquityOption(Instrument):
         :return: float
             The option gamma at date.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date >= self.option_maturity:
             return 0
         else:
-            if to_datetime(date) > to_datetime(base_date):
+            if date > base_date:
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
@@ -500,12 +510,13 @@ class BaseEquityOption(Instrument):
         :return: float
             The option theta at date.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date >= self.option_maturity:
             return 0
         else:
-            if to_datetime(date) > to_datetime(base_date):
+            if date > base_date:
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
@@ -541,12 +552,13 @@ class BaseEquityOption(Instrument):
         :return: float
             The option vega at date.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date >= self.option_maturity:
             return 0
         else:
-            if to_datetime(date) > to_datetime(base_date):
+            if date > base_date:
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
@@ -588,12 +600,13 @@ class BaseEquityOption(Instrument):
         :return: float
             The option rho at date.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        ql.Settings.instance().evaluationDate = date
+        if date >= self.option_maturity:
             return 0
         else:
-            if to_datetime(date) > to_datetime(base_date):
+            if date > base_date:
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
@@ -635,12 +648,13 @@ class BaseEquityOption(Instrument):
         :return: float
             The option volatility based on the option price and date.
         """
+        date = to_ql_date(date)
+        ql.Settings.instance().evaluationDate = date
         if self.option is None:
             self.option = self.option_engine(date=date, vol_last_available=vol_last_available,
                                              dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                              exercise_ovrd=exercise_ovrd, volatility=volatility)
 
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
         if spot_price is not None:
             self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument,
                                               spot_price=spot_price)
@@ -676,12 +690,13 @@ class BaseEquityOption(Instrument):
         :return: float
             The option optionality at date.
         """
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        if date >= self.option_maturity:
             return 0
         else:
-            ql.Settings.instance().evaluationDate = to_ql_date(date)
-            if to_datetime(date) > to_datetime(base_date):
+            ql.Settings.instance().evaluationDate = date
+            if date > base_date:
                 option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
@@ -692,7 +707,7 @@ class BaseEquityOption(Instrument):
                                             exercise_ovrd=exercise_ovrd, volatility=volatility,
                                             underlying_price=underlying_price)
             price = option.NPV()
-            if to_datetime(date) > to_datetime(base_date):
+            if date > base_date:
                 intrinsic = self.intrinsic(date=base_date)
             else:
                 intrinsic = self.intrinsic(date=date)
@@ -720,13 +735,13 @@ class BaseEquityOption(Instrument):
         :return: float
             The option underlying spot price.
         """
-        ql.Settings.instance().evaluationDate = to_ql_date(date)
-        dt_maturity = to_datetime(self.option_maturity)
-        if to_datetime(date) >= dt_maturity:
+        date = to_ql_date(date)
+        base_date = to_ql_date(base_date)
+        if date >= self.option_maturity:
             return 0
         else:
-            ql.Settings.instance().evaluationDate = to_ql_date(date)
-            if to_datetime(date) > to_datetime(base_date):
+            ql.Settings.instance().evaluationDate = date
+            if date > base_date:
                 self.option_engine(date=base_date, vol_last_available=vol_last_available,
                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                    exercise_ovrd=exercise_ovrd, volatility=volatility)
