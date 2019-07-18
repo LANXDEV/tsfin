@@ -32,7 +32,7 @@ from tsfin.instruments.baseequityoption import BaseEquityOption
 from tsfin.instruments.cds import CDSRate
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS, \
-    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL
+    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX
 
 
 def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
@@ -101,7 +101,7 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             instrument = BaseEquityOption(ts, ql_process=ql_process)
         elif ts_type == EQUITY:
             instrument = Instrument(ts)
-        elif ts_type == CDS:
+        elif ts_type in [CDS, CDX]:
             instrument = CDSRate(ts)
         else:
             instrument = TimeSeries(ts)
