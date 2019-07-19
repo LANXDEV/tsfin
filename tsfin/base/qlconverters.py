@@ -84,6 +84,9 @@ def to_ql_calendar(arg):
 
     if arg.upper() == "NYSE":
         return ql.UnitedStates(ql.UnitedStates.NYSE)
+    if arg.upper() == "EX":
+        return ql.JointCalendar(ql.UnitedStates(ql.UnitedStates.NYSE),
+                                ql.UnitedStates(ql.UnitedStates.Settlement))
     if arg.upper() == "US":
         return ql.UnitedStates()
     if arg.upper() == "UK":
@@ -263,6 +266,17 @@ def to_ql_overnight_index(arg):
 
 
 def to_ql_option_type(arg):
+    """Converts a string with the option type to the corresponding QuantLib object.
+
+    Parameters
+    ----------
+    arg: str
+
+    Returns
+    -------
+    QuantLib.Option
+
+    """
 
     if arg.upper() == 'CALL':
         return ql.Option.Call
@@ -317,6 +331,22 @@ def to_ql_duration(arg):
 
 
 def to_ql_float_index(index, tenor, yield_curve_handle=None):
+    """Return the QuantLib.Index with the specified tenor and yield_curve_handle.
+
+    Parameters
+    ----------
+    index: str
+        Index name
+    tenor: QuantLib.Period
+        The QuantLib object representing the tenor of the index.
+    yield_curve_handle: QuantLib.YieldTermStructureHandle
+        The QuantLib Yield Term Structure to be used in the projections.
+
+    Returns
+    -------
+    QuantLib.Index
+
+    """
 
     if index.upper() == "USDLIBOR":
         return ql.USDLibor(tenor, yield_curve_handle)
@@ -326,12 +356,49 @@ def to_ql_float_index(index, tenor, yield_curve_handle=None):
 
 def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
                      yield_curve_handle):
+    """Generic constructor of a QuantLib.Index. Mostly useful when you have to create custom calendars.
 
+    Parameters
+    ----------
+    index: str
+        Index name
+    tenor: QuantLib.Period
+        The QuantLib object representing the tenor of the index.
+    fixing_days: float
+        The number of days used in the fixing.
+    currency: QuantLib.Currency
+        The QuantLib object representing the target currency.
+    end_of_month: bool
+        End of month parameter of the index schedule.
+    calendar: QuantLib.Calendar
+        Calendar of the parent bond.
+    business_convention: QuantLib.BusinessConvention
+        The business convention rule.
+    day_counter: QuantLib.DayCounter
+        DayCounter of the index.
+    yield_curve_handle: QuantLib.YieldTermStructureHandle
+        The QuantLib Yield Term Structure to be used in the projections.
+
+    Returns
+    -------
+    QuantLib.Index
+
+    """
     return ql.IborIndex(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
                         yield_curve_handle)
 
 
 def to_ql_short_rate_model(arg):
+    """Converts a string with the short rate model name to the corresponding QuantLib object.
+
+    Parameters
+    ----------
+    arg: str
+
+    Returns
+    -------
+    QuantLib.ShortRateModel
+    """
 
     if arg.upper() == 'HULL_WHITE':
         return ql.HullWhite
@@ -342,5 +409,18 @@ def to_ql_short_rate_model(arg):
 
 
 def ql_tenor_to_maturity_date(base_date, tenor):
+    """Return the maturity date base on a initial date and a specified date.
+
+    Parameters
+    ----------
+    base_date: QuantLib.Date
+        The base date for calculation.
+    tenor: str
+        The string representing the tenor
+
+    Returns
+    -------
+    QuantLib.Date
+    """
     maturity_date = to_ql_date(base_date) + ql.PeriodParser.parse(tenor)
     return maturity_date
