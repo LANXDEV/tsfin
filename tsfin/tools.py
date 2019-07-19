@@ -99,7 +99,7 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
             instrument = BaseEquityOption(ts, ql_process=ql_process)
-        elif ts_type == EQUITY:
+        elif ts_type in [EQUITY, FUND]:
             instrument = Instrument(ts)
         elif ts_type in [CDS, CDX]:
             instrument = CDSRate(ts)
