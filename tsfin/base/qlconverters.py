@@ -82,21 +82,21 @@ def to_ql_calendar(arg):
 
     """
 
-    if arg.upper() == "NYSE":
+    if arg.upper() == "US":
+        return ql.UnitedStates()
+    if arg.upper() in ["NYSE", "CE"]:
         return ql.UnitedStates(ql.UnitedStates.NYSE)
+    if arg.upper() == "FD":
+        return ql.UnitedStates(ql.UnitedStates.FederalReserve)
     if arg.upper() == "EX":
         return ql.JointCalendar(ql.UnitedStates(ql.UnitedStates.NYSE),
                                 ql.UnitedStates(ql.UnitedStates.Settlement))
-    if arg.upper() == "US":
-        return ql.UnitedStates()
     if arg.upper() == "UK":
         return ql.UnitedKingdom()
     if arg.upper() == "BZ":
         return ql.Brazil()
-    if arg.upper() == "TARGET":
+    if arg.upper() in ["NYSE", "TE"]:
         return ql.TARGET()
-    if arg.upper() == "FD":
-        return ql.UnitedStates(ql.UnitedStates.FederalReserve)
     else:
         raise ValueError("Unable to convert {} to a QuantLib calendar".format(arg))
 
@@ -424,3 +424,17 @@ def ql_tenor_to_maturity_date(base_date, tenor):
     """
     maturity_date = to_ql_date(base_date) + ql.PeriodParser.parse(tenor)
     return maturity_date
+
+
+def to_ql_time_unit(arg):
+
+    if arg.upper() == 'Y':
+        return ql.Years
+    elif arg.upper() == 'M':
+        return ql.Months
+    elif arg.upper() == 'W':
+        return ql.Weeks
+    elif arg.upper() == 'D':
+        return ql.Days
+    else:
+        raise ValueError("Unable to convert {} to a QuantLib Time Unit".format(arg))
