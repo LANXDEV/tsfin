@@ -65,6 +65,10 @@ def to_ql_frequency(arg):
         return ql.Monthly
     elif arg.upper() == "AT_MATURITY":
         return ql.Once
+    elif arg.upper() == "WEEKLY":
+        return ql.Weekly
+    elif arg.upper() == "DAILY":
+        return ql.Daily
     else:
         raise ValueError("Unable to convert {} to a QuantLib frequency".format(arg))
 
@@ -381,7 +385,7 @@ def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_con
 
     Returns
     -------
-    QuantLib.Index
+    QuantLib.IborIndex
 
     """
     return ql.IborIndex(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,

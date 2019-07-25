@@ -512,3 +512,10 @@ def ql_holiday_list(start_date, end_date, *calendars):
             holiday_list.append(date)
         date = date + ql.Period(1, ql.Days)
     return holiday_list
+
+
+def to_bool(arg):
+    if isinstance(arg, str):
+        if arg.upper() == "FALSE":
+            return False
+    return bool(arg)
