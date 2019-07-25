@@ -107,6 +107,7 @@ EQUITY = 'EQUITY'
 CDS = 'CDS'
 CDX = 'CDX'
 ZERO_RATE = 'ZERO_RATE'
+EURODOLLAR_FUTURE = 'EURODOLLAR_FUTURE'
 
 '''
 Configuration for yield curve classes
