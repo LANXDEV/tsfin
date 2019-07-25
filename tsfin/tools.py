@@ -30,9 +30,10 @@ from tsfin.instruments.swaprate import SwapRate
 from tsfin.instruments.swaption import SwapOption
 from tsfin.instruments.baseequityoption import BaseEquityOption
 from tsfin.instruments.cds import CDSRate
+from tsfin.instruments.eurodollar_future import EurodollarFuture
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS, \
-    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX
+    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE
 
 
 def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
@@ -103,6 +104,8 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             instrument = Instrument(ts)
         elif ts_type in [CDS, CDX]:
             instrument = CDSRate(ts)
+        elif ts_type == EURODOLLAR_FUTURE:
+            instrument = EurodollarFuture(ts)
         else:
             instrument = TimeSeries(ts)
 
@@ -150,7 +153,8 @@ def ts_to_dict(*args):
 
 
 def filter_series(df, initial_date=None, final_date=None):
-    """ Filter inplace a pandas.Series to keep its index between an initial and a final date.
+    """
+    Filter inplace a pandas.Series to keep its index between an initial and a final date.
 
     Parameters
     ----------

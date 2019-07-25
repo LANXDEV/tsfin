@@ -99,7 +99,7 @@ def to_ql_calendar(arg):
         return ql.UnitedKingdom()
     if arg.upper() == "BZ":
         return ql.Brazil()
-    if arg.upper() in ["NYSE", "TE"]:
+    if arg.upper() == "TE":
         return ql.TARGET()
     else:
         raise ValueError("Unable to convert {} to a QuantLib calendar".format(arg))
