@@ -20,10 +20,10 @@ DepositRate class, to represent deposit rates.
 import numpy as np
 import QuantLib as ql
 from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
-    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS
+    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS, MONTH_END
 from tsfin.base.instrument import default_arguments
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
-    to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter
+    to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter, to_bool
 
 
 class DepositRate(Instrument):
@@ -47,6 +47,10 @@ class DepositRate(Instrument):
         self.frequency = to_ql_frequency(self.ts_attributes[FREQUENCY])
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
         self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
+        try:
+            self.month_end = to_bool(self.ts_attributes[MONTH_END])
+        except KeyError:
+            self.month_end = False
 
     def is_expired(self, date, *args, **kwargs):
         """Check if the deposit rate is expired.
@@ -76,11 +80,11 @@ class DepositRate(Instrument):
         return 0
 
     def _get_fixing_maturity_dates(self, start_date, end_date):
-        start_date = self.calendar.adjust(start_date)
-        end_date = self.calendar.adjust(end_date)
+        start_date = self.calendar.adjust(start_date, self.business_convention)
+        end_date = self.calendar.adjust(end_date, self.business_convention)
         fixing_dates = list()
         maturity_dates = list()
-        fixing_date = self.calendar.adjust(start_date)
+        fixing_date = self.calendar.adjust(start_date, self.business_convention)
         maturity_date = self.calendar.advance(fixing_date, self.tenor(start_date))
         while maturity_date < end_date:
             fixing_dates.append(fixing_date)
@@ -171,7 +175,11 @@ class DepositRate(Instrument):
         start_date = to_ql_date(start_date)
         date = to_ql_date(date)
         fixing_dates, maturity_dates = self._get_fixing_maturity_dates(start_date, date)
-        fixings = self.timeseries.get_values(index=[to_datetime(fixing_date) for fixing_date in fixing_dates])
+        rate_dates = [self.calendar.advance(to_ql_date(fixing_date), -self.fixing_days, ql.Days,
+                                            self.business_convention, self.month_end)
+                      for fixing_date in fixing_dates]
+
+        fixings = self.timeseries.get_values(index=[to_datetime(rate_date) for rate_date in rate_dates])
 
         if spread is not None:
             fixings += spread
@@ -213,4 +221,4 @@ class DepositRate(Instrument):
                                self.frequency).equivalentRate(ql.Simple, ql.Annual, time).rate()
         final_rate = ql.SimpleQuote(rate)
         return ql.DepositRateHelper(ql.QuoteHandle(final_rate), tenor, self.fixing_days, self.calendar,
-                                    self.business_convention, False, self.day_counter)
+                                    self.business_convention, self.month_end, self.day_counter)

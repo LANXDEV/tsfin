@@ -490,3 +490,32 @@ def floating_coupon_dates_and_rate(cash_flow):
     df = pd.DataFrame([(c.dates(), rate_if_available(c), c.amount()) for c in cash_flow],
                       columns=['Date', 'Rate', 'Amount'])
     return df
+
+
+def ql_holiday_list(start_date, end_date, *calendars):
+    """
+    Return the holiday list between two dates with the dates from 1 or more QuantLib calendars.
+
+    :param start_date: ql.Date
+    :param end_date: ql.Date
+    :param calendars: ql.Calendar
+    :return: list
+    """
+    date = start_date
+    if len(calendars) > 1:
+        calendar = ql.JointCalendar(*calendars)
+    else:
+        calendar = calendars[0]
+    holiday_list = []
+    while date < end_date:
+        if calendar.isHoliday(date) and not calendar.isWeekend(date.weekday()):
+            holiday_list.append(date)
+        date = date + ql.Period(1, ql.Days)
+    return holiday_list
+
+
+def to_bool(arg):
+    if isinstance(arg, str):
+        if arg.upper() == "FALSE":
+            return False
+    return bool(arg)

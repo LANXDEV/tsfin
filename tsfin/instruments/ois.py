@@ -69,5 +69,5 @@ class OISRate(DepositRate):
             return None
         final_rate = ql.SimpleQuote(rate)
         return ql.OISRateHelper(self.settlement_days, tenor, ql.QuoteHandle(final_rate),
-                                self.overnight_index, ql.YieldTermStructureHandle(), False, 0,
+                                self.overnight_index, ql.YieldTermStructureHandle(), self.month_end, 0,
                                 self.business_convention)

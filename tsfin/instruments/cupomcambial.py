@@ -60,7 +60,7 @@ class CupomCambial(DepositRate):
         Brazilian interest rate time series of yield curves, needed to obtain the interest rates.
     """
 
-    def __init__(self, ts_name, currency_curve, DI_curve):
+    def __init__(self, ts_name, currency_curve, di_curve):
         # Create a BaseInstrument (base class of DepositRate) with the given ts_name.
         super(DepositRate, self).__init__(timeseries=ts_name)
         self.calendar = ql.Brazil()
@@ -73,16 +73,16 @@ class CupomCambial(DepositRate):
         dates = spot.ts_values.index
         spot_values = spot.ts_values.values
         values = np.vectorize(self._calculate_cc, excluded=['currency_curve', 'DI_curve'])(dates, spot_values,
-                                                                                           currency_curve, DI_curve)
+                                                                                           currency_curve, di_curve)
         self.ts_values = pd.Series(index=dates, data=values)
 
-    def _calculate_cc(self, date, spot_price, currency_curve, DI_curve):
+    def _calculate_cc(self, date, spot_price, currency_curve, di_curve):
         maturity_date = self._maturity_on_the_run(date)
         future_price = currency_curve.exchange_rate_to_date(date, maturity_date)
-        DI = DI_curve.zero_rate_to_date(date, maturity_date, ql.Compounded, ql.Annual)
-        DI_rate = ql.InterestRate(DI, ql.Business252(), ql.Compounded, ql.Annual)
+        di = di_curve.zero_rate_to_date(date, maturity_date, ql.Compounded, ql.Annual)
+        di_rate = ql.InterestRate(di, ql.Business252(), ql.Compounded, ql.Annual)
         date = to_ql_date(date)
-        compound = spot_price * DI_rate.compoundFactor(date, maturity_date) / future_price
+        compound = spot_price * di_rate.compoundFactor(date, maturity_date) / future_price
         rate = ql.InterestRate.impliedRate(compound, ql.Actual360(), ql.Simple, ql.Annual, date, maturity_date)
         return rate.rate()
 
