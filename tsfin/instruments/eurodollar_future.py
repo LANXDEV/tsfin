@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 """
-DepositRate class, to represent deposit rates.
+EurodollarFuture class, to represent eurodollar futures.
 """
 import numpy as np
 import QuantLib as ql
@@ -23,8 +23,7 @@ from tsfin.constants import MATURITY_DATE, FUTURE_CONTRACT_SIZE, TICK_SIZE, TICK
     TERM_PERIOD, SETTLEMENT_DAYS
 from tsfin.base.instrument import default_arguments
 from tsfin.instruments.depositrate import DepositRate
-from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
-    to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter, to_ql_time_unit
+from tsfin.base import conditional_vectorize, to_datetime, to_ql_date, to_ql_time_unit
 
 
 class EurodollarFuture(DepositRate):

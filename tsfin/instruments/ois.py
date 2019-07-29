@@ -40,7 +40,7 @@ class OISRate(DepositRate):
         self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
         self.payment_lag = int(self.ts_attributes[PAYMENT_LAG])
 
-    def rate_helper(self, date, last_available=True, *args, **kwargs):
+    def rate_helper(self, date, last_available=True, spread=0, *args, **kwargs):
         """ Rate helper object for yield curve building.
 
         Parameters
@@ -49,7 +49,8 @@ class OISRate(DepositRate):
             Reference date.
         last_available: bool
             Whether to use last available information if missing data.
-
+        spread: float
+            The spread to be added to the OIS rate. Default 0.
         Returns
         -------
         QuantLib.RateHelper
@@ -69,5 +70,6 @@ class OISRate(DepositRate):
             return None
         final_rate = ql.SimpleQuote(rate)
         return ql.OISRateHelper(self.settlement_days, tenor, ql.QuoteHandle(final_rate),
-                                self.overnight_index, ql.YieldTermStructureHandle(), self.month_end, 0,
-                                self.business_convention)
+                                self.overnight_index, ql.YieldTermStructureHandle(), False, 0,
+                                self.business_convention, self.frequency, self.calendar, ql.Period(0, ql.Days),
+                                float(spread))

@@ -21,7 +21,7 @@ import QuantLib as ql
 from operator import itemgetter
 from datetime import timedelta
 from tsfin.base.qlconverters import to_ql_date, to_ql_calendar, to_ql_currency, to_ql_ibor_index
-from tsfin.base.basetools import conditional_vectorize, to_datetime, adjust_rate_from_quote_type
+from tsfin.base.basetools import conditional_vectorize, to_datetime
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_schedule_for_component
 from tsfin.constants import INDEX_TENOR, FIXING_DAYS, CALENDAR, YIELD, CLEAN_PRICE, DIRTY_PRICE
 
@@ -78,9 +78,6 @@ def clear_history_and_set_date(date, index, **kwargs):
 #         for dt in getattr(self, 'fixing_dates'):
 #             if dt <= calendar.advance(date, fixing_days, ql.Days):
 #                 rate = index_timeseries.get_values(index=dt)
-#                 quote_type_dict = {'BPS': float(10000), 'PERCENT': float(100)}
-#                 quote_type = index_timeseries.get_attribute(QUOTE_TYPE)
-#                 rate /= float(quote_type_dict.get(quote_type, 100))
 #                 index.addFixing(dt, rate)
 #         result = f(self, **kwargs)
 #         ql.IndexManager.instance().clearHistory(index.name())
