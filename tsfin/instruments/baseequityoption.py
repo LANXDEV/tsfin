@@ -217,12 +217,14 @@ class BaseEquityOption(Instrument):
 
         return ql_option_type(self.payoff, exercise)
 
-    def option_engine(self, date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
-                      volatility=None, underlying_price=None):
+    def option_engine(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
+                      exercise_ovrd=None, volatility=None, underlying_price=None):
 
         """
         :param date: QuantLib.Date
             The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param vol_last_available: bool, optional
             Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
@@ -240,6 +242,9 @@ class BaseEquityOption(Instrument):
             This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
             and greeks.
         """
+        if date > base_date:
+            date = base_date
+
         self.option = self.ql_option(date=date, exercise_ovrd=exercise_ovrd)
         vol_updated = self.ql_process.update_process(date=date, calendar=self.calendar,
                                                      day_counter=self.day_counter,
@@ -307,16 +312,10 @@ class BaseEquityOption(Instrument):
             else:
                 return self.intrinsic(date=self.option_maturity)
         else:
-            if date > base_date:
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
-            else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust,  last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                        underlying_price=underlying_price)
         return option.NPV()
 
     @conditional_vectorize('date', 'spot_price')
@@ -346,14 +345,9 @@ class BaseEquityOption(Instrument):
         date = to_ql_date(date)
         base_date = to_ql_date(base_date)
         ql.Settings.instance().evaluationDate = date
-        if date > base_date:
-            option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
-        else:
-            option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
+        option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                    exercise_ovrd=exercise_ovrd, volatility=volatility)
 
         self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
@@ -392,16 +386,10 @@ class BaseEquityOption(Instrument):
             else:
                 return 0
         else:
-            if date > base_date:
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
-            else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                        underlying_price=underlying_price)
             return option.delta()
 
     @conditional_vectorize('date', 'spot_price')
@@ -431,14 +419,9 @@ class BaseEquityOption(Instrument):
         date = to_ql_date(date)
         base_date = to_ql_date(base_date)
         ql.Settings.instance().evaluationDate = date
-        if date > base_date:
-            option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
-        else:
-            option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility)
+        option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                    exercise_ovrd=exercise_ovrd, volatility=volatility)
 
         self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
@@ -474,16 +457,10 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            if date > base_date:
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
-            else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                        underlying_price=underlying_price)
             return option.gamma()
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
@@ -516,16 +493,10 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            if date > base_date:
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
-            else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                        underlying_price=underlying_price)
             return option.theta()
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
@@ -558,16 +529,10 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            if date > base_date:
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
-            else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                        underlying_price=underlying_price)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -606,16 +571,10 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            if date > base_date:
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
-            else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                        underlying_price=underlying_price)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -651,7 +610,7 @@ class BaseEquityOption(Instrument):
         date = to_ql_date(date)
         ql.Settings.instance().evaluationDate = date
         if self.option is None:
-            self.option = self.option_engine(date=date, vol_last_available=vol_last_available,
+            self.option = self.option_engine(date=date, base_date=date, vol_last_available=vol_last_available,
                                              dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
                                              exercise_ovrd=exercise_ovrd, volatility=volatility)
 
@@ -696,16 +655,10 @@ class BaseEquityOption(Instrument):
             return 0
         else:
             ql.Settings.instance().evaluationDate = date
-            if date > base_date:
-                option = self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
-            else:
-                option = self.option_engine(date=date, vol_last_available=vol_last_available,
-                                            dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                            exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                            underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
+                                        underlying_price=underlying_price)
             price = option.NPV()
             if date > base_date:
                 intrinsic = self.intrinsic(date=base_date)
@@ -741,14 +694,9 @@ class BaseEquityOption(Instrument):
             return 0
         else:
             ql.Settings.instance().evaluationDate = date
-            if date > base_date:
-                self.option_engine(date=base_date, vol_last_available=vol_last_available,
-                                   dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                   exercise_ovrd=exercise_ovrd, volatility=volatility)
-            else:
-                self.option_engine(date=date, vol_last_available=vol_last_available,
-                                   dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                   exercise_ovrd=exercise_ovrd, volatility=volatility)
+            self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
+                               dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                               exercise_ovrd=exercise_ovrd, volatility=volatility)
 
             return self.ql_process.spot_price_handle.value()
 
