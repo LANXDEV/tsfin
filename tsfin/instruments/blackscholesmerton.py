@@ -45,7 +45,7 @@ class BlackScholesMerton:
                                                         self.volatility_handle)
         self.vol_updated = OrderedDict()
 
-    def spot_price_update(self, date, underlying_name, spot_price=None, last_available=True, **kwargs):
+    def spot_price_update(self, date, underlying_name, spot_price=None, last_available=False, **kwargs):
         """
 
         :param date: date-like
