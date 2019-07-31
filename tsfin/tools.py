@@ -31,9 +31,10 @@ from tsfin.instruments.swaption import SwapOption
 from tsfin.instruments.baseequityoption import BaseEquityOption
 from tsfin.instruments.cds import CDSRate
 from tsfin.instruments.eurodollar_future import EurodollarFuture
+from tsfin.instruments.equity import Equity
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS, \
-    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE
+    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF
 
 
 def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
@@ -100,8 +101,15 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
             instrument = BaseEquityOption(ts, ql_process=ql_process)
-        elif ts_type in [EQUITY, FUND]:
-            instrument = Instrument(ts)
+        elif ts_type == EQUITY:
+            instrument = Equity(ts)
+        elif ts_type == FUND:
+            fund_type = str(ts.get_attribute(FUND_TYPE)).upper()
+            if fund_type == ETF:
+                instrument = Equity(ts)
+            else:
+                instrument = Instrument(ts)
+
         elif ts_type in [CDS, CDX]:
             instrument = CDSRate(ts)
         elif ts_type == EURODOLLAR_FUTURE:
