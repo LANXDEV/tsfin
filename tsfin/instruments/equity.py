@@ -22,8 +22,7 @@ import pandas as pd
 import QuantLib as ql
 from tsio.tools import at_index
 from tsfin.constants import CALENDAR
-from tsfin.base.instrument import default_arguments
-from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, filter_series, ql_holiday_list, to_list
+from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, to_list
 
 
 def trunc(values, decs=0):
@@ -31,15 +30,25 @@ def trunc(values, decs=0):
 
 
 class Equity(Instrument):
+    """ Model for Equities and ETFs.
+
+    :param timeseries: :py:class:`TimeSeries`
+        The TimeSeries representing the Equity or ETF.
+    Note
+    ----
+    See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
+    """
 
     def __init__(self, timeseries):
         super().__init__(timeseries)
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
 
     def ts_returns(self):
-
+        """
+        Daily returns from trading days.
+        :return: pd.Series
+        """
         price = self.price.ts_values
-
         start_date = to_ql_date(price.first_valid_index())
         end_date = to_ql_date(price.last_valid_index())
         holiday_list = to_datetime(ql_holiday_list(start_date, end_date, self.calendar))
@@ -48,7 +57,12 @@ class Equity(Instrument):
         return daily_returns
 
     def ts_volatility(self, n_days=None):
-
+        """
+        Daily rolling volatility.
+        :param n_days: int
+            The rolling window, will default to 252 if no value is passed.
+        :return: pd.Series
+        """
         if n_days is None:
             n_days = 252
         daily_returns = self.ts_returns()
@@ -58,6 +72,10 @@ class Equity(Instrument):
         return vol
 
     def ts_dividends(self):
+        """
+        Daily series with implied dividend per share payment.
+        :return: pd.Series
+        """
         price = self.price.ts_values
         price.name = self.price.ts_name
         unadjusted_price = self.unadjusted_price.ts_values
@@ -77,13 +95,31 @@ class Equity(Instrument):
         return dvd_series
 
     def dividend_values(self, date, last_available=True, fill_value=np.nan):
-
+        """
+        Daily dividend values at date.
+        :param date: Date-like
+            Date or dates to be return the dividend values.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing.
+        :param fill_value: scalar
+            Default value in case `date` can't be found.
+        :return: pd.Series
+        """
         date = to_datetime(to_list(date))
         dvd = self.ts_dividends()
         return at_index(df=dvd, index=date, last_available=last_available, fill_value=fill_value)
 
     def dividend_yield(self, date, last_available=True, fill_value=np.nan):
-
+        """
+        12 month dividend yield at date(s).
+        :param date: Date-like
+            Date or dates to be return the dividend values.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing.
+        :param fill_value: scalar
+            Default value in case `date` can't be found.
+        :return: pd.Series
+        """
         date = to_datetime(to_list(date))
         try:
             return self.eqy_dvd_yld_12m.get_values(index=date, last_available=last_available, fill_value=fill_value)
@@ -91,7 +127,20 @@ class Equity(Instrument):
             return 0
 
     def volatility(self, date, last_available=True, fill_value=np.nan, n_days=None, annual_factor=252):
-
+        """
+        The converted volatility value series at date.
+        :param date: Date-like
+            Date or dates to be return the dividend values.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing.
+        :param fill_value: scalar
+            Default value in case `date` can't be found.
+        :param n_days: int
+            Rolling window for the volatility calculation.
+        :param annual_factor: int, default 252
+            The number of days used for period transformation, default is 252, or 1 year.
+        :return: pd.Series
+        """
         date = to_datetime(to_list(date))
         vol = at_index(df=self.ts_volatility(n_days=n_days), index=date, last_available=last_available,
                        fill_value=fill_value)
@@ -99,6 +148,15 @@ class Equity(Instrument):
         return vol*np.sqrt(annual_factor)
 
     def spot_price(self, date, last_available=True, fill_value=np.nan):
-
+        """
+        Return the daily series of unadjusted price at date(s).
+        :param date: Date-like
+            Date or dates to be return the dividend values.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing.
+        :param fill_value: scalar
+            Default value in case `date` can't be found.
+        :return: pd.Series
+        """
         date = to_datetime(to_list(date))
         return self.unadjusted_price.get_values(index=date, last_available=last_available, fill_value=fill_value)

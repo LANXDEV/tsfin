@@ -202,7 +202,7 @@ class BaseEquityOption(Instrument):
         date = to_datetime(to_list(date))
         return self.px_mid.get_values(index=date, last_available=last_available, fill_value=fill_value)
 
-    def ts_implied_volatility(self, date, last_available=True, fill_value=np.nan):
+    def ts_implied_volatility(self, date, last_available=False, fill_value=np.nan):
 
         date = to_datetime(to_list(date))
         return self.ivol_mid.get_values(index=date, last_available=last_available, fill_value=fill_value)
@@ -278,7 +278,7 @@ class BaseEquityOption(Instrument):
         else:
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
                                               underlying_name=self.underlying_instrument, vol_value=0.2)
-            mid_price = self.mid_prices(date=date, last_available=True)
+            mid_price = float(self.ts_mid_price(date=date, last_available=True))
             implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
                                                         accuracy=1.0e-4, maxEvaluations=100)
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
