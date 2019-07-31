@@ -22,7 +22,7 @@ import numpy as np
 from tsfin.constants import CALENDAR, MATURITY_DATE, \
     DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE
 from tsfin.base import Instrument, to_ql_option_type, to_ql_date, conditional_vectorize, to_ql_calendar, \
-    to_ql_day_counter, to_datetime
+    to_ql_day_counter, to_datetime, to_list
 
 
 def option_exercise_type(exercise_type, date, maturity):
@@ -196,6 +196,16 @@ class BaseEquityOption(Instrument):
                 return 0
             else:
                 return intrinsic
+    
+    def ts_mid_price(self, date, last_available=True, fill_value=np.nan):
+
+        date = to_datetime(to_list(date))
+        return self.px_mid.get_values(index=date, last_available=last_available, fill_value=fill_value)
+
+    def ts_implied_volatility(self, date, last_available=True, fill_value=np.nan):
+
+        date = to_datetime(to_list(date))
+        return self.ivol_mid.get_values(index=date, last_available=last_available, fill_value=fill_value)
 
     @conditional_vectorize('date')
     def ql_option(self, date, exercise_ovrd=None):
@@ -248,7 +258,7 @@ class BaseEquityOption(Instrument):
         self.option = self.ql_option(date=date, exercise_ovrd=exercise_ovrd)
         vol_updated = self.ql_process.update_process(date=date, calendar=self.calendar,
                                                      day_counter=self.day_counter,
-                                                     ts_option=self.timeseries,
+                                                     ts_option=self,
                                                      maturity=self.option_maturity,
                                                      underlying_name=self.underlying_instrument,
                                                      vol_last_available=vol_last_available,
@@ -260,22 +270,19 @@ class BaseEquityOption(Instrument):
 
         if volatility is not None:
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              ts_option=self.timeseries, underlying_name=self.underlying_instrument,
-                                              vol_value=volatility)
+                                              underlying_name=self.underlying_instrument, vol_value=volatility)
             self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
             return self.option
         elif vol_updated:
             return self.option
         else:
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              ts_option=self.timeseries, underlying_name=self.underlying_instrument,
-                                              vol_value=0.2)
-            mid_price = self.px_mid.get_values(index=date, last_available=True)
+                                              underlying_name=self.underlying_instrument, vol_value=0.2)
+            mid_price = self.mid_prices(date=date, last_available=True)
             implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
                                                         accuracy=1.0e-4, maxEvaluations=100)
             self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              ts_option=self.timeseries, underlying_name=self.underlying_instrument,
-                                              vol_value=implied_vol)
+                                              underlying_name=self.underlying_instrument, vol_value=implied_vol)
             self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
             return self.option
 

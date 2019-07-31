@@ -25,15 +25,15 @@ from tsfin.base import to_ql_date
 
 class BlackScholesMerton:
 
-    def __init__(self, ts_underlying_collection, yield_curve):
+    def __init__(self, equity_instruments, yield_curve):
         """ Model for the Black Scholes Merton model used to evaluate options.
 
-        :param ts_underlying_collection:
-            The timeseries of the underlying instruments of the options being calculated.
+        :param equity_instruments: :py:obj:Equity
+            The instrument class representing an Equity (Stocks and ETFs)
         :param yield_curve: :py:obj:YieldCurveTimeSeries
             The yield curve of the index rate, used to estimate future cash flows.
         """
-        self.ts_underlying = ts_underlying_collection
+        self.equity_instruments = equity_instruments
         self.yield_curve = yield_curve
         self.risk_free_handle = ql.RelinkableYieldTermStructureHandle()
         self.volatility_handle = ql.RelinkableBlackVolTermStructureHandle()
@@ -59,9 +59,9 @@ class BlackScholesMerton:
         """
 
         date = to_ql_date(date)
-        ts_underlying = self.ts_underlying.get(underlying_name).price
         if spot_price is None:
-            spot_price = ts_underlying.get_values(index=date, last_available=last_available)
+            equity_instrument = self.equity_instruments.get(underlying_name)
+            spot_price = float(equity_instrument.spot_price(date=date, last_available=last_available))
         else:
             spot_price = spot_price
 
@@ -89,9 +89,9 @@ class BlackScholesMerton:
             The compounding used to interpolate the curve.
         """
         date = to_ql_date(date)
-        dvd_ts = self.ts_underlying.get(underlying_name).eqy_dvd_yld_12m
         if dividend_yield is None:
-            dividend_yield = dvd_ts.get_values(index=date, last_available=last_available)
+            equity_instrument = self.equity_instruments.get(underlying_name)
+            dividend_yield = float(equity_instrument.dividend_yield(date=date, last_available=last_available))
         else:
             dividend_yield = dividend_yield
 
@@ -131,7 +131,7 @@ class BlackScholesMerton:
         yield_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(zero_rate), day_counter, compounding)
         self.risk_free_handle.linkTo(yield_curve)
 
-    def volatility_update(self, date, calendar, day_counter, ts_option, underlying_name, vol_value=None,
+    def volatility_update(self, date, calendar, day_counter, underlying_name, ts_option=None, vol_value=None,
                           last_available=False, **kwargs):
 
         """
@@ -158,7 +158,7 @@ class BlackScholesMerton:
         if vol_value is not None:
             volatility_value = ql.SimpleQuote(vol_value)
         else:
-            ts_volatility = ts_option.ivol_mid.get_values(index=date, last_available=last_available)
+            ts_volatility = float(ts_option.ts_implied_volatility(date=date, last_available=last_available))
             if np.isnan(ts_volatility):
                 volatility_value = ql.SimpleQuote(0)
                 vol_updated = False
@@ -179,8 +179,8 @@ class BlackScholesMerton:
             The option calendar used to evaluate the model
         :param day_counter: QuantLib.DayCounter
             The option day count used to evaluate the model
-        :param ts_option: py:class:`TimeSeries`
-            The option Timeseries.
+        :param ts_option: py:class:BaseEquityOption
+            The option BaseEquityOption class.
         :param maturity: date-like
             The option maturity.
         :param underlying_name:
