@@ -18,7 +18,6 @@
 A class for modelling Black Scholes Merton
 """
 import QuantLib as ql
-import numpy as np
 from collections import OrderedDict
 from tsfin.base import to_ql_date
 
@@ -119,58 +118,34 @@ class BlackScholesMerton:
         :param frequency: QuantLib.Frequency, default = Once
             The frequency of the quoted yield.
         """
-
         date = to_ql_date(date)
         mat_date = to_ql_date(maturity)
-        if risk_free is not None:
-            zero_rate = ql.SimpleQuote(risk_free)
-        else:
+        if risk_free is None:
             zero_rate = ql.SimpleQuote(self.yield_curve.zero_rate_to_date(date=date, to_date=mat_date,
                                                                           compounding=compounding,
                                                                           frequency=frequency))
+        else:
+            zero_rate = ql.SimpleQuote(risk_free)
         yield_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(zero_rate), day_counter, compounding)
         self.risk_free_handle.linkTo(yield_curve)
 
-    def volatility_update(self, date, calendar, day_counter, underlying_name, ts_option=None, vol_value=None,
-                          last_available=False, **kwargs):
+    def volatility_update(self, vol_value, calendar, day_counter):
 
         """
-
-        :param date: date-like
-            The date.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param ts_option: py:class:`TimeSeries`
-            The option Timeseries.
-        :param underlying_name:
-            The underlying Timeseries ts_name
         :param vol_value: float, optional
             An override of the volatility value in case you don't wan't to use the timeseries one.
-        :param last_available:  bool, optional
-            Whether to use last available data in case dates are missing in ``quotes``.
+        :param calendar: QuantLib.Calendar
+            The option calendar used to evaluate the model
+        :param day_counter: QuantLib.DayCounter
+            The option day count used to evaluate the model
         :return:
         """
-        date = to_ql_date(date)
-        vol_updated = True
-
-        if vol_value is not None:
-            volatility_value = ql.SimpleQuote(vol_value)
-        else:
-            ts_volatility = float(ts_option.ts_implied_volatility(date=date, last_available=last_available))
-            if np.isnan(ts_volatility):
-                volatility_value = ql.SimpleQuote(0)
-                vol_updated = False
-            else:
-                volatility_value = ql.SimpleQuote(ts_volatility)
-
+        volatility_value = ql.SimpleQuote(vol_value)
         back_constant_vol = ql.BlackConstantVol(0, calendar, ql.QuoteHandle(volatility_value), day_counter)
         self.volatility_handle.linkTo(back_constant_vol)
-        self.vol_updated[underlying_name][date] = vol_updated
 
-    def update_process(self, date, calendar, day_counter, ts_option, maturity, underlying_name,
-                       vol_last_available=False, dvd_tax_adjust=1, last_available=True, **kwargs):
+    def update_process(self, date, calendar, day_counter, maturity, underlying_name, vol_value, dvd_tax_adjust=1,
+                       last_available=True, **kwargs):
         """
 
         :param date: date-like
@@ -179,14 +154,12 @@ class BlackScholesMerton:
             The option calendar used to evaluate the model
         :param day_counter: QuantLib.DayCounter
             The option day count used to evaluate the model
-        :param ts_option: py:class:BaseEquityOption
-            The option BaseEquityOption class.
         :param maturity: date-like
             The option maturity.
-        :param underlying_name:
+        :param underlying_name: str
             The underlying Timeseries ts_name
-        :param vol_last_available: bool, optional
-            Whether to use last available volatility data in case dates are missing in ``quotes``.
+        :param vol_value: float
+            The volatility value to be used in the model.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -195,26 +168,11 @@ class BlackScholesMerton:
             Return True if the volatility timeseries was updated.
         """
         date = to_ql_date(date)
-        self.vol_updated[underlying_name] = OrderedDict()
-        if date in self.vol_updated[underlying_name].keys():
-            vol_updated = self.vol_updated[underlying_name][date]
-        else:
-            vol_updated = False
-
-        if vol_updated:
-            return self.vol_updated[underlying_name][date]
-        else:
-            self.spot_price_update(date=date, underlying_name=underlying_name, last_available=last_available,
-                                   **kwargs)
-
-            self.dividend_yield_update(date=date, calendar=calendar, day_counter=day_counter,
-                                       underlying_name=underlying_name, dvd_tax_adjust=dvd_tax_adjust,
-                                       last_available=last_available, **kwargs)
-
-            self.yield_curve_update(date=date, calendar=calendar, day_counter=day_counter, maturity=maturity,
-                                    **kwargs)
-
-            self.volatility_update(date=date, calendar=calendar, day_counter=day_counter, ts_option=ts_option,
-                                   underlying_name=underlying_name, last_available=vol_last_available, **kwargs)
-
-            return self.vol_updated[underlying_name][date]
+        self.spot_price_update(date=date, underlying_name=underlying_name, last_available=last_available,
+                               **kwargs)
+        self.dividend_yield_update(date=date, calendar=calendar, day_counter=day_counter,
+                                   underlying_name=underlying_name, dvd_tax_adjust=dvd_tax_adjust,
+                                   last_available=last_available, **kwargs)
+        self.yield_curve_update(date=date, calendar=calendar, day_counter=day_counter, maturity=maturity,
+                                **kwargs)
+        self.volatility_update(vol_value=vol_value, calendar=calendar, day_counter=day_counter)
