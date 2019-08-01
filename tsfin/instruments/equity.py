@@ -46,7 +46,7 @@ class Equity(Instrument):
     def ts_returns(self):
         """
         Daily returns from trading days.
-        :return: pd.Series
+        :return: pandas.Series
         """
         price = self.price.ts_values
         start_date = to_ql_date(price.first_valid_index())
@@ -61,7 +61,7 @@ class Equity(Instrument):
         Daily rolling volatility.
         :param n_days: int
             The rolling window, will default to 252 if no value is passed.
-        :return: pd.Series
+        :return: pandas.Series
         """
         if n_days is None:
             n_days = 252
@@ -74,7 +74,7 @@ class Equity(Instrument):
     def ts_dividends(self):
         """
         Daily series with implied dividend per share payment.
-        :return: pd.Series
+        :return: pandas.Series
         """
         price = self.price.ts_values
         price.name = self.price.ts_name
@@ -103,7 +103,7 @@ class Equity(Instrument):
             Whether to use last available data in case dates are missing.
         :param fill_value: scalar
             Default value in case `date` can't be found.
-        :return: pd.Series
+        :return: pandas.Series
         """
         date = to_datetime(to_list(date))
         dvd = self.ts_dividends()
@@ -118,7 +118,7 @@ class Equity(Instrument):
             Whether to use last available data in case dates are missing.
         :param fill_value: scalar
             Default value in case `date` can't be found.
-        :return: pd.Series
+        :return: pandas.Series
         """
         date = to_datetime(to_list(date))
         try:
@@ -139,7 +139,7 @@ class Equity(Instrument):
             Rolling window for the volatility calculation.
         :param annual_factor: int, default 252
             The number of days used for period transformation, default is 252, or 1 year.
-        :return: pd.Series
+        :return: pandas.Series
         """
         date = to_datetime(to_list(date))
         vol = at_index(df=self.ts_volatility(n_days=n_days), index=date, last_available=last_available,
@@ -156,7 +156,7 @@ class Equity(Instrument):
             Whether to use last available data in case dates are missing.
         :param fill_value: scalar
             Default value in case `date` can't be found.
-        :return: pd.Series
+        :return: pandas.Series
         """
         date = to_datetime(to_list(date))
         return self.unadjusted_price.get_values(index=date, last_available=last_available, fill_value=fill_value)

@@ -56,15 +56,13 @@ class BaseEquityOption(Instrument):
 
     :param timeseries: :py:class:`TimeSeries`
         The TimeSeries representing the option.
-    :param ql_process: :py:class:'BlackScholesMerton'
-        A class used to handle the Black Scholes Merton model from QuantLib.
 
     Note
     ----
     See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
     """
 
-    def __init__(self, timeseries, ql_process):
+    def __init__(self, timeseries):
         super().__init__(timeseries)
         self.opt_type = self.ts_attributes[OPTION_TYPE]
         self.strike = self.ts_attributes[STRIKE_PRICE]
@@ -75,8 +73,16 @@ class BaseEquityOption(Instrument):
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.exercise_type = self.ts_attributes[EXERCISE_TYPE]
         self.underlying_instrument = self.ts_attributes[UNDERLYING_INSTRUMENT]
-        self.ql_process = ql_process
+        self.ql_process = None
         self.option = None
+
+    def set_ql_process(self, ql_process):
+        """
+        :param ql_process: :py:class:'BlackScholesMerton'
+            A class used to handle the Black Scholes Merton model from QuantLib.
+        :return:
+        """
+        self.ql_process = ql_process
 
     def is_expired(self, date, *args, **kwargs):
         """
@@ -99,8 +105,8 @@ class BaseEquityOption(Instrument):
         """
         return self.option_maturity
 
-    @conditional_vectorize('date', 'quote')
-    def value(self, date, base_date, quote=None, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
+    @conditional_vectorize('date', 'quote', 'volatility')
+    def value(self, date, base_date, quote=None, volatility=None, dvd_tax_adjust=1, last_available=True,
               exercise_ovrd=None, *args, **kwargs):
         """Try to deduce dirty value for a unit of the time series (as a financial instrument).
 
@@ -110,8 +116,8 @@ class BaseEquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param quote: scalar, optional
             The quote.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
+        :param volatility: float, optional
+            Volatility override value to calculate the option.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -128,9 +134,8 @@ class BaseEquityOption(Instrument):
         if quote is not None:
             return float(quote)*size
         else:
-            return self.price(date=ql_date, base_date=ql_base_date, vol_last_available=vol_last_available,
-                              dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                              exercise_ovrd=exercise_ovrd)*size
+            return self.price(date=ql_date, base_date=ql_base_date, dvd_tax_adjust=dvd_tax_adjust,
+                              last_available=last_available, exercise_ovrd=exercise_ovrd, volatility=volatility)*size
 
     @conditional_vectorize('date', 'quote')
     def performance(self, date=None, quote=None, start_date=None, start_quote=None, *args, **kwargs):
@@ -227,16 +232,14 @@ class BaseEquityOption(Instrument):
 
         return ql_option_type(self.payoff, exercise)
 
-    def option_engine(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                      exercise_ovrd=None, volatility=None, underlying_price=None):
+    def option_engine(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+                      underlying_price=None):
 
         """
         :param date: QuantLib.Date
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -256,46 +259,42 @@ class BaseEquityOption(Instrument):
             date = base_date
 
         self.option = self.ql_option(date=date, exercise_ovrd=exercise_ovrd)
-        vol_updated = self.ql_process.update_process(date=date, calendar=self.calendar,
-                                                     day_counter=self.day_counter,
-                                                     ts_option=self,
-                                                     maturity=self.option_maturity,
-                                                     underlying_name=self.underlying_instrument,
-                                                     vol_last_available=vol_last_available,
-                                                     dvd_tax_adjust=dvd_tax_adjust,
-                                                     last_available=last_available,
-                                                     spot_price=underlying_price)
+        self.ql_process.update_process(date=date, calendar=self.calendar,
+                                       day_counter=self.day_counter,
+                                       maturity=self.option_maturity,
+                                       underlying_name=self.underlying_instrument,
+                                       vol_value=0.2,
+                                       dvd_tax_adjust=dvd_tax_adjust,
+                                       last_available=last_available,
+                                       spot_price=underlying_price)
 
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
-
-        if volatility is not None:
-            self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              underlying_name=self.underlying_instrument, vol_value=volatility)
-            self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
-            return self.option
-        elif vol_updated:
-            return self.option
-        else:
-            self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              underlying_name=self.underlying_instrument, vol_value=0.2)
+        if volatility is None:
             mid_price = float(self.ts_mid_price(date=date, last_available=True))
-            implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
-                                                        accuracy=1.0e-4, maxEvaluations=100)
-            self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                              underlying_name=self.underlying_instrument, vol_value=implied_vol)
-            self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
-            return self.option
+            try:
+                implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
+                                                            accuracy=1.0e-4, maxEvaluations=100)
+            except RuntimeError:
+                prior_date = self.calendar.advance(date, -1, ql.Days)
+                mid_price = float(self.ts_mid_price(date=prior_date, last_available=True))
+                implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
+                                                            accuracy=1.0e-4, maxEvaluations=100)
+            self.ql_process.volatility_update(vol_value=implied_vol, calendar=self.calendar,
+                                              day_counter=self.day_counter)
+        else:
+            self.ql_process.volatility_update(vol_value=volatility, calendar=self.calendar,
+                                              day_counter=self.day_counter)
+
+        return self.option
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def price(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None, underlying_price=None):
+    def price(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+              underlying_price=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -319,15 +318,14 @@ class BaseEquityOption(Instrument):
             else:
                 return self.intrinsic(date=self.option_maturity)
         else:
-            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                        underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                        last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                        volatility=volatility, underlying_price=underlying_price)
         return option.NPV()
 
     @conditional_vectorize('date', 'spot_price')
-    def price_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
-                         last_available=True, exercise_ovrd=None, volatility=None):
+    def price_underlying(self, date, spot_price, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
+                         volatility=None):
         """
         :param date: date-like
             The date.
@@ -335,8 +333,7 @@ class BaseEquityOption(Instrument):
             The underlying spot prices used for evaluation.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
+
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -352,24 +349,20 @@ class BaseEquityOption(Instrument):
         date = to_ql_date(date)
         base_date = to_ql_date(base_date)
         ql.Settings.instance().evaluationDate = date
-        option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                    exercise_ovrd=exercise_ovrd, volatility=volatility)
+        option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                    last_available=last_available, exercise_ovrd=exercise_ovrd, volatility=volatility)
 
         self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
-        self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
         return option.NPV()
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def delta(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None, underlying_price=None):
+    def delta(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+              underlying_price=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -393,15 +386,14 @@ class BaseEquityOption(Instrument):
             else:
                 return 0
         else:
-            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                        underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                        last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                        volatility=volatility, underlying_price=underlying_price)
             return option.delta()
 
     @conditional_vectorize('date', 'spot_price')
-    def delta_underlying(self, date, spot_price, base_date, vol_last_available=False, dvd_tax_adjust=1,
-                         last_available=True, exercise_ovrd=None, volatility=None):
+    def delta_underlying(self, date, spot_price, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
+                         volatility=None):
         """
         :param date: date-like
             The date.
@@ -409,8 +401,6 @@ class BaseEquityOption(Instrument):
             The underlying spot prices used for evaluation.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -426,24 +416,19 @@ class BaseEquityOption(Instrument):
         date = to_ql_date(date)
         base_date = to_ql_date(base_date)
         ql.Settings.instance().evaluationDate = date
-        option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                    dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                    exercise_ovrd=exercise_ovrd, volatility=volatility)
-
+        option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                    last_available=last_available, exercise_ovrd=exercise_ovrd, volatility=volatility)
         self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument, spot_price=spot_price)
-        self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
         return option.delta()
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def gamma(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None, underlying_price=None):
+    def gamma(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+              underlying_price=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -464,22 +449,19 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                        underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                        last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                        volatility=volatility, underlying_price=underlying_price)
             return option.gamma()
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def theta(self, date,  base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-              exercise_ovrd=None, volatility=None, underlying_price=None):
+    def theta(self, date,  base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+              underlying_price=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -500,22 +482,19 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                        underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                        last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                        volatility=volatility, underlying_price=underlying_price)
             return option.theta()
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def vega(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-             exercise_ovrd=None, volatility=None, underlying_price=None):
+    def vega(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+             underlying_price=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -536,10 +515,9 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                        underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                        last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                        volatility=volatility, underlying_price=underlying_price)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -549,15 +527,13 @@ class BaseEquityOption(Instrument):
                     return 0
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def rho(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
-            volatility=None, underlying_price=None):
+    def rho(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+            underlying_price=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -578,10 +554,9 @@ class BaseEquityOption(Instrument):
         if date >= self.option_maturity:
             return 0
         else:
-            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                        underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                        last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                        volatility=volatility, underlying_price=underlying_price)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -591,8 +566,8 @@ class BaseEquityOption(Instrument):
                     return 0
 
     @conditional_vectorize('date', 'target', 'spot_price')
-    def implied_vol(self, date, target, spot_price=None, vol_last_available=False, dvd_tax_adjust=1,
-                    last_available=True, exercise_ovrd=None, volatility=None):
+    def implied_vol(self, date, target, spot_price=None, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
+                    volatility=None):
         """
         :param date: date-like
             The date.
@@ -600,8 +575,6 @@ class BaseEquityOption(Instrument):
            The option price used to calculate the implied volatility.
         :param spot_price: float, optional
             The underlying spot prices used for evaluation.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -616,32 +589,26 @@ class BaseEquityOption(Instrument):
         """
         date = to_ql_date(date)
         ql.Settings.instance().evaluationDate = date
+        if volatility is None:
+            volatility = 0.2
         if self.option is None:
-            self.option = self.option_engine(date=date, base_date=date, vol_last_available=vol_last_available,
-                                             dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                             exercise_ovrd=exercise_ovrd, volatility=volatility)
-
+            self.option = self.option_engine(date=date, base_date=date, dvd_tax_adjust=dvd_tax_adjust,
+                                             last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                             volatility=volatility)
         if spot_price is not None:
             self.ql_process.spot_price_update(date=date, underlying_name=self.underlying_instrument,
                                               spot_price=spot_price)
 
-        self.ql_process.volatility_update(date=date, calendar=self.calendar, day_counter=self.day_counter,
-                                          ts_option=self.timeseries, underlying_name=self.underlying_instrument,
-                                          vol_value=0.2)
-        implied_vol = self.option.impliedVolatility(target, self.ql_process.bsm_process)
-
-        return implied_vol
+        return self.option.impliedVolatility(target, self.ql_process.bsm_process)
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def optionality(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                    exercise_ovrd=None, volatility=None, underlying_price=None):
+    def optionality(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None,
+                    underlying_price=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -662,10 +629,9 @@ class BaseEquityOption(Instrument):
             return 0
         else:
             ql.Settings.instance().evaluationDate = date
-            option = self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                                        dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                                        exercise_ovrd=exercise_ovrd, volatility=volatility,
-                                        underlying_price=underlying_price)
+            option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                                        last_available=last_available, exercise_ovrd=exercise_ovrd,
+                                        volatility=volatility, underlying_price=underlying_price)
             price = option.NPV()
             if date > base_date:
                 intrinsic = self.intrinsic(date=base_date)
@@ -674,15 +640,13 @@ class BaseEquityOption(Instrument):
             return price - intrinsic
 
     @conditional_vectorize('date')
-    def underlying_price(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                         exercise_ovrd=None, volatility=None):
+    def underlying_price(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
+                         volatility=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -701,22 +665,17 @@ class BaseEquityOption(Instrument):
             return 0
         else:
             ql.Settings.instance().evaluationDate = date
-            self.option_engine(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                               dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
-                               exercise_ovrd=exercise_ovrd, volatility=volatility)
-
+            self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
+                               last_available=last_available, exercise_ovrd=exercise_ovrd, volatility=volatility)
             return self.ql_process.spot_price_handle.value()
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
-    def delta_value(self, date, base_date, vol_last_available=False, dvd_tax_adjust=1, last_available=True,
-                    exercise_ovrd=None, volatility=None):
+    def delta_value(self, date, base_date, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None, volatility=None):
         """
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param vol_last_available: bool, optional
-            Whether to use last available data in case dates are missing in volatility values.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -729,10 +688,8 @@ class BaseEquityOption(Instrument):
         :return: float
             The option delta notional value.
         """
-        delta = self.delta(date=date, base_date=base_date, vol_last_available=vol_last_available,
-                           dvd_tax_adjust=dvd_tax_adjust, last_available=last_available, exercise_ovrd=exercise_ovrd,
-                           volatility=volatility)
+        delta = self.delta(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust, last_available=last_available,
+                           exercise_ovrd=exercise_ovrd, volatility=volatility)
         spot = self.ql_process.spot_price_handle.value()
         size = float(self.contract_size)
-
         return delta*spot*size

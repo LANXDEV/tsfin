@@ -37,7 +37,7 @@ from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE,
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF
 
 
-def generate_instruments(ts_collection, ql_process=None, indices=None, index_curves=None):
+def generate_instruments(ts_collection, indices=None, index_curves=None):
     """ Given a collection of :py:obj:`TimeSeries`, instantiate instruments with each one of them.
 
     If an element is not an instance of :py:class:`TimeSeries`, does nothing with it.
@@ -46,8 +46,6 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
     ----------
     ts_collection: :py:obj:`TimeSeriesCollection`
         Collection of time series.
-    ql_process: :py:obj: 'BlackScholesMerton'
-        Class which creates the QuantLib process needed to calculate the Option.
     indices: dict, optional
         Dictionary with ``{index_name: index_time_series}``, where `index_name` is the name of the 'index' (e.g.:
         libor3m, CDI), in the INDEX attribute of a time series. `index_time_series` is a :py:obj:`TimeSeries`
@@ -100,7 +98,7 @@ def generate_instruments(ts_collection, ql_process=None, indices=None, index_cur
         elif ts_type == OIS_RATE:
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
-            instrument = BaseEquityOption(ts, ql_process=ql_process)
+            instrument = BaseEquityOption(ts)
         elif ts_type == EQUITY:
             instrument = Equity(ts)
         elif ts_type == FUND:
