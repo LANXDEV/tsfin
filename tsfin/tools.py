@@ -75,8 +75,10 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
             bond_type = str(ts.get_attribute(BOND_TYPE)).upper()
             if bond_type == FLOATINGRATE:
                 # Floating rate bonds need some special treatment.
-                reference_curve = index_curves[str(ts.get_attribute(INDEX)).upper()]
-                index_timeseries = indices[str(ts.get_attribute(INDEX_TIME_SERIES)).upper()]
+                reference_curve = index_curves[str(ts.get_attribute(INDEX)).upper()] if index_curves is not None \
+                        else None
+                index_timeseries = indices[str(ts.get_attribute(INDEX_TIME_SERIES)).upper()] if indices is not None \
+                    else None
                 instrument = FloatingRateBond(ts, reference_curve=reference_curve,
                                               index_timeseries=index_timeseries)
             elif bond_type == FIXEDRATE:

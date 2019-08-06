@@ -223,7 +223,7 @@ class YieldCurveTimeSeries:
             The spreaded yield curve.
         """
         curve_handle = ql.YieldTermStructureHandle(self.yield_curve(date=date))
-        spread_handle = ql.QuoteHandle(spread)
+        spread_handle = ql.QuoteHandle(ql.SimpleQuote(spread))
         return ql.ZeroSpreadedTermStructure(curve_handle, spread_handle, compounding, frequency, self.day_counter)
 
     def spreaded_interpolated_curve(self, date, spread_dict, compounding, frequency):
