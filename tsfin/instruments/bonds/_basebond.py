@@ -730,7 +730,7 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def ytm(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def ytm(self, last, quote, date, day_counter, compounding, frequency, settlement_days, quote_type=None, **kwargs):
         """
         Parameters
         ----------
@@ -755,6 +755,9 @@ class _BaseBond(Instrument):
         settlement_days: int, optional
             Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
+        quote_type: str, optional
+            The quote type for calculation ex: CLEAN_PRICE, DIRTY_PRICE, YIELD
+            Default: None
 
         Returns
         -------
@@ -769,13 +772,15 @@ class _BaseBond(Instrument):
         if self.is_expired(settlement_date):
             # input("Returning nan because its expired date: {0}, settlement {1}".format(date, settlement_date))
             return np.nan
-        if self.quote_type == CLEAN_PRICE:
+        if quote_type is None:
+            quote_type = self.quote_type
+        if quote_type == CLEAN_PRICE:
             return bond.bondYield(quote, day_counter, compounding, frequency, settlement_date)
-        elif self.quote_type == DIRTY_PRICE:
+        elif quote_type == DIRTY_PRICE:
             # TODO: This part needs testing.
             clean_quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
             return bond.bondYield(clean_quote, day_counter, compounding, frequency, settlement_date)
-        elif self.quote_type == YIELD:
+        elif quote_type == YIELD:
             # TODO: This part needs testing.
             interest_rate = ql.InterestRate(quote, self.day_counter, self.yield_quote_compounding,
                                             self.yield_quote_frequency)
@@ -783,7 +788,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def ytw_and_worst_date(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def ytw_and_worst_date(self, last, quote, date, day_counter, compounding, frequency, settlement_days,
+                           quote_type=None, **kwargs):
         """
         Parameters
         ----------
@@ -808,6 +814,9 @@ class _BaseBond(Instrument):
         settlement_days: int, optional
             Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
+        quote_type: str, optional
+            The quote type for calculation ex: CLEAN_PRICE, DIRTY_PRICE, YIELD
+            Default: None
 
         Returns
         -------
@@ -822,12 +831,12 @@ class _BaseBond(Instrument):
             return np.nan, np.nan
         return min(((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
                               frequency=frequency, settlement_days=settlement_days, bond=bond,
-                              bypass_set_floating_rate_index=True), key)
+                              bypass_set_floating_rate_index=True, quote_type=quote_type), key)
                     for key, bond in self.bond_components.items() if key > settlement_date), key=itemgetter(0))
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def ytw(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def ytw(self, last, quote, date, day_counter, compounding, frequency, settlement_days, quote_type=None, **kwargs):
         """
         Parameters
         ----------
@@ -852,6 +861,9 @@ class _BaseBond(Instrument):
         settlement_days: int, optional
             Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
+        quote_type: str, optional
+            The quote type for calculation ex: CLEAN_PRICE, DIRTY_PRICE, YIELD
+            Default: None
 
         Returns
         -------
@@ -866,7 +878,7 @@ class _BaseBond(Instrument):
             return np.nan
         return min((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
                              frequency=frequency, settlement_days=settlement_days, bond=bond,
-                             bypass_set_floating_rate_index=True)
+                             bypass_set_floating_rate_index=True, quote_type=quote_type)
                     for key, bond in self.bond_components.items() if key > settlement_date))
 
     @default_arguments
@@ -909,8 +921,7 @@ class _BaseBond(Instrument):
             # If date is before the first call dates, rolling calls are NOT possible.
             return self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
                                            compounding=compounding, frequency=frequency,
-                                           settlement_days=settlement_days, bypass_set_floating_rate_index=True,
-                                           **kwargs)
+                                           settlement_days=settlement_days, **kwargs)
         else:
             # Then rolling calls are possible.
             rolling_call_date = self.calendar.advance(date, 1, ql.Months, self.business_convention)

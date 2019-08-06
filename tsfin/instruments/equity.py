@@ -56,21 +56,6 @@ class Equity(Instrument):
         daily_returns = price / price.shift(1) - 1
         return daily_returns
 
-    def ts_volatility(self, n_days=None):
-        """
-        Daily rolling volatility.
-        :param n_days: int
-            The rolling window, will default to 252 if no value is passed.
-        :return: pandas.Series
-        """
-        if n_days is None:
-            n_days = 252
-        daily_returns = self.ts_returns()
-        vol = daily_returns.rolling(window=n_days, min_periods=1).std()
-        vol.dropna(axis='index', inplace=True)
-        vol.name = "({})(VOLATILITY)".format(self.ts_name)
-        return vol
-
     def ts_dividends(self):
         """
         Daily series with implied dividend per share payment.
@@ -93,6 +78,49 @@ class Equity(Instrument):
         dvd_series = pd.Series(data=df['DVD'], index=df.index, name="({})(DIVIDENDS)".format(self.ts_name))
 
         return dvd_series
+
+    def spot_price(self, date, last_available=True, fill_value=np.nan):
+        """
+        Return the daily series of unadjusted price at date(s).
+        :param date: Date-like
+            Date or dates to be return the dividend values.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing.
+        :param fill_value: scalar
+            Default value in case `date` can't be found.
+        :return: pandas.Series
+        """
+        date = to_datetime(to_list(date))
+        return self.unadjusted_price.get_values(index=date, last_available=last_available, fill_value=fill_value)
+
+    def adjusted_spot_price(self, date, last_available=True, fill_value=np.nan):
+        """
+        Return the daily series of adjusted (Dividends, Bonus etc..) price at date(s).
+        :param date: Date-like
+            Date or dates to be return the dividend values.
+        :param last_available: bool, optional
+            Whether to use last available data in case dates are missing.
+        :param fill_value: scalar
+            Default value in case `date` can't be found.
+        :return: pandas.Series
+        """
+        date = to_datetime(to_list(date))
+        return self.price.get_values(index=date, last_available=last_available, fill_value=fill_value)
+
+    def ts_volatility(self, n_days=None):
+        """
+        Daily rolling volatility.
+        :param n_days: int
+            The rolling window, will default to 252 if no value is passed.
+        :return: pandas.Series
+        """
+        if n_days is None:
+            n_days = 252
+        daily_returns = self.ts_returns()
+        vol = daily_returns.rolling(window=n_days, min_periods=1).std()
+        vol.dropna(axis='index', inplace=True)
+        vol.name = "({})(VOLATILITY)".format(self.ts_name)
+        return vol
 
     def dividend_values(self, date, last_available=True, fill_value=np.nan):
         """
@@ -146,17 +174,3 @@ class Equity(Instrument):
                        fill_value=fill_value)
 
         return vol*np.sqrt(annual_factor)
-
-    def spot_price(self, date, last_available=True, fill_value=np.nan):
-        """
-        Return the daily series of unadjusted price at date(s).
-        :param date: Date-like
-            Date or dates to be return the dividend values.
-        :param last_available: bool, optional
-            Whether to use last available data in case dates are missing.
-        :param fill_value: scalar
-            Default value in case `date` can't be found.
-        :return: pandas.Series
-        """
-        date = to_datetime(to_list(date))
-        return self.unadjusted_price.get_values(index=date, last_available=last_available, fill_value=fill_value)

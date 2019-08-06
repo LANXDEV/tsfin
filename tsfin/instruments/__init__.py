@@ -5,6 +5,7 @@ from tsfin.instruments.fraddi import FraDDI
 from tsfin.instruments.ois import OISRate
 from tsfin.instruments.swaprate import SwapRate
 from tsfin.instruments.swaption import SwapOption
+from tsfin.instruments.blackscholesmerton import BlackScholesMerton
 from tsfin.instruments.baseequityoption import BaseEquityOption
 from tsfin.instruments.cds import CDSRate
 from tsfin.instruments.eurodollar_future import EurodollarFuture
