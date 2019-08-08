@@ -75,6 +75,7 @@ class BaseEquityOption(Instrument):
         self.underlying_instrument = self.ts_attributes[UNDERLYING_INSTRUMENT]
         self.ql_process = None
         self.option = None
+        self.implied_volatility = dict()
 
     def set_ql_process(self, ql_process):
         """
@@ -189,7 +190,8 @@ class BaseEquityOption(Instrument):
         if ql_date > self.option_maturity:
             return 0
         else:
-            spot = self.ql_process.spot_price_handle.value()
+            underlying_instrument = self.ql_process.equity_instruments.get(self.underlying_instrument)
+            spot = float(underlying_instrument.spot_price(date=date, last_available=True))
             intrinsic = 0
 
             if self.opt_type == 'CALL':
@@ -255,36 +257,38 @@ class BaseEquityOption(Instrument):
             This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
             and greeks.
         """
-        if date > base_date:
-            date = base_date
-
         self.option = self.ql_option(date=date, exercise_ovrd=exercise_ovrd)
-        self.ql_process.update_process(date=date, calendar=self.calendar,
+        self.ql_process.update_process(date=date, base_date=base_date, calendar=self.calendar,
                                        day_counter=self.day_counter,
-                                       maturity=self.option_maturity,
                                        underlying_name=self.underlying_instrument,
                                        vol_value=0.2,
                                        dvd_tax_adjust=dvd_tax_adjust,
                                        last_available=last_available,
                                        spot_price=underlying_price)
-
         self.option.setPricingEngine(ql_option_engine(self.ql_process.bsm_process))
-        if volatility is None:
+
+        if date > base_date:
+            date = base_date
+        if volatility is not None:
+            self.implied_volatility[date] = ql.SimpleQuote(volatility)
+        try:
+            self.ql_process.volatility_update(vol_value=self.implied_volatility[date], calendar=self.calendar,
+                                              day_counter=self.day_counter)
+        except KeyError:
             mid_price = float(self.ts_mid_price(date=date, last_available=True))
             try:
-                implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
+                implied_vol = self.option.impliedVolatility(targetValue=mid_price,
+                                                            process=self.ql_process.bsm_process,
                                                             accuracy=1.0e-4, maxEvaluations=100)
             except RuntimeError:
                 prior_date = self.calendar.advance(date, -1, ql.Days)
                 mid_price = float(self.ts_mid_price(date=prior_date, last_available=True))
-                implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.bsm_process,
+                implied_vol = self.option.impliedVolatility(targetValue=mid_price,
+                                                            process=self.ql_process.bsm_process,
                                                             accuracy=1.0e-4, maxEvaluations=100)
-            self.ql_process.volatility_update(vol_value=implied_vol, calendar=self.calendar,
+            self.implied_volatility[date] = ql.SimpleQuote(implied_vol)
+            self.ql_process.volatility_update(vol_value=self.implied_volatility[date], calendar=self.calendar,
                                               day_counter=self.day_counter)
-        else:
-            self.ql_process.volatility_update(vol_value=volatility, calendar=self.calendar,
-                                              day_counter=self.day_counter)
-
         return self.option
 
     @conditional_vectorize('date', 'volatility', 'underlying_price')
@@ -313,10 +317,10 @@ class BaseEquityOption(Instrument):
         base_date = to_ql_date(base_date)
         ql.Settings.instance().evaluationDate = date
         if date >= self.option_maturity:
-            if self.option_maturity > base_date:
-                return self.intrinsic(date=base_date)
-            else:
+            if self.option_maturity >= base_date:
                 return self.intrinsic(date=self.option_maturity)
+            else:
+                return self.intrinsic(date=base_date)
         else:
             option = self.option_engine(date=date, base_date=base_date, dvd_tax_adjust=dvd_tax_adjust,
                                         last_available=last_available, exercise_ovrd=exercise_ovrd,

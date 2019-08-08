@@ -22,7 +22,7 @@ import pandas as pd
 import QuantLib as ql
 from tsio.tools import at_index
 from tsfin.constants import CALENDAR
-from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, to_list
+from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize
 
 
 def trunc(values, decs=0):
@@ -79,6 +79,80 @@ class Equity(Instrument):
 
         return dvd_series
 
+    def ts_volatility(self, n_days=252):
+        """
+        Daily rolling volatility.
+        :param n_days: int
+            The rolling window, will default to 252 if no value is passed.
+        :return: pandas.Series
+        """
+
+        daily_returns = self.ts_returns()
+        vol = daily_returns.rolling(window=n_days, min_periods=1).std()
+        vol.dropna(axis='index', inplace=True)
+        vol.name = "({})(VOLATILITY)".format(self.ts_name)
+        return vol
+
+    @conditional_vectorize('date')
+    def cash_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
+        """
+        Cash amount paid by a unit of the instrument between `start_date` and `date`.
+        :param start_date: Date-like
+            Start date of the range
+        :param date: Date-like
+            Final date of the range
+        :param tax_adjust: float
+            The tax value to adjust the dividends received
+        :return: float
+        """
+        start_date = to_ql_date(start_date)
+        date = to_ql_date(date)
+        if start_date == date:
+            dates = [to_datetime(date)]
+        else:
+            ql_dates = ql.Schedule(start_date, date, ql.Period(1, ql.Days), self.calendar, ql.Following, ql.Following,
+                                   ql.DateGeneration.Forward, False)
+            dates = [to_datetime(date) for date in ql_dates]
+        dividends = self.dividend_values(date=dates)
+        dividends *= (1 - float(tax_adjust))
+        return sum(dividends)
+
+    @conditional_vectorize('quote', 'date')
+    def performance(self, start_date=None, start_quote=None, date=None, quote=None, tax_adjust=0, *args, **kwargs):
+
+        """
+        Performance of a unit of the instrument.
+        :param start_date: Date-like
+            Start date of the range
+        :param start_quote: float, optional
+            The quote of the instrument in `start_date`. Defaults to the quote in `start_date`.
+        :param date: Date-like
+            Final date of the range
+        :param quote: float, optional
+            The quote of the instrument at `date`. Defaults to the quote at `date`.
+        :param tax_adjust: float
+            The tax value to adjust the dividends received
+        :return: scalar, None
+        """
+        quotes = self.unadjusted_price
+        first_available_date = quotes.ts_values.first_valid_index()
+        if start_date is None:
+            start_date = first_available_date
+        if start_date < first_available_date:
+            start_date = first_available_date
+        if start_quote is None:
+            start_quote = self.spot_price(date=start_date)
+        if quote is None:
+            quote = self.spot_price(date=date)
+        if date < start_date:
+            return np.nan
+
+        start_value = start_quote
+        value = quote
+        dividends = self.cash_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust)
+        return (value + dividends) / start_value
+
+    @conditional_vectorize('date')
     def spot_price(self, date, last_available=True, fill_value=np.nan):
         """
         Return the daily series of unadjusted price at date(s).
@@ -90,9 +164,10 @@ class Equity(Instrument):
             Default value in case `date` can't be found.
         :return: pandas.Series
         """
-        date = to_datetime(to_list(date))
+        date = to_datetime(date)
         return self.unadjusted_price.get_values(index=date, last_available=last_available, fill_value=fill_value)
 
+    @conditional_vectorize('date')
     def adjusted_spot_price(self, date, last_available=True, fill_value=np.nan):
         """
         Return the daily series of adjusted (Dividends, Bonus etc..) price at date(s).
@@ -104,24 +179,10 @@ class Equity(Instrument):
             Default value in case `date` can't be found.
         :return: pandas.Series
         """
-        date = to_datetime(to_list(date))
+        date = to_datetime(date)
         return self.price.get_values(index=date, last_available=last_available, fill_value=fill_value)
 
-    def ts_volatility(self, n_days=None):
-        """
-        Daily rolling volatility.
-        :param n_days: int
-            The rolling window, will default to 252 if no value is passed.
-        :return: pandas.Series
-        """
-        if n_days is None:
-            n_days = 252
-        daily_returns = self.ts_returns()
-        vol = daily_returns.rolling(window=n_days, min_periods=1).std()
-        vol.dropna(axis='index', inplace=True)
-        vol.name = "({})(VOLATILITY)".format(self.ts_name)
-        return vol
-
+    @conditional_vectorize('date')
     def dividend_values(self, date, last_available=True, fill_value=np.nan):
         """
         Daily dividend values at date.
@@ -133,10 +194,11 @@ class Equity(Instrument):
             Default value in case `date` can't be found.
         :return: pandas.Series
         """
-        date = to_datetime(to_list(date))
+        date = to_datetime(date)
         dvd = self.ts_dividends()
         return at_index(df=dvd, index=date, last_available=last_available, fill_value=fill_value)
 
+    @conditional_vectorize('date')
     def dividend_yield(self, date, last_available=True, fill_value=np.nan):
         """
         12 month dividend yield at date(s).
@@ -148,12 +210,13 @@ class Equity(Instrument):
             Default value in case `date` can't be found.
         :return: pandas.Series
         """
-        date = to_datetime(to_list(date))
+        date = to_datetime(date)
         try:
             return self.eqy_dvd_yld_12m.get_values(index=date, last_available=last_available, fill_value=fill_value)
         except KeyError:
             return 0
 
+    @conditional_vectorize('date')
     def volatility(self, date, last_available=True, fill_value=np.nan, n_days=None, annual_factor=252):
         """
         The converted volatility value series at date.
@@ -169,7 +232,7 @@ class Equity(Instrument):
             The number of days used for period transformation, default is 252, or 1 year.
         :return: pandas.Series
         """
-        date = to_datetime(to_list(date))
+        date = to_datetime(date)
         vol = at_index(df=self.ts_volatility(n_days=n_days), index=date, last_available=last_available,
                        fill_value=fill_value)
 

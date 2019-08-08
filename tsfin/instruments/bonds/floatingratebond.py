@@ -71,7 +71,7 @@ class FloatingRateBond(_BaseBond):
     ----
     See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
     """
-    def __init__(self, timeseries, reference_curve, index_timeseries):
+    def __init__(self, timeseries, reference_curve=None, index_timeseries=None):
         super().__init__(timeseries)
         self.reference_curve = reference_curve
         self.index_timeseries = index_timeseries
@@ -111,6 +111,23 @@ class FloatingRateBond(_BaseBond):
         ql.setCouponPricer(self.bond.cashflows(), self.pricer)
         self.bond_components[self.maturity_date] = self.bond
         self._bond_components_backup = self.bond_components.copy()
+
+    def set_index_timeseries(self, index_timeseries):
+        """
+        :param index_timeseries: :py:obj:`TimeSeries`
+            The TimeSeries containing the quotes of the index used to calculate the bond's coupon.
+        :return:
+        """
+        self.index_timeseries = index_timeseries
+
+    def set_reference_curve(self, reference_curve):
+        """
+
+        :param reference_curve: :py:obj:YieldCurveTimeSeries
+            The yield curve of the index rate, used to estimate future cash flows.
+        :return:
+        """
+        self.reference_curve = reference_curve
 
     def add_fixings(self, date, **kwargs):
 
