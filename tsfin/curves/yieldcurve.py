@@ -141,11 +141,8 @@ class YieldCurveTimeSeries:
 
             # Get dates and discounts
             node_dates = yield_curve.dates()
-            # node_discounts = [yield_curve.discount(date) for date in node_dates]
             node_rates = [yield_curve.zeroRate(date, self.day_counter, ql.Continuous).rate() for date in node_dates]
-
             # Freezing the curve so that nothing is bothered by changing the singleton (global variable) evaluationDate.
-            # yield_curve = ql.DiscountCurve(node_dates, node_discounts, yield_curve.dayCounter())
             yield_curve = ql.MonotonicCubicZeroCurve(node_dates, node_rates,
                                                      self.day_counter,
                                                      self.calendar,
@@ -153,7 +150,6 @@ class YieldCurveTimeSeries:
                                                      ql.Continuous,
                                                      )
             yield_curve.enableExtrapolation()
-
             self.yield_curves[date] = yield_curve
 
     def _update_all_curves(self):

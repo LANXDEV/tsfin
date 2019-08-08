@@ -115,4 +115,4 @@ EURODOLLAR_FUTURE = 'EURODOLLAR_FUTURE'
 Configuration for yield curve classes
 '''
 # Names of attributes representing issue dates of securities in increasing order of precedence.
-ISSUE_DATE_ATTRIBUTES = ['EFFECTIVE_PRECEDENCE_ISSUE', 'ISSUE']
+ISSUE_DATE_ATTRIBUTES = ['EFFECTIVE_PRECEDENCE_ISSUE', 'ISSUE', 'ISSUE_DATE']

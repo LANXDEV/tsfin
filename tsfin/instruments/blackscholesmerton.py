@@ -99,35 +99,19 @@ class BlackScholesMerton:
         dividend = ql.FlatForward(0, calendar, ql.QuoteHandle(final_dividend), day_counter, compounding)
         self.dividend_handle.linkTo(dividend)
 
-    def yield_curve_update(self, date, calendar, day_counter, maturity, risk_free=None, compounding=ql.Continuous,
-                           frequency=ql.Once, **kwargs):
+    def yield_curve_update(self, date, base_date):
         """
 
         :param date: date-like
             The date.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: date-like
-            The option maturity.
-        :param risk_free: float, optional
-            An override of the zero rate in case you don't wan't to use the yield curve implied one.
-        :param compounding: QuantLib.Compounding, default=Continuous
-            The compounding used to interpolate the curve.
-        :param frequency: QuantLib.Frequency, default = Once
-            The frequency of the quoted yield.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
         """
         date = to_ql_date(date)
-        mat_date = to_ql_date(maturity)
-        if risk_free is None:
-            zero_rate = ql.SimpleQuote(self.yield_curve.zero_rate_to_date(date=date, to_date=mat_date,
-                                                                          compounding=compounding,
-                                                                          frequency=frequency))
-        else:
-            zero_rate = ql.SimpleQuote(risk_free)
-        yield_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(zero_rate), day_counter, compounding)
-        self.risk_free_handle.linkTo(yield_curve)
+        base_date = to_ql_date(base_date)
+        yield_curve_handle = self.yield_curve.yield_curve_handle(date=base_date)
+        implied_curve = ql.ImpliedTermStructure(yield_curve_handle, date)
+        self.risk_free_handle.linkTo(implied_curve)
 
     def volatility_update(self, vol_value, calendar, day_counter):
 
@@ -140,22 +124,25 @@ class BlackScholesMerton:
             The option day count used to evaluate the model
         :return:
         """
-        volatility_value = ql.SimpleQuote(vol_value)
+        if isinstance(vol_value, ql.SimpleQuote):
+            volatility_value = vol_value
+        else:
+            volatility_value = ql.SimpleQuote(vol_value)
         back_constant_vol = ql.BlackConstantVol(0, calendar, ql.QuoteHandle(volatility_value), day_counter)
         self.volatility_handle.linkTo(back_constant_vol)
 
-    def update_process(self, date, calendar, day_counter, maturity, underlying_name, vol_value, dvd_tax_adjust=1,
+    def update_process(self, date, base_date, calendar, day_counter, underlying_name, vol_value, dvd_tax_adjust=1,
                        last_available=True, **kwargs):
         """
 
         :param date: date-like
             The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param calendar: QuantLib.Calendar
             The option calendar used to evaluate the model
         :param day_counter: QuantLib.DayCounter
             The option day count used to evaluate the model
-        :param maturity: date-like
-            The option maturity.
         :param underlying_name: str
             The underlying Timeseries ts_name
         :param vol_value: float
@@ -173,6 +160,5 @@ class BlackScholesMerton:
         self.dividend_yield_update(date=date, calendar=calendar, day_counter=day_counter,
                                    underlying_name=underlying_name, dvd_tax_adjust=dvd_tax_adjust,
                                    last_available=last_available, **kwargs)
-        self.yield_curve_update(date=date, calendar=calendar, day_counter=day_counter, maturity=maturity,
-                                **kwargs)
+        self.yield_curve_update(date=date, base_date=base_date)
         self.volatility_update(vol_value=vol_value, calendar=calendar, day_counter=day_counter)

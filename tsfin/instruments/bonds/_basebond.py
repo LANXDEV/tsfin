@@ -830,8 +830,8 @@ class _BaseBond(Instrument):
             # input("Returning nan because its expired date: {0}, settlement {1}".format(date, settlement_date))
             return np.nan, np.nan
         return min(((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                              frequency=frequency, settlement_days=settlement_days, bond=bond,
-                              bypass_set_floating_rate_index=True, quote_type=quote_type), key)
+                              frequency=frequency, settlement_days=settlement_days, bond=bond, quote_type=quote_type,
+                              **kwargs), key)
                     for key, bond in self.bond_components.items() if key > settlement_date), key=itemgetter(0))
 
     @default_arguments
@@ -878,7 +878,7 @@ class _BaseBond(Instrument):
             return np.nan
         return min((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
                              frequency=frequency, settlement_days=settlement_days, bond=bond,
-                             bypass_set_floating_rate_index=True, quote_type=quote_type)
+                             quote_type=quote_type, **kwargs)
                     for key, bond in self.bond_components.items() if key > settlement_date))
 
     @default_arguments

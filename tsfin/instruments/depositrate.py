@@ -20,10 +20,13 @@ DepositRate class, to represent deposit rates.
 import numpy as np
 import QuantLib as ql
 from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
-    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS, MONTH_END
+    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS, MONTH_END, ISSUE_DATE
 from tsfin.base.instrument import default_arguments
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
     to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter, to_bool
+
+
+DEFAULT_ISSUE_DATE = ql.Date.minDate()
 
 
 class DepositRate(Instrument):
@@ -51,6 +54,10 @@ class DepositRate(Instrument):
             self.month_end = to_bool(self.ts_attributes[MONTH_END])
         except KeyError:
             self.month_end = False
+        try:
+            self.issue_date = to_ql_date(to_datetime(self.ts_attributes[ISSUE_DATE]))
+        except KeyError:
+            self.issue_date = DEFAULT_ISSUE_DATE
 
     def is_expired(self, date, *args, **kwargs):
         """Check if the deposit rate is expired.
