@@ -68,29 +68,6 @@ class Equity(Instrument):
         daily_returns = price / price.shift(1) - 1
         return daily_returns
 
-    def ts_dividends(self):
-        """
-        Daily series with implied dividend per share payment.
-        :return: pandas.Series
-        """
-        price = self.price.ts_values
-        price.name = self.price.ts_name
-        unadjusted_price = self.unadjusted_price.ts_values
-        unadjusted_price.name = self.unadjusted_price.ts_name
-
-        price_chg = price / price.shift(1) - 1
-        unadjusted_price_chg = unadjusted_price / unadjusted_price.shift(1) - 1
-
-        df = pd.merge(unadjusted_price_chg, price_chg, how='left', left_index=True, right_index=True)
-        df['dvd_chg'] = (1 + df[unadjusted_price.name])/(1 + df[price.name]) - 1
-        df.drop([unadjusted_price.name, price.name], axis=1, inplace=True)
-        unadjusted_price = unadjusted_price.shift(1).dropna(axis='index')
-        df = pd.merge(df, unadjusted_price, how='left', left_index=True, right_index=True).dropna(axis='index')
-        df['DVD'] = trunc(-df['dvd_chg']*df[unadjusted_price.name], 4)
-        dvd_series = pd.Series(data=df['DVD'], index=df.index, name="({})(DIVIDENDS)".format(self.ts_name))
-
-        return dvd_series
-
     def ts_volatility(self, n_days=252):
         """
         Daily rolling volatility.
@@ -204,8 +181,10 @@ class Equity(Instrument):
         :return: pandas.Series
         """
         date = to_datetime(date)
-        dvd = self.ts_dividends()
-        return at_index(df=dvd, index=date, last_available=last_available, fill_value=fill_value)
+        try:
+            return self.dividends.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        except KeyError:
+            return 0
 
     @conditional_vectorize('date')
     def dividend_yield(self, date, last_available=True, fill_value=np.nan):
