@@ -571,7 +571,7 @@ class BaseEquityOption(Instrument):
 
     @conditional_vectorize('date', 'target', 'spot_price')
     def implied_vol(self, date, target, spot_price=None, dvd_tax_adjust=1, last_available=True, exercise_ovrd=None,
-                    volatility=None):
+                    volatility=0.2):
         """
         :param date: date-like
             The date.
@@ -593,8 +593,6 @@ class BaseEquityOption(Instrument):
         """
         date = to_ql_date(date)
         ql.Settings.instance().evaluationDate = date
-        if volatility is None:
-            volatility = 0.2
         if self.option is None:
             self.option = self.option_engine(date=date, base_date=date, dvd_tax_adjust=dvd_tax_adjust,
                                              last_available=last_available, exercise_ovrd=exercise_ovrd,

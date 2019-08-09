@@ -43,6 +43,18 @@ class Equity(Instrument):
         super().__init__(timeseries)
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
 
+    def ts_prices(self, dpdf=False):
+        """
+
+        :param dpdf: bool
+            If true it will use the adjusted price for calculation.
+        :return: pandas.Series
+        """
+        if dpdf:
+            return self.price
+        else:
+            return self.unadjusted_price
+
     def ts_returns(self):
         """
         Daily returns from trading days.
@@ -107,7 +119,7 @@ class Equity(Instrument):
         """
         start_date = to_ql_date(start_date)
         date = to_ql_date(date)
-        if start_date == date:
+        if start_date >= date:
             dates = [to_datetime(date)]
         else:
             ql_dates = ql.Schedule(start_date, date, ql.Period(1, ql.Days), self.calendar, ql.Following, ql.Following,
@@ -118,7 +130,8 @@ class Equity(Instrument):
         return sum(dividends)
 
     @conditional_vectorize('quote', 'date')
-    def performance(self, start_date=None, start_quote=None, date=None, quote=None, tax_adjust=0, *args, **kwargs):
+    def performance(self, start_date=None, start_quote=None, date=None, quote=None, tax_adjust=0, dpdf=False,
+                    *args, **kwargs):
 
         """
         Performance of a unit of the instrument.
@@ -132,28 +145,36 @@ class Equity(Instrument):
             The quote of the instrument at `date`. Defaults to the quote at `date`.
         :param tax_adjust: float
             The tax value to adjust the dividends received
+        :param dpdf: bool
+            If true it will use the adjusted price for calculation.
         :return: scalar, None
         """
-        quotes = self.unadjusted_price
+        quotes = self.ts_prices(dpdf=dpdf)
+
         first_available_date = quotes.ts_values.first_valid_index()
         if start_date is None:
             start_date = first_available_date
         if start_date < first_available_date:
             start_date = first_available_date
         if start_quote is None:
-            start_quote = self.spot_price(date=start_date)
+            start_quote = self.spot_price(date=start_date, dpdf=dpdf)
         if quote is None:
-            quote = self.spot_price(date=date)
+            quote = self.spot_price(date=date, dpdf=dpdf)
         if date < start_date:
             return np.nan
 
         start_value = start_quote
         value = quote
-        dividends = self.cash_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust)
-        return (value + dividends) / start_value
+        if dpdf:
+            dividends = 0
+        else:
+            start_date = self.calendar.advance(to_ql_date(start_date), ql.Period(1, ql.Days), ql.Following)
+            dividends = self.cash_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust)
+
+        return (value + dividends) / start_value - 1
 
     @conditional_vectorize('date')
-    def spot_price(self, date, last_available=True, fill_value=np.nan):
+    def spot_price(self, date, last_available=True, fill_value=np.nan, dpdf=False):
         """
         Return the daily series of unadjusted price at date(s).
         :param date: Date-like
@@ -162,25 +183,13 @@ class Equity(Instrument):
             Whether to use last available data in case dates are missing.
         :param fill_value: scalar
             Default value in case `date` can't be found.
+        :param dpdf: bool
+            If true it will use the adjusted price for calculation.
         :return: pandas.Series
         """
         date = to_datetime(date)
-        return self.unadjusted_price.get_values(index=date, last_available=last_available, fill_value=fill_value)
-
-    @conditional_vectorize('date')
-    def adjusted_spot_price(self, date, last_available=True, fill_value=np.nan):
-        """
-        Return the daily series of adjusted (Dividends, Bonus etc..) price at date(s).
-        :param date: Date-like
-            Date or dates to be return the dividend values.
-        :param last_available: bool, optional
-            Whether to use last available data in case dates are missing.
-        :param fill_value: scalar
-            Default value in case `date` can't be found.
-        :return: pandas.Series
-        """
-        date = to_datetime(date)
-        return self.price.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        prices = self.ts_prices(dpdf=dpdf)
+        return prices.get_values(index=date, last_available=last_available, fill_value=fill_value)
 
     @conditional_vectorize('date')
     def dividend_values(self, date, last_available=True, fill_value=np.nan):
