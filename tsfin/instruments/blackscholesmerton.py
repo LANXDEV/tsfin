@@ -63,7 +63,6 @@ class BlackScholesMerton:
             spot_price = float(equity_instrument.spot_price(date=date, last_available=last_available))
         else:
             spot_price = spot_price
-
         self.spot_price_handle.linkTo(ql.SimpleQuote(spot_price))
 
     def dividend_yield_update(self, date, calendar, day_counter, underlying_name, dividend_yield=None, dvd_tax_adjust=1,
@@ -99,18 +98,30 @@ class BlackScholesMerton:
         dividend = ql.FlatForward(0, calendar, ql.QuoteHandle(final_dividend), day_counter, compounding)
         self.dividend_handle.linkTo(dividend)
 
-    def yield_curve_update(self, date, base_date):
+    def yield_curve_update(self, date, base_date, calendar, day_counter, maturity, compounding=ql.Continuous):
         """
 
         :param date: date-like
             The date.
         :param base_date: date-like
             When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param calendar: QuantLib.Calendar
+            The option calendar used to evaluate the model
+        :param day_counter: QuantLib.DayCounter
+            The option day count used to evaluate the model
+        :param maturity: ql.Date
+            The option maturity date.
+        :param compounding: QuantLib.Compounding, default=Continuous
+            The compounding used to interpolate the curve.
         """
         date = to_ql_date(date)
         base_date = to_ql_date(base_date)
-        yield_curve_handle = self.yield_curve.yield_curve_handle(date=base_date)
-        implied_curve = ql.ImpliedTermStructure(yield_curve_handle, date)
+        if date <= base_date:
+            base_date = date
+        implied_curve = ql.ImpliedTermStructure(self.yield_curve.yield_curve_handle(date=base_date), date)
+        zero_rate = implied_curve.zeroRate(maturity, day_counter, compounding, ql.Once, True).rate()
+        implied_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(ql.SimpleQuote(zero_rate)), day_counter,
+                                       compounding)
         self.risk_free_handle.linkTo(implied_curve)
 
     def volatility_update(self, vol_value, calendar, day_counter):
@@ -131,8 +142,8 @@ class BlackScholesMerton:
         back_constant_vol = ql.BlackConstantVol(0, calendar, ql.QuoteHandle(volatility_value), day_counter)
         self.volatility_handle.linkTo(back_constant_vol)
 
-    def update_process(self, date, base_date, calendar, day_counter, underlying_name, vol_value, dvd_tax_adjust=1,
-                       last_available=True, **kwargs):
+    def update_process(self, date, base_date, calendar, day_counter, underlying_name, vol_value, maturity,
+                       dvd_tax_adjust=1, last_available=True, **kwargs):
         """
 
         :param date: date-like
@@ -147,6 +158,8 @@ class BlackScholesMerton:
             The underlying Timeseries ts_name
         :param vol_value: float
             The volatility value to be used in the model.
+        :param maturity: ql.Date
+            The option maturity date.
         :param dvd_tax_adjust: float, default=1
             The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
         :param last_available: bool, optional
@@ -160,5 +173,6 @@ class BlackScholesMerton:
         self.dividend_yield_update(date=date, calendar=calendar, day_counter=day_counter,
                                    underlying_name=underlying_name, dvd_tax_adjust=dvd_tax_adjust,
                                    last_available=last_available, **kwargs)
-        self.yield_curve_update(date=date, base_date=base_date)
+        self.yield_curve_update(date=date, base_date=base_date, maturity=maturity, calendar=calendar,
+                                day_counter=day_counter)
         self.volatility_update(vol_value=vol_value, calendar=calendar, day_counter=day_counter)
