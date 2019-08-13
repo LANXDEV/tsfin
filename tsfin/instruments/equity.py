@@ -102,7 +102,7 @@ class Equity(Instrument):
             ql_dates = ql.Schedule(start_date, date, ql.Period(1, ql.Days), self.calendar, ql.Following, ql.Following,
                                    ql.DateGeneration.Forward, False)
             dates = [to_datetime(date) for date in ql_dates]
-        dividends = self.dividend_values(date=dates)
+        dividends = self.dividend_values(date=dates, fill_value=0)
         dividends *= (1 - float(tax_adjust))
         return sum(dividends)
 

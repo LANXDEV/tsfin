@@ -262,6 +262,7 @@ class BaseEquityOption(Instrument):
                                        day_counter=self.day_counter,
                                        underlying_name=self.underlying_instrument,
                                        vol_value=0.2,
+                                       maturity=self.option_maturity,
                                        dvd_tax_adjust=dvd_tax_adjust,
                                        last_available=last_available,
                                        spot_price=underlying_price)
