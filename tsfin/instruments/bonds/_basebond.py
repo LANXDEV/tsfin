@@ -511,6 +511,33 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('date')
+    def cash_flow_to_date(self, start_date, last, date, **kwargs):
+        """
+        Parameters
+        ----------
+        start_date: QuantLib.Date
+            The start date.
+        last: bool, optional
+            Whether to use last data.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional, (c-vectorized)
+            The last date of the computation.
+            Default: see :py:func:`default_arguments`.
+
+        Returns
+        -------
+        scalar
+           List of Tuples with the amount paid between the period.
+
+
+        """
+        start_date = to_ql_date(start_date)
+        date = to_ql_date(date)
+        return list((cf.date(), cf.amount() / self.face_amount) for cf in self.bond.cashflows()
+                    if start_date <= cf.date() <= date)
+
+    @default_arguments
+    @conditional_vectorize('date')
     def cash_to_date(self, start_date, last, date, **kwargs):
         """
         Parameters
