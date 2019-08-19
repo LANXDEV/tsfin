@@ -511,15 +511,12 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('date')
-    def cash_flow_to_date(self, start_date, last, date, **kwargs):
+    def cash_flow_to_date(self, start_date, date, **kwargs):
         """
         Parameters
         ----------
         start_date: QuantLib.Date
             The start date.
-        last: bool, optional
-            Whether to use last data.
-            Default: see :py:func:`default_arguments`.
         date: QuantLib.Date, optional, (c-vectorized)
             The last date of the computation.
             Default: see :py:func:`default_arguments`.

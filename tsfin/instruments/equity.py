@@ -21,8 +21,9 @@ import numpy as np
 import pandas as pd
 import QuantLib as ql
 from tsio.tools import at_index
-from tsfin.constants import CALENDAR
-from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize
+from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER
+from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize, \
+    to_list, filter_series
 
 
 def trunc(values, decs=0):
@@ -42,6 +43,10 @@ class Equity(Instrument):
     def __init__(self, timeseries):
         super().__init__(timeseries)
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        try:
+            self.underlying_name = self.ts_attributes[UNDERLYING_INSTRUMENT]
+        except KeyError:
+            self.underlying_name = self.ts_attributes[TICKER]
 
     def ts_prices(self, dpdf=False):
         """
@@ -83,6 +88,28 @@ class Equity(Instrument):
         return vol
 
     @conditional_vectorize('date')
+    def cash_flow_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
+        """
+        Cash amount paid by a unit of the instrument between `start_date` and `date`.
+        :param start_date: Date-like
+            Start date of the range
+        :param date: Date-like
+            Final date of the range
+        :param tax_adjust: float
+            The tax value to adjust the dividends received
+        :return: float
+        """
+        start_date = to_datetime(start_date)
+        date = to_datetime(date)
+        ts_dividends = self.dividends.ts_values
+        if start_date >= date:
+            start_date = date
+        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
+        ts_dividends *= (1 - float(tax_adjust))
+        ts_dividends = ts_dividends[ts_dividends != 0]
+        return list((ts_date, ts_value) for ts_date, ts_value in ts_dividends.iteritems())
+
+    @conditional_vectorize('date')
     def cash_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
         """
         Cash amount paid by a unit of the instrument between `start_date` and `date`.
@@ -94,17 +121,15 @@ class Equity(Instrument):
             The tax value to adjust the dividends received
         :return: float
         """
-        start_date = to_ql_date(start_date)
-        date = to_ql_date(date)
+        start_date = to_datetime(start_date)
+        date = to_datetime(date)
+        ts_dividends = self.dividends.ts_values
         if start_date >= date:
-            dates = [to_datetime(date)]
-        else:
-            ql_dates = ql.Schedule(start_date, date, ql.Period(1, ql.Days), self.calendar, ql.Following, ql.Following,
-                                   ql.DateGeneration.Forward, False)
-            dates = [to_datetime(date) for date in ql_dates]
-        dividends = self.dividend_values(date=dates, fill_value=0)
-        dividends *= (1 - float(tax_adjust))
-        return sum(dividends)
+            start_date = date
+        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
+        ts_dividends *= (1 - float(tax_adjust))
+        ts_dividends = ts_dividends[ts_dividends != 0]
+        return sum(ts_dividends)
 
     @conditional_vectorize('quote', 'date')
     def performance(self, start_date=None, start_quote=None, date=None, quote=None, tax_adjust=0, dpdf=False,
