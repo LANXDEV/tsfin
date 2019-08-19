@@ -28,7 +28,7 @@ from tsfin.instruments.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.swaprate import SwapRate
 from tsfin.instruments.swaption import SwapOption
-from tsfin.instruments.baseequityoption import BaseEquityOption
+from tsfin.instruments.equityoption import EquityOption
 from tsfin.instruments.cds import CDSRate
 from tsfin.instruments.eurodollar_future import EurodollarFuture
 from tsfin.instruments.equity import Equity
@@ -100,7 +100,7 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
         elif ts_type == OIS_RATE:
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
-            instrument = BaseEquityOption(ts)
+            instrument = EquityOption(ts)
         elif ts_type == EQUITY:
             instrument = Equity(ts)
         elif ts_type == FUND:

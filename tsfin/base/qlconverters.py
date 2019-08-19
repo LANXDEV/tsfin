@@ -65,6 +65,8 @@ def to_ql_frequency(arg):
         return ql.Monthly
     elif arg.upper() == "AT_MATURITY":
         return ql.Once
+    elif arg.upper() == "BIWEEKLY":
+        return ql.Biweekly
     elif arg.upper() == "WEEKLY":
         return ql.Weekly
     elif arg.upper() == "DAILY":
@@ -88,19 +90,31 @@ def to_ql_calendar(arg):
 
     if arg.upper() == "US":
         return ql.UnitedStates()
-    if arg.upper() in ["NYSE", "CE"]:
+    elif arg.upper() in ["NYSE", "CE"]:
         return ql.UnitedStates(ql.UnitedStates.NYSE)
-    if arg.upper() == "FD":
+    elif arg.upper() == "FD":
         return ql.UnitedStates(ql.UnitedStates.FederalReserve)
-    if arg.upper() == "EX":
+    elif arg.upper() == "EX":
         return ql.JointCalendar(ql.UnitedStates(ql.UnitedStates.NYSE),
                                 ql.UnitedStates(ql.UnitedStates.Settlement))
-    if arg.upper() == "UK":
+    elif arg.upper() == "GB":
         return ql.UnitedKingdom()
-    if arg.upper() == "BZ":
+    elif arg.upper() == "BZ":
         return ql.Brazil()
-    if arg.upper() == "TE":
+    elif arg.upper() in ["TE", 'TARGET']:
         return ql.TARGET()
+    elif arg.upper() in ['C%', 'C+']:
+        return ql.China()
+    elif arg.upper() == 'JN':
+        return ql.Japan()
+    elif arg.upper() == 'SZ':
+        return ql.Switzerland()
+    elif arg.upper() == 'AU':
+        return ql.Australia()
+    elif arg.upper() == 'SA':
+        return ql.SouthAfrica()
+    elif arg.upper() == 'TU':
+        return ql.Turkey()
     else:
         raise ValueError("Unable to convert {} to a QuantLib calendar".format(arg))
 
@@ -120,10 +134,24 @@ def to_ql_currency(arg):
 
     if arg.upper() == "USD":
         return ql.USDCurrency()
-    if arg.upper() == "BRL":
+    elif arg.upper() == "BRL":
         return ql.BRLCurrency()
-    if arg.upper() == "EUR":
+    elif arg.upper() == "EUR":
         return ql.EURCurrency()
+    elif arg.upper() == "GBP":
+        return ql.GBPCurrency()
+    elif arg.upper() == "AUD":
+        return ql.AUDCurrency()
+    elif arg.upper() == "JPY":
+        return ql.JPYCurrency()
+    elif arg.upper() == "TRY":
+        return ql.TRYCurrency()
+    elif arg.upper() == "ZAR":
+        return ql.ZARCurrency()
+    elif arg.upper() == "CHF":
+        return ql.CHFCurrency()
+    elif arg.upper() in ["CNY", "CNH"]:
+        return ql.CNYCurrency()
     else:
         raise ValueError("Unable to convert {} to a QuantLib currency".format(arg))
 
@@ -231,26 +259,6 @@ def to_ql_compounding(arg):
         raise ValueError("Unable to convert {} to a QuantLib compounding specification".format(arg))
 
 
-def to_ql_index(arg):
-    """Converts a string with index name to the corresponding QuantLib object.
-
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Index
-
-    """
-    if arg.upper() == "USDLIBOR":
-        return ql.USDLibor
-    elif arg.upper() == "FEDFUNDS":
-        return ql.FedFunds()
-    else:
-        raise ValueError("Unable to convert {} to a QuantLib index".format(arg))
-
-
 def to_ql_overnight_index(arg):
     """Converts a string with overnight index name to the corresponding QuantLib object.
 
@@ -288,28 +296,38 @@ def to_ql_option_type(arg):
         return ql.Option.Put
 
 
-def to_ql_rate_index(arg, *args):
+def to_ql_rate_index(arg, tenor=None):
     """Converts a string with index name to the corresponding QuantLib object.
 
     Parameters
     ----------
     arg: str
+    tenor: QuantLib.Period
+
 
     Returns
     -------
-    QuantLib.Index
+    QuantLib.Libor
+    QuantLib.OvernightIndex
 
     """
     if arg.upper() == "USDLIBOR":
-        if len(args) > 0:
-            return ql.USDLibor(*args)
+        if tenor is not None:
+            return ql.USDLibor(tenor)
         else:
             return ql.USDLibor()
     elif arg.upper() == "FEDFUNDS":
-        if len(args) > 0:
-            return ql.FedFunds(*args)
+        return ql.FedFunds()
+    elif arg.upper() == "EURLIBOR":
+        if tenor is not None:
+            return ql.EURLibor(tenor)
         else:
-            return ql.FedFunds()
+            return ql.EURLibor()
+    elif arg.upper() == "EONIA":
+        if tenor is not None:
+            return ql.Eonia(tenor)
+        else:
+            return ql.Eonia()
     else:
         raise ValueError("Unable to convert {} to a QuantLib index".format(arg))
 
@@ -356,6 +374,10 @@ def to_ql_float_index(index, tenor, yield_curve_handle=None):
         return ql.USDLibor(tenor, yield_curve_handle)
     elif index.upper() == "FEDFUNDS":
         return ql.FedFunds(tenor, yield_curve_handle)
+    elif index.upper() == "EURLIBOR":
+        return ql.EURLibor(tenor, yield_curve_handle)
+    elif index.upper() == "EONIA":
+        return ql.Eonia(tenor, yield_curve_handle)
 
 
 def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
@@ -431,7 +453,17 @@ def ql_tenor_to_maturity_date(base_date, tenor):
 
 
 def to_ql_time_unit(arg):
+    """Converts a string with a time unit name to the corresponding QuantLib object.
 
+    Parameters
+    ----------
+    arg: str
+
+    Returns
+    -------
+    QuantLib.TimeUnit
+
+    """
     if arg.upper() == 'Y':
         return ql.Years
     elif arg.upper() == 'M':
