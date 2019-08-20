@@ -22,6 +22,7 @@ import QuantLib as ql
 from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
     COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS, MONTH_END, ISSUE_DATE, INDEX
 from tsfin.base.instrument import default_arguments
+from tsfin.instruments import DepositRate
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
     to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter, to_bool, to_ql_rate_index
 
@@ -29,25 +30,18 @@ from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_dat
 DEFAULT_ISSUE_DATE = ql.Date.minDate()
 
 
-class DepositRate(Instrument):
-    """Class to model deposit rates.
+class ZeroRate(Instrument):
 
-    Parameters
-    ----------
-    timeseries: :py:obj:`TimeSeries`
-        TimeSeries representing the deposit rate.
-    """
     def __init__(self, timeseries, *args, **kwargs):
         super().__init__(timeseries)
         self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._tenor)
-        self.calendar = self.index.fixingCalendar()
-        self.day_counter = self.index.dayCounter()
+        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.compounding = to_ql_compounding(self.ts_attributes[COMPOUNDING])
         self.frequency = to_ql_frequency(self.ts_attributes[FREQUENCY])
-        self.business_convention = self.index.businessDayConvention()
-        self.fixing_days = self.index.fixingDays()
-        self.month_end = self.index.endOfMonth()
+        self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
+        self.month_end = False
         try:
             self.issue_date = to_ql_date(to_datetime(self.ts_attributes[ISSUE_DATE]))
         except KeyError:
@@ -85,16 +79,16 @@ class DepositRate(Instrument):
         end_date = self.calendar.adjust(end_date, self.business_convention)
         fixing_dates = list()
         maturity_dates = list()
-        fixing_date = self.index.fixingDate(start_date)
-        maturity_date = self.index.maturityDate(self.index.valueDate(fixing_date))
+        fixing_date = self.calendar.advance(start_date, self.fixing_days, ql.Days, self.business_convention,
+                                            self.month_end)
+        maturity_date = self.calendar.advance(start_date, self._tenor, self.business_convention, self.month_end)
         while maturity_date < end_date:
             fixing_dates.append(fixing_date)
             maturity_dates.append(maturity_date)
-            fixing_date = self.index.fixingDate(maturity_date)
-            maturity_date = self.index.maturityDate(self.index.valueDate(fixing_date))
+            fixing_date = maturity_date
+            maturity_date = self.calendar.advance(fixing_date, self._tenor, self.business_convention, self.month_end)
         fixing_dates.append(fixing_date)
         maturity_dates.append(end_date)
-        return fixing_dates, maturity_dates
 
     def tenor(self, date, *args, **kwargs):
         """Get tenor of the deposit rate.
@@ -125,7 +119,7 @@ class DepositRate(Instrument):
             The maturity based on the reference date and tenor of the deposit rate.
         """
         date = to_ql_date(date)
-        maturity = self.index.maturityDate(date)
+        maturity = self.calendar.advance(date, self._tenor, self.business_convention, self.month_end)
         return maturity
 
     @default_arguments
@@ -167,7 +161,7 @@ class DepositRate(Instrument):
         return np.prod([ql.InterestRate(fixing, self.day_counter, self.compounding,
                                         self.frequency).compoundFactor(self.index.valueDate(fixing_date),
                                                                        maturity_date, start_date, date)
-                       for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)]) - 1
+                        for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)]) - 1
 
     def rate_helper(self, date, last_available=True, **other_args):
         """Helper for yield curve construction.
@@ -197,7 +191,7 @@ class DepositRate(Instrument):
             # Return none if the deposit rate can't retrieve a tenor (i.e. is expired).
             return None
         # Convert rate to simple compounding because DepositRateHelper expects simple rates.
-        time = self.day_counter.yearFraction(date, self.index.maturityDate(date))
+        time = self.day_counter.yearFraction(date, self.maturity(date))
         rate = ql.InterestRate(rate, self.day_counter, self.compounding,
                                self.frequency).equivalentRate(ql.Simple, ql.Annual, time).rate()
         final_rate = ql.SimpleQuote(rate)
