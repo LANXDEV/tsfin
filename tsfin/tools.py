@@ -24,6 +24,7 @@ from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base.instrument import Instrument
 from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond
 from tsfin.instruments.depositrate import DepositRate
+from tsfin.instruments.zerorate import ZeroRate
 from tsfin.instruments.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.swaprate import SwapRate
@@ -89,8 +90,10 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
                 instrument_list.append(ts)
                 continue
 
-        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE, RATE_INDEX, ZERO_RATE):
+        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE):
             instrument = DepositRate(ts)
+        elif ts_type == ZERO_RATE:
+            instrument = ZeroRate(ts)
         elif ts_type == CURRENCY_FUTURE:
             instrument = CurrencyFuture(ts)
         elif ts_type == SWAP_RATE:
