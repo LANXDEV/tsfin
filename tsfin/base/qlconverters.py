@@ -277,25 +277,6 @@ def to_ql_overnight_index(arg):
         raise ValueError("Unable to convert {} to a QuantLib overnight index".format(arg))
 
 
-def to_ql_option_type(arg):
-    """Converts a string with the option type to the corresponding QuantLib object.
-
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Option
-
-    """
-
-    if arg.upper() == 'CALL':
-        return ql.Option.Call
-    elif arg.upper() == 'PUT':
-        return ql.Option.Put
-
-
 def to_ql_rate_index(arg, tenor=None):
     """Converts a string with index name to the corresponding QuantLib object.
 

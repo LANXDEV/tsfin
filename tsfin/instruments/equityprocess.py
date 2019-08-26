@@ -24,7 +24,7 @@ from tsfin.base import to_ql_date
 class BaseEquityProcess:
 
     def __init__(self, yield_curve):
-        """ Model for the Black Scholes Merton model used to evaluate options.
+        """ Base Model for QuantLib Stochastic Process for Equities and Equity Options.
 
         :param yield_curve: :py:obj:YieldCurveTimeSeries
             The yield curve of the index rate, used to estimate future cash flows.
@@ -41,28 +41,19 @@ class BaseEquityProcess:
         self.rho = None  # correlation between the asset price and its variance
         self.process = None
 
-    @staticmethod
-    def ql_engine(engine_name, process, model_name=None, time_steps=None, tolerance=None, max_evaluations=None):
-
-        if engine_name.upper() == 'BINOMIAL_VANILLA':
-            return ql.BinomialVanillaEngine(process, model_name, time_steps)
-        elif engine_name.upper() == 'ANALYTIC_HESTON':
-            return ql.AnalyticHestonEngine(ql.HestonModel(process), tolerance, max_evaluations)
-        elif engine_name.upper() == 'ANALYTIC_EUROPEAN':
-            return ql.AnalyticEuropeanEngine(process)
-        elif engine_name.upper() == 'ANALYTIC_EUROPEAN_DIVIDEND':
-            return ql.AnalyticDividendEuropeanEngine(process)
-        else:
-            return None
-
     def spot_price_update(self, spot_price):
         """
         :param spot_price: float, optional
             An override of the underlying spot price in case you don't wan't to use the timeseries one.
         """
-        self.spot_price_handle.linkTo(ql.SimpleQuote(spot_price))
+        if isinstance(spot_price, ql.SimpleQuote):
+            spot = spot_price
+        else:
+            spot = ql.SimpleQuote(spot_price)
+        self.spot_price_handle.linkTo(spot)
 
-    def dividend_yield_update(self, dividend_yield, calendar, day_counter, dvd_tax_adjust, compounding=ql.Continuous):
+    def dividend_yield_update(self, dividend_yield, calendar, day_counter, dividend_tax,
+                              compounding=ql.Continuous):
         """
 
         :param dividend_yield: float
@@ -71,17 +62,17 @@ class BaseEquityProcess:
             The option calendar used to evaluate the model
         :param day_counter: QuantLib.DayCounter
             The option day count used to evaluate the model
-        :param dvd_tax_adjust: float
-            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param dividend_tax: float
+            The dividend % tax applied.
         :param compounding: QuantLib.Compounding, default=Continuous
             The compounding used to interpolate the curve.
         """
-        final_dividend = ql.SimpleQuote(dividend_yield * dvd_tax_adjust)
+        final_dividend = ql.SimpleQuote(dividend_yield * (1-float(dividend_tax)))
         dividend = ql.FlatForward(0, calendar, ql.QuoteHandle(final_dividend), day_counter, compounding)
         self.dividend_handle.linkTo(dividend)
 
     def yield_curve_update(self, date, base_date, calendar, day_counter, maturity, compounding=ql.Continuous,
-                           frequency=ql.Annual):
+                           frequency=ql.NoFrequency):
         """
 
         :param date: date-like
@@ -109,10 +100,10 @@ class BaseEquityProcess:
                                        compounding)
         self.risk_free_handle.linkTo(implied_curve)
 
-    def volatility_update(self, vol_value, calendar, day_counter):
+    def volatility_update(self, volatility, calendar, day_counter):
 
         """
-        :param vol_value: float, optional
+        :param volatility: float, optional
             An override of the volatility value in case you don't wan't to use the timeseries one.
         :param calendar: QuantLib.Calendar
             The option calendar used to evaluate the model
@@ -123,8 +114,8 @@ class BaseEquityProcess:
         """
         return None
 
-    def update_process(self, date, base_date, spot_price, dividend_yield, calendar, day_counter, vol_value, maturity,
-                       dvd_tax_adjust, kappa=None, theta=None, sigma=None, rho=None):
+    def update_process(self, date, base_date, spot_price, dividend_yield, calendar, day_counter, volatility, maturity,
+                       dividend_tax, kappa=None, theta=None, sigma=None, rho=None):
         """
 
         :param date: date-like
@@ -139,12 +130,12 @@ class BaseEquityProcess:
             The option calendar used to evaluate the model
         :param day_counter: QuantLib.DayCounter
             The option day count used to evaluate the model
-        :param vol_value: float
+        :param volatility: float
             The volatility value to be used in the model.
         :param maturity: ql.Date
             The option maturity date.
-        :param dvd_tax_adjust: float
-            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param dividend_tax: float
+            The dividend % tax applied.
         :param kappa: float
             The mean reversion strength, used in the Heston Model.
         :param theta: float
@@ -158,10 +149,10 @@ class BaseEquityProcess:
         """
         self.spot_price_update(spot_price=spot_price)
         self.dividend_yield_update(dividend_yield=dividend_yield, calendar=calendar, day_counter=day_counter,
-                                   dvd_tax_adjust=dvd_tax_adjust)
+                                   dividend_tax=dividend_tax)
         self.yield_curve_update(date=date, base_date=base_date, maturity=maturity, calendar=calendar,
                                 day_counter=day_counter)
-        self.volatility_update(vol_value=vol_value, calendar=calendar, day_counter=day_counter)
+        self.volatility_update(volatility=volatility, calendar=calendar, day_counter=day_counter)
         self.kappa = kappa
         self.theta = theta
         self.sigma = sigma
@@ -183,10 +174,10 @@ class BlackScholesMerton(BaseEquityProcess):
                                                     self.risk_free_handle,
                                                     self.volatility_handle)
 
-    def volatility_update(self, vol_value, calendar, day_counter):
+    def volatility_update(self, volatility, calendar, day_counter):
 
         """
-        :param vol_value: float, optional
+        :param volatility: float, optional
             An override of the volatility value in case you don't wan't to use the timeseries one.
         :param calendar: QuantLib.Calendar
             The option calendar used to evaluate the model
@@ -194,10 +185,10 @@ class BlackScholesMerton(BaseEquityProcess):
             The option day count used to evaluate the model
         :return:
         """
-        if isinstance(vol_value, ql.SimpleQuote):
-            volatility_value = vol_value
+        if isinstance(volatility, ql.SimpleQuote):
+            volatility_value = volatility
         else:
-            volatility_value = ql.SimpleQuote(vol_value)
+            volatility_value = ql.SimpleQuote(volatility)
         black_constant_vol = ql.BlackConstantVol(0, calendar, ql.QuoteHandle(volatility_value), day_counter)
         self.volatility_handle.linkTo(black_constant_vol)
 
@@ -216,10 +207,10 @@ class BlackScholes(BaseEquityProcess):
                                               self.risk_free_handle,
                                               self.volatility_handle)
 
-    def volatility_update(self, vol_value, calendar, day_counter):
+    def volatility_update(self, volatility, calendar, day_counter):
 
         """
-        :param vol_value: float, optional
+        :param volatility: float, optional
             An override of the volatility value in case you don't wan't to use the timeseries one.
         :param calendar: QuantLib.Calendar
             The option calendar used to evaluate the model
@@ -227,14 +218,14 @@ class BlackScholes(BaseEquityProcess):
             The option day count used to evaluate the model
         :return:
         """
-        if isinstance(vol_value, ql.SimpleQuote):
-            volatility_value = vol_value
+        if isinstance(volatility, ql.SimpleQuote):
+            volatility_value = volatility
         else:
-            volatility_value = ql.SimpleQuote(vol_value)
+            volatility_value = ql.SimpleQuote(volatility)
         black_constant_vol = ql.BlackConstantVol(0, calendar, ql.QuoteHandle(volatility_value), day_counter)
         self.volatility_handle.linkTo(black_constant_vol)
 
-    def dividend_yield_update(self, dividend_yield, calendar, day_counter, dvd_tax_adjust, compounding=ql.Continuous):
+    def dividend_yield_update(self, dividend_yield, calendar, day_counter, dividend_tax, compounding=ql.Continuous):
         """
 
         :param dividend_yield: float
@@ -243,8 +234,8 @@ class BlackScholes(BaseEquityProcess):
             The option calendar used to evaluate the model
         :param day_counter: QuantLib.DayCounter
             The option day count used to evaluate the model
-        :param dvd_tax_adjust: float
-            The multiplier used to adjust for dividend tax. For example, US dividend taxes are 30% so you pass 0.7.
+        :param dividend_tax: float
+            The dividend % tax applied.
         :param compounding: QuantLib.Compounding, default=Continuous
             The compounding used to interpolate the curve.
         """
@@ -271,10 +262,10 @@ class HestonProcess(BaseEquityProcess):
                                         self.sigma,
                                         self.rho)
 
-    def volatility_update(self, vol_value, calendar, day_counter):
+    def volatility_update(self, volatility, calendar, day_counter):
 
         """
-        :param vol_value: float, optional
+        :param volatility: float, optional
             An override of the volatility value in case you don't wan't to use the timeseries one.
         :param calendar: QuantLib.Calendar
             The option calendar used to evaluate the model
@@ -282,10 +273,10 @@ class HestonProcess(BaseEquityProcess):
             The option day count used to evaluate the model
         :return:
         """
-        if isinstance(vol_value, ql.SimpleQuote):
-            volatility_value = vol_value.value() * vol_value.value()
+        if isinstance(volatility, ql.SimpleQuote):
+            volatility_value = volatility.value() * volatility.value()
         else:
-            volatility_value = vol_value * vol_value
+            volatility_value = volatility * volatility
         self.volatility_handle = volatility_value
 
     def heston_parameters_update(self, kappa, theta, sigma, rho):
