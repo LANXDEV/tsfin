@@ -164,10 +164,11 @@ class DepositRate(Instrument):
 
         if spread is not None:
             fixings += spread
-        return np.prod([ql.InterestRate(fixing, self.day_counter, self.compounding,
-                                        self.frequency).compoundFactor(self.index.valueDate(fixing_date),
-                                                                       maturity_date, start_date, date)
-                       for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)]) - 1
+        return np.prod([ql.InterestRate(
+            fixing, self.day_counter, self.compounding, self.frequency).compoundFactor(
+                self.index.valueDate(fixing_date), maturity_date, start_date, date)
+                    for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)
+                    if self.index.valueDate(fixing_date) <= maturity_date]) - 1
 
     def rate_helper(self, date, last_available=True, **other_args):
         """Helper for yield curve construction.

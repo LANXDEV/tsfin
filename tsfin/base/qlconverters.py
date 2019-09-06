@@ -404,7 +404,9 @@ def to_ql_short_rate_model(arg):
 
     Returns
     -------
-    QuantLib.ShortRateModel
+    QuantLib.HullWhite
+    QuantLib.BlackKarasinski
+    QuantLib.G2
     """
 
     if arg.upper() == 'HULL_WHITE':
