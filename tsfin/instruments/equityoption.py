@@ -130,12 +130,13 @@ def option_default_arguments(f):
         kwargs['engine_name'] = 'BINOMIAL_VANILLA' if kwargs.get('engine_name', None) is None else kwargs['engine_name']
         kwargs['model_name'] = 'LR' if kwargs.get('model_name', None) is None else kwargs['model_name']
         kwargs['time_steps'] = 801 if kwargs.get('time_steps', None) is None else kwargs['time_steps']
+        kwargs['payoff'] = 'PLAIN_VANILLA' if kwargs.get('payoff', None) is None else kwargs['payoff']
 
         # Option build-up
         ql_exercise = option_exercise_type(exercise_type=kwargs['exercise_type'], date=kwargs['date'],
                                            maturity=kwargs['maturity'])
         ql_option_type = to_ql_option_type(kwargs['option_type'])
-        payoff = ql_option_payoff(ql_option_type, kwargs['strike'])
+        payoff = ql_option_payoff(payoff_type=kwargs['payoff'], ql_option_type=ql_option_type, strike=kwargs['strike'])
         self.option = ql_option_instrument(payoff, ql_exercise)
         return f(self, **kwargs)
     return new_f
@@ -189,9 +190,10 @@ def ql_option_instrument(*args):
     return ql.VanillaOption(*args)
 
 
-def ql_option_payoff(*args):
+def ql_option_payoff(payoff_type, ql_option_type, strike):
 
-    return ql.PlainVanillaPayoff(*args)
+    if str(payoff_type).upper() == 'PLAIN_VANILLA':
+        return ql.PlainVanillaPayoff(ql_option_type, strike)
 
 
 class EquityOption(Instrument):
@@ -337,7 +339,7 @@ class EquityOption(Instrument):
         """
         return self.contract_size * self.strike
 
-    def intrinsic(self, date, spot_price, strike):
+    def intrinsic(self, date, spot_price, strike, **kwargs):
         """
         :param date: date-like
             The date

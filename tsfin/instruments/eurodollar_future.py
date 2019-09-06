@@ -21,7 +21,6 @@ import numpy as np
 import QuantLib as ql
 from tsfin.constants import MATURITY_DATE, FUTURE_CONTRACT_SIZE, TICK_SIZE, TICK_VALUE, TERM_NUMBER, \
     TERM_PERIOD, SETTLEMENT_DAYS
-from tsfin.base.instrument import default_arguments
 from tsfin.instruments.depositrate import DepositRate
 from tsfin.base import conditional_vectorize, to_datetime, to_ql_date, to_ql_time_unit
 
@@ -94,17 +93,37 @@ class EurodollarFuture(DepositRate):
 
         return (value / start_value) - 1
 
-    def set_convexity_adjustment(self, date, convexity_adjustment=None):
+    def convexity_bias(self, date, future_price, sigma=None, mean=None, last_available=True):
+        """
+
+        :param date: QuantLib.Date
+            Reference date.
+        :param future_price: float
+            The future price at date
+        :param sigma: float, optional
+            The volatility value from the Hull White Model
+        :param mean: float, optional
+            The mean value from the Hull White Model
+        :param last_available: bool, optional
+            Whether to use last available quotes if missing data.
+        :return: float
+            The convexity rate adjustment
+        """
 
         date = to_ql_date(date)
-        if convexity_adjustment is None:
-            convexity_adjustment = ql.SimpleQuote(0)
-        else:
-            convexity_adjustment = ql.SimpleQuote(convexity_adjustment)
+        if sigma is None:
+            return 0
+        elif mean is None:
+            return 0
 
-        self.convexity_adjustment[date] = convexity_adjustment
-
-        return self.convexity_adjustment[date]
+        sigma_value = sigma.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        mean_value = mean.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        initial_t = self.day_counter.yearFraction(date, self._maturity)
+        interest_maturity_date = self.calendar.advance(self._maturity, ql.Period(self.term_number, self.term_period),
+                                                       self.business_convention, self.month_end)
+        final_t = self.day_counter(date, interest_maturity_date)
+        convexity_bias = ql.HullWhite.convexityBias(future_price, initial_t, final_t, sigma_value, mean_value)
+        return convexity_bias
 
     def rate_helper(self, date, last_available=True, **other_args):
         """Helper for yield curve construction.
@@ -124,12 +143,15 @@ class EurodollarFuture(DepositRate):
         # Returns None if impossible to obtain a rate helper from this time series
         if self.is_expired(date):
             return None
-        price = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        price = self.price.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(price):
             return None
         date = to_ql_date(date)
         final_price = ql.SimpleQuote(price)
-        convexity = self.set_convexity_adjustment(date)
+        sigma = other_args.get('sigma', None)
+        mean = other_args.get('mean', None)
+        convexity = ql.SimpleQuote(self.convexity_bias(date, future_price=price, sigma=sigma, mean=mean,
+                                                       last_available=last_available))
         return ql.FuturesRateHelper(ql.QuoteHandle(final_price), self.maturity(date), self.term_number,
                                     self.term_period, self.calendar, self.business_convention, self.month_end,
                                     self.day_counter, ql.QuoteHandle(convexity))
