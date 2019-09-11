@@ -20,12 +20,12 @@ EurodollarFuture class, to represent eurodollar futures.
 import numpy as np
 import QuantLib as ql
 from tsfin.constants import MATURITY_DATE, FUTURE_CONTRACT_SIZE, TICK_SIZE, TICK_VALUE, TERM_NUMBER, \
-    TERM_PERIOD, SETTLEMENT_DAYS, COMPOUNDING, CALENDAR, DAY_COUNTER, FREQUENCY, ISSUE_DATE
-from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_time_unit, to_ql_compounding, \
-    to_ql_calendar, to_ql_day_counter, to_ql_frequency
+    TERM_PERIOD, SETTLEMENT_DAYS
+from tsfin.base import conditional_vectorize, to_datetime, to_ql_date, to_ql_time_unit
+from tsfin.instruments.interest_rates.depositrate import DepositRate
 
 
-class EurodollarFuture(Instrument):
+class EurodollarFuture(DepositRate):
     """Class to model deposit rates.
 
     Parameters
@@ -35,43 +35,14 @@ class EurodollarFuture(Instrument):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.business_convention = to_ql_compounding(self.ts_attributes[COMPOUNDING])
-        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
-        self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self._maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
-        self._tenor = None
-        self.compounding = to_ql_compounding(self.ts_attributes[COMPOUNDING])
-        self.frequency = to_ql_frequency(self.ts_attributes[FREQUENCY])
+        self.interest_maturity_date = self.index.maturityDate(self._maturity)
         self.contract_size = float(self.ts_attributes[FUTURE_CONTRACT_SIZE])
         self.tick_size = float(self.ts_attributes[TICK_SIZE])
         self.tick_value = float(self.ts_attributes[TICK_VALUE])
         self.term_number = int(self.ts_attributes[TERM_NUMBER])
         self.term_period = to_ql_time_unit(self.ts_attributes[TERM_PERIOD])
         self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
-        self.month_end = True
-        self.convexity_adjustment = dict()
-        self.issue_date = to_ql_date(to_datetime(self.ts_attributes[ISSUE_DATE]))
-
-    def is_expired(self, date, *args, **kwargs):
-        """Check if the deposit rate is expired.
-
-        Parameters
-        ----------
-        date: QuantLib.Date
-            Reference date.
-
-        Returns
-        -------
-        bool
-            Whether the instrument is expired at `date`.
-        """
-        try:
-            date = to_ql_date(date)
-            if date >= self._maturity:
-                return True
-        except AttributeError:
-            pass
-        return False
 
     @conditional_vectorize('date', 'start_quote', 'quote')
     def value(self, date, start_quote, quote, *args, **kwargs):
@@ -82,21 +53,6 @@ class EurodollarFuture(Instrument):
         margin_value = price_change/self.tick_size*self.tick_value
 
         return margin_value
-
-    def tenor(self, date, *args, **kwargs):
-        """Get tenor of the deposit rate.
-
-        Parameters
-        ----------
-        date: QuantLib.Date
-            Reference date.
-
-        Returns
-        -------
-        QuantLib.Period
-            The tenor (period) to maturity of the deposit rate.
-        """
-        return self._tenor
 
     def maturity(self, date, *args, **kwargs):
         """Get maturity based on a date and tenor of the deposit rate.
@@ -152,6 +108,28 @@ class EurodollarFuture(Instrument):
 
         return (value / start_value) - 1
 
+    def _convexity(self, future_price, date, sigma, mean):
+
+        if future_price <= 0:
+            return 0
+        elif sigma <= 0:
+            return 0
+        elif mean <= 0:
+            return 0
+
+        initial_t = self.day_counter.yearFraction(date, self._maturity)
+        final_t = self.day_counter.yearFraction(date, self.interest_maturity_date)
+
+        delta_t = (final_t - initial_t)
+        temp_delta_t = (1.0 - np.exp(-mean*delta_t))/mean
+        half_sigma_square = sigma*sigma/2.0
+        lambda_adjust = half_sigma_square*(1.0 - np.exp(-2.0*mean*initial_t)) / mean * temp_delta_t * temp_delta_t
+        temp_initial_t = (1.0 - np.exp(-mean*initial_t))/mean
+        phi = half_sigma_square*temp_delta_t*temp_initial_t*temp_initial_t
+        z = lambda_adjust + phi
+        future_rate = (100.0-future_price)/100.0
+        return (1.0-np.exp(-z))*(future_rate + 1.0 / delta_t)
+
     def convexity_bias(self, date, future_price, sigma=None, mean=None, last_available=True):
         """
 
@@ -177,14 +155,15 @@ class EurodollarFuture(Instrument):
 
         sigma_value = sigma.get_values(index=date, last_available=last_available, fill_value=np.nan)
         mean_value = mean.get_values(index=date, last_available=last_available, fill_value=np.nan)
-        initial_t = self.day_counter.yearFraction(date, self._maturity)
-        interest_maturity_date = self.calendar.advance(self._maturity, ql.Period(self.term_number, self.term_period),
-                                                       self.business_convention, self.month_end)
-        final_t = self.day_counter.yearFraction(date, interest_maturity_date)
-        convexity_bias = ql.HullWhite.convexityBias(future_price, initial_t, final_t, sigma_value, mean_value)
+
+        if np.isnan(sigma_value) or np.isnan(mean_value):
+            convexity_bias = 0
+        else:
+            convexity_bias = self._convexity(future_price=future_price, date=date, sigma=sigma_value, mean=mean_value)
+
         return convexity_bias
 
-    def rate_helper(self, date, last_available=True, **other_args):
+    def rate_helper(self, date, last_available=True, min_future_date=None, max_future_date=None, **other_args):
         """Helper for yield curve construction.
 
         Parameters
@@ -202,15 +181,26 @@ class EurodollarFuture(Instrument):
         # Returns None if impossible to obtain a rate helper from this time series
         if self.is_expired(date):
             return None
-        price = self.timeseries.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if min_future_date is None and max_future_date is not None:
+            if self._maturity > max_future_date:
+                return None
+        elif min_future_date is not None and max_future_date is None:
+            if self._maturity < min_future_date:
+                return None
+        else:
+            if not min_future_date < self._maturity < max_future_date:
+                return None
+
+        price = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(price):
             return None
         date = to_ql_date(date)
         final_price = ql.SimpleQuote(price)
+
+        # convexity adjustment
         sigma = other_args.get('sigma', None)
         mean = other_args.get('mean', None)
         convexity = ql.SimpleQuote(self.convexity_bias(date, future_price=price, sigma=sigma, mean=mean,
                                                        last_available=last_available))
-        return ql.FuturesRateHelper(ql.QuoteHandle(final_price), self.maturity(date), self.term_number, self.calendar,
-                                    self.business_convention, self.month_end, self.day_counter,
+        return ql.FuturesRateHelper(ql.QuoteHandle(final_price), self.maturity(date), self.index,
                                     ql.QuoteHandle(convexity))

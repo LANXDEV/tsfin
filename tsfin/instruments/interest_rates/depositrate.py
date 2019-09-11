@@ -19,11 +19,10 @@ DepositRate class, to represent deposit rates.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.constants import CALENDAR, TENOR_PERIOD, MATURITY_DATE, BUSINESS_CONVENTION, \
-    COMPOUNDING, FREQUENCY, DAY_COUNTER, FIXING_DAYS, MONTH_END, ISSUE_DATE, INDEX
+from tsfin.constants import TENOR_PERIOD, COMPOUNDING, FREQUENCY, ISSUE_DATE, INDEX, INDEX_TENOR
 from tsfin.base.instrument import default_arguments
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
-    to_ql_business_convention, to_ql_calendar, to_ql_compounding, to_ql_day_counter, to_bool, to_ql_rate_index
+    to_ql_compounding, to_ql_rate_index
 
 
 DEFAULT_ISSUE_DATE = ql.Date.minDate()
@@ -39,7 +38,10 @@ class DepositRate(Instrument):
     """
     def __init__(self, timeseries, *args, **kwargs):
         super().__init__(timeseries)
-        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        try:
+            self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        except KeyError:
+            self._tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._tenor)
         self.calendar = self.index.fixingCalendar()
         self.day_counter = self.index.dayCounter()

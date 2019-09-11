@@ -17,12 +17,11 @@
 """
 A class for modelling interest rate swaps.
 """
-from functools import wraps
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments.depositrate import DepositRate
+from tsfin.instruments.interest_rates.depositrate import DepositRate
 from tsfin.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_date_generation
-from tsfin.constants import FREQUENCY, QUOTE_TYPE, DATE_GENERATION, RECOVERY_RATE, COUPONS, BASE_SPREAD_TAG
+from tsfin.constants import FREQUENCY, DATE_GENERATION, RECOVERY_RATE, COUPONS, BASE_SPREAD_TAG
 from tsfin.base.basetools import conditional_vectorize
 
 

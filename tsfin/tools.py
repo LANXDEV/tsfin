@@ -24,18 +24,18 @@ from tsfin.base.basetools import to_datetime
 from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base.instrument import Instrument
 from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond
-from tsfin.instruments.depositrate import DepositRate
-from tsfin.instruments.zerorate import ZeroRate
-from tsfin.instruments.ois import OISRate
+from tsfin.instruments.interest_rates.depositrate import DepositRate
+from tsfin.instruments.interest_rates.zerorate import ZeroRate
+from tsfin.instruments.interest_rates.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
-from tsfin.instruments.swaprate import SwapRate
-from tsfin.instruments.swaption import SwapOption
-from tsfin.instruments.equityoption import EquityOption
-from tsfin.instruments.cds import CDSRate
-from tsfin.instruments.eurodollar_future import EurodollarFuture
-from tsfin.instruments.equity import Equity
+from tsfin.instruments.interest_rates.swaprate import SwapRate
+from tsfin.instruments.interest_rates.swaption import SwapOption
+from tsfin.instruments.equities.equityoption import EquityOption
+from tsfin.instruments.interest_rates.cds import CDSRate
+from tsfin.instruments.interest_rates.eurodollar_future import EurodollarFuture
+from tsfin.instruments.equities.equity import Equity
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
-    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, RATE_INDEX, FUND, EQUITY, CDS, \
+    DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF
 
 
