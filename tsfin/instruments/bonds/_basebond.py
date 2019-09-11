@@ -1599,24 +1599,21 @@ class _BaseBond(Instrument):
         ql.Settings.instance().evaluationDate = date
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
+        clean_quote = quote
         if self.is_expired(settlement_date):
             return np.nan
         if self.quote_type == CLEAN_PRICE:
-            return ql.BondFunctions_zSpread(bond, quote, yield_curve, day_counter, compounding, frequency,
-                                            settlement_date)
+            clean_quote = quote
         elif self.quote_type == DIRTY_PRICE:
-            # TODO: This part needs testing.
             clean_quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
-            return ql.BondFunctions_zSpread(bond, clean_quote, yield_curve, day_counter, compounding, frequency,
-                                            settlement_date)
         elif self.quote_type == YIELD:
-            # TODO: This part needs testing.
             clean_quote = self.clean_price_from_ytm(last=last, quote=quote, date=date, day_counter=day_counter,
                                                     compounding=compounding, frequency=frequency,
                                                     bypass_set_floating_rate_index=True,
                                                     settlement_days=settlement_days)
-            return ql.BondFunctions_zSpread(bond, clean_quote, yield_curve, day_counter, compounding, frequency,
+        z_spread = ql.BondFunctions_zSpread(bond, clean_quote, yield_curve, day_counter, compounding, frequency,
                                             settlement_date)
+        return z_spread
 
     @default_arguments
     @conditional_vectorize('quote', 'date')

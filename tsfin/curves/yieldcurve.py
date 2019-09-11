@@ -35,7 +35,7 @@ ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_
 class YieldCurveTimeSeries:
 
     def __init__(self, ts_collection=None, calendar=None, day_counter=None, keep_only_on_the_run_month=False,
-                 ignore_errors=False, **other_rate_helper_args):
+                 ignore_errors=False, min_future_tenor=None, max_future_tenor=None, **other_rate_helper_args):
         """Time series of QuantLib YieldTermStructures objects.
 
         The QuantLib YieldTermStructure objects are stored in the dict self.yield_curves and are 'lazy' created and
@@ -62,6 +62,8 @@ class YieldCurveTimeSeries:
         self.keep_only_on_the_run_month = keep_only_on_the_run_month
         self.yield_curves = dict()
         self.ignore_errors = ignore_errors
+        self.min_future_tenor = min_future_tenor
+        self.max_future_tenor = max_future_tenor
         self.other_rate_helper_args = other_rate_helper_args
 
         self.issue_dates = dict()
@@ -85,10 +87,16 @@ class YieldCurveTimeSeries:
     def _get_helpers(self, date):
 
         helpers = dict()
+        # Futures like Eurodollar or Fed Funds need some special treatment to correctly select the instruments,
+        # this way you can pass all timeseries needed, even if it is expired or greater than the needed maturity
+        # and the curve would know who to select based on previously passed arguments.
+        min_future_date = self.calendar.advance(date, ql.PeriodParser.parse(self.min_future_tenor))
+        max_future_date = self.calendar.advance(date, ql.PeriodParser.parse(self.max_future_tenor))
         for ts in self.ts_collection:
             ts_name = ts.ts_name
             issue_date = self.issue_dates[ts_name]
-            helper = ts.rate_helper(date=date, **self.other_rate_helper_args)
+            helper = ts.rate_helper(date=date, min_future_date=min_future_date, max_future_date=max_future_date,
+                                    **self.other_rate_helper_args)
 
             if helper is not None:
                 maturity_date = helper.maturityDate()
@@ -124,7 +132,7 @@ class YieldCurveTimeSeries:
 
         Parameters
         ----------
-        dates: list of QuantLib.Dates
+        dates: QuantLib.Date or list of QuantLib.Date
         """
         dates = to_list(dates)
 

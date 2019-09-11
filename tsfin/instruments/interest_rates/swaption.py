@@ -1,6 +1,6 @@
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments.swaprate import SwapRate
+from tsfin.instruments.interest_rates.swaprate import SwapRate
 from tsfin.base.qlconverters import to_ql_float_index, to_ql_currency
 from tsfin.constants import MATURITY_TENOR, CURRENCY, FIXED_LEG_TENOR, INDEX
 

@@ -29,7 +29,7 @@ from tsfin.base.basetools import to_list, conditional_vectorize, find_le, find_g
 DEFAULT_ISSUE_DATE = ql.Date.minDate()
 
 # ExtRateHelpers are a named tuples containing QuantLib RateHelpers objects and other meta-information.
-ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'tenor', 'maturity_date', 'helper'])
+ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_date', 'helper'])
 
 
 class CDSCurveTimeSeries:
@@ -97,16 +97,10 @@ class CDSCurveTimeSeries:
             helper = ts.cds_rate_helper(date=date, base_yield_curve_handle=yield_curve_handle,
                                         **self.other_rate_helper_args)
             if helper is not None:
-                tenor = ts.tenor(date)
-                maturity_date = self.calendar.advance(ql_date, tenor)
-                '''
-                TODO: Wrap this ``ExtRateHelper`` inside a (properly named) class or namedtuple and always
-                return these objects from the instrument classes. This prevents this method from calling ``ts.tenor``
-                and recalculating the ``maturity_date``, because these were already calculated inside each instrument's
-                ``rate_helper`` method.
-                '''
-                helper = ExtRateHelper(ts_name=ts_name, issue_date=issue_date, tenor=tenor,
-                                       maturity_date=maturity_date, helper=helper)
+                maturity_date = helper.maturityDate()
+
+                helper = ExtRateHelper(ts_name=ts_name, issue_date=issue_date, maturity_date=maturity_date,
+                                       helper=helper)
                 # Remove Helpers with the same maturity date (or tenor), keeping the last issued one - This is to avoid
                 # error in QuantLib when trying to instantiate a yield curve with two helpers with same maturity
                 # date or tenor.

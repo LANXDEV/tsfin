@@ -22,7 +22,7 @@ TODO: Propose implementation of this rate type in QuantLib.
 import numpy as np
 import pandas as pd
 import QuantLib as ql
-from tsfin.instruments.depositrate import DepositRate
+from tsfin.instruments.interest_rates.depositrate import DepositRate
 from tsfin.base.qlconverters import to_ql_date
 
 
