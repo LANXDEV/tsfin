@@ -29,6 +29,7 @@ class BaseEquityProcess:
         :param yield_curve: :py:obj:YieldCurveTimeSeries
             The yield curve of the index rate, used to estimate future cash flows.
         """
+        self.process_name = None
         self.yield_curve = yield_curve
         self.risk_free_handle = ql.RelinkableYieldTermStructureHandle()
         self.dividend_handle = ql.RelinkableYieldTermStructureHandle()
@@ -72,7 +73,7 @@ class BaseEquityProcess:
         self.dividend_handle.linkTo(dividend)
 
     def yield_curve_update(self, date, base_date, calendar, day_counter, maturity, compounding=ql.Continuous,
-                           frequency=ql.NoFrequency):
+                           frequency=ql.NoFrequency, zero_rate=None):
         """
 
         :param date: date-like
@@ -89,13 +90,18 @@ class BaseEquityProcess:
             The compounding used to interpolate the curve.
         :param frequency: QuantLib.Frequency
             Frequency convention for the rate.
+        :param zero_rate: float
+            The risk-free rate to be used by the model (Annualized)
         """
         date = to_ql_date(date)
         base_date = to_ql_date(base_date)
         if date <= base_date:
             base_date = date
-        implied_curve = ql.ImpliedTermStructure(self.yield_curve.yield_curve_handle(date=base_date), date)
-        zero_rate = implied_curve.zeroRate(maturity, day_counter, compounding, frequency, True).rate()
+        if zero_rate is None:
+            implied_curve = ql.ImpliedTermStructure(self.yield_curve.yield_curve_handle(date=base_date), date)
+            zero_rate = implied_curve.zeroRate(maturity, day_counter, compounding, frequency, True).rate()
+        else:
+            zero_rate = float(zero_rate)
         implied_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(ql.SimpleQuote(zero_rate)), day_counter,
                                        compounding)
         self.risk_free_handle.linkTo(implied_curve)
@@ -168,6 +174,7 @@ class BlackScholesMerton(BaseEquityProcess):
     """
     def __init__(self, yield_curve):
         super().__init__(yield_curve)
+        self.process_name = "BLACK_SCHOLES_MERTON"
         self.volatility_handle = ql.RelinkableBlackVolTermStructureHandle()
         self.process = ql.BlackScholesMertonProcess(self.spot_price_handle,
                                                     self.dividend_handle,
@@ -202,6 +209,7 @@ class BlackScholes(BaseEquityProcess):
     """
     def __init__(self, yield_curve):
         super().__init__(yield_curve)
+        self.process_name = "BLACK_SCHOLES"
         self.volatility_handle = ql.RelinkableBlackVolTermStructureHandle()
         self.process = ql.BlackScholesProcess(self.spot_price_handle,
                                               self.risk_free_handle,
@@ -252,6 +260,7 @@ class HestonProcess(BaseEquityProcess):
     """
     def __init__(self, yield_curve):
         super().__init__(yield_curve)
+        self.process_name = "HESTON"
         self.volatility_handle = 0  # spot variance
         self.process = ql.HestonProcess(self.risk_free_handle,
                                         self.dividend_handle,

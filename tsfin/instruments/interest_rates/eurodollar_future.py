@@ -119,16 +119,8 @@ class EurodollarFuture(DepositRate):
 
         initial_t = self.day_counter.yearFraction(date, self._maturity)
         final_t = self.day_counter.yearFraction(date, self.interest_maturity_date)
-
-        delta_t = (final_t - initial_t)
-        temp_delta_t = (1.0 - np.exp(-mean*delta_t))/mean
-        half_sigma_square = sigma*sigma/2.0
-        lambda_adjust = half_sigma_square*(1.0 - np.exp(-2.0*mean*initial_t)) / mean * temp_delta_t * temp_delta_t
-        temp_initial_t = (1.0 - np.exp(-mean*initial_t))/mean
-        phi = half_sigma_square*temp_delta_t*temp_initial_t*temp_initial_t
-        z = lambda_adjust + phi
-        future_rate = (100.0-future_price)/100.0
-        return (1.0-np.exp(-z))*(future_rate + 1.0 / delta_t)
+        convex = ql.HullWhite.convexityBias(future_price, initial_t, final_t, sigma, mean)
+        return convex
 
     def convexity_bias(self, date, future_price, sigma=None, mean=None, last_available=True):
         """
@@ -172,6 +164,10 @@ class EurodollarFuture(DepositRate):
             Reference date.
         last_available: bool, optional
             Whether to use last available quotes if missing data.
+        min_future_date: QuantLib.Date
+            The minimum maturity date to be used.
+        max_future_date: QuantLib.Date
+            The maximum maturity date to be used.
 
         Returns
         -------

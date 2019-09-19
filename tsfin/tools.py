@@ -18,6 +18,7 @@
 import pandas as pd
 import QuantLib as ql
 import numpy as np
+from scipy.integrate import simps
 from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
 from tsfin.base.qlconverters import to_ql_date
 from tsfin.base.basetools import to_datetime
@@ -313,7 +314,7 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
     """
     # This has only been tested for model_class = HullWhite
     date = to_ql_date(date)
-    print("Calibrating {0} 1F short rate model for date = {1}".format(model_class, date))
+    print("Calibrating {0} short rate model for date = {1}".format(model_class, date))
     yield_curve = term_structure_ts.yield_curve(date=date)
     term_structure = ql.YieldTermStructureHandle(yield_curve)
 
@@ -350,40 +351,84 @@ def to_np_array(ql_matrix):
         return new_array
 
 
+def gaussian_random_sequence_generator(dimensionality, low_discrepancy=False, seed=0):
+
+    if low_discrepancy:
+        uniform_sequence = ql.UniformLowDiscrepancySequenceGenerator(dimensionality)
+        generator = ql.GaussianLowDiscrepancySequenceGenerator(uniform_sequence)
+    else:
+        uniform_sequence = ql.UniformRandomSequenceGenerator(dimensionality, ql.UniformRandomGenerator(seed=seed))
+        generator = ql.GaussianRandomSequenceGenerator(uniform_sequence)
+    return generator
+
+
 # path generator method for uncorrelated and correlated 1-D stochastic processes
-def generate_paths(process, time_grid, n):
+def generate_paths(process, grid, n, low_discrepancy=False, seed=0):
+    """
+        Path generator method for uncorrelated and correlated 1-D stochastic processes
+    :param process: QuantLib.StochasticProcess1D, QuantLib.StochasticProcessArray
+        The QuantLib class of the stochastic process
+    :param grid: py:obj:`Grid`
+        A class that implements the QuantLib TimeGrid class
+    :param n: int
+        Number of samples
+    :param low_discrepancy: bool
+        Used to choose the type of Gaussian Sequence Generator.
+    :param seed: int
+        Used to fix a certain seed of the random number.
+    :return: np.array
+        The numpy array with the generated paths.
+    """
+
+    time_grid = grid.get_time_grid()
+    time_grid_length = grid.get_size()
+    process_size = process.size()
+    n_grid_steps = grid.get_steps() * process_size
+    gaussian_sequence_generator = gaussian_random_sequence_generator(dimensionality=n_grid_steps,
+                                                                     low_discrepancy=low_discrepancy, seed=seed)
     # correlated processes, use GaussianMultiPathGenerator
     if isinstance(process, ql.StochasticProcessArray):
-
-        times = [time_grid[t] for t in range(len(time_grid))]
-        n_grid_steps = (len(times) - 1) * process.size()
-        sequence_generator = ql.UniformRandomSequenceGenerator(n_grid_steps, ql.UniformRandomGenerator())
-        gaussian_sequence_generator = ql.GaussianRandomSequenceGenerator(sequence_generator)
-        path_generator = ql.GaussianMultiPathGenerator(process, times, gaussian_sequence_generator, False)
-        paths = np.zeros(shape=(n, process.size(), len(time_grid)))
-
+        path_generator = ql.GaussianMultiPathGenerator(process, grid.get_times(), gaussian_sequence_generator, False)
+        paths = np.zeros(shape=(2*n, process_size, time_grid_length))
         # loop through number of paths
+        k = 0
         for i in range(n):
             # request multiPath, which contains the list of paths for each process
             multi_path = path_generator.next().value()
+            multi_antithetic = path_generator.antithetic().value()
             # loop through number of processes
             for j in range(multi_path.assetNumber()):
                 # request path, which contains the list of simulated prices for a process
-                path = multi_path[j]
+                path = np.array(multi_path[j])
+                antithetic = np.array(multi_antithetic[j])
                 # push prices to array
-                paths[i, j, :] = np.array([path[k] for k in range(len(path))])
+                paths[k, j, :] = np.array(path)
+                paths[k + 1, j, :] = np.array(antithetic)
+                if j == multi_path.assetNumber() - 1:
+                    k = k + 2
         # resulting array dimension: n, process.size(), len(timeGrid)
         return paths
 
     # uncorrelated processes, use GaussianPathGenerator
     else:
-        sequence_generator = ql.UniformRandomSequenceGenerator(len(time_grid), ql.UniformRandomGenerator())
-        gaussian_sequence_generator = ql.GaussianRandomSequenceGenerator(sequence_generator)
-        maturity = time_grid[len(time_grid) - 1]
-        path_generator = ql.GaussianPathGenerator(process, maturity, len(time_grid), gaussian_sequence_generator, False)
-        paths = np.zeros(shape=(n, len(time_grid)))
+        path_generator = ql.GaussianPathGenerator(process, time_grid, gaussian_sequence_generator, False)
+        paths = np.zeros(shape=(n, time_grid_length))
         for i in range(n):
             path = path_generator.next().value()
-            paths[i, :] = np.array([path[j] for j in range(len(time_grid))])
+            antithetic_path = path_generator.antithetic().value()
+            path = (np.array(path) + np.array(antithetic_path)) / 2
+            paths[i, :] = path
         # resulting array dimension: n, len(timeGrid)
         return paths
+
+
+def generate_discounts_array(paths, grid_dt):
+    if paths.ndim == 1:
+        paths[0] = 0
+        discounts = np.exp(-paths.cumsum() * grid_dt)
+        discounts[0] = 1
+    else:
+        paths[:, 0] = 0
+        discounts = np.exp(-paths.cumsum(axis=1)*grid_dt)
+        discounts[:, 0] = 1
+    return discounts
