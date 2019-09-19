@@ -18,7 +18,6 @@
 import pandas as pd
 import QuantLib as ql
 import numpy as np
-from scipy.integrate import simps
 from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
 from tsfin.base.qlconverters import to_ql_date
 from tsfin.base.basetools import to_datetime
