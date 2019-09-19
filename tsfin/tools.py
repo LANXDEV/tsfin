@@ -412,12 +412,14 @@ def generate_paths(process, grid, n, low_discrepancy=False, seed=0):
     # uncorrelated processes, use GaussianPathGenerator
     else:
         path_generator = ql.GaussianPathGenerator(process, time_grid, gaussian_sequence_generator, False)
-        paths = np.zeros(shape=(n, time_grid_length))
+        paths = np.zeros(shape=(2*n, time_grid_length))
+        k = 0
         for i in range(n):
             path = path_generator.next().value()
             antithetic_path = path_generator.antithetic().value()
-            path = (np.array(path) + np.array(antithetic_path)) / 2
-            paths[i, :] = path
+            paths[k, :] = path
+            paths[k + 1, :] = antithetic_path
+            k = k + 2
         # resulting array dimension: n, len(timeGrid)
         return paths
 
