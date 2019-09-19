@@ -1,2 +1,3 @@
 from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackScholes
-from tsfin.stochasticprocess.interestrateprocess import HullWhiteProcess
+from tsfin.stochasticprocess.interestrateprocess import HullWhiteProcess, G2Process
+from tsfin.stochasticprocess.geometricbrownianmotionprocess import GeometricBrownianMotion

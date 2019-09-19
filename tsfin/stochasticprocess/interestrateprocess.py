@@ -39,11 +39,12 @@ class BaseInterestRateProcess:
         :param yield_curve: :py:obj:YieldCurveTimeSeries
             The yield curve of the index rate, used to estimate future cash flows.
         """
+        self.process_name = None
         self.yield_curve = yield_curve
         self.yield_curve_handle = ql.RelinkableYieldTermStructureHandle()
-        self.interest_rate_process = None
-        self.mean_reversion = 0
-        self.rate_volatility = 0
+        self.process = None
+        self.mean = 0
+        self.sigma = 0
         self.beta = 0
         self.eta = 0
         self.rho = 0
@@ -52,17 +53,16 @@ class BaseInterestRateProcess:
 
         if date is not None and yield_curve is None:
             self.yield_curve_handle.linkTo(self.yield_curve.yield_curve(date=date))
-        elif date is None and yield_curve is not None:
+        elif date is None and isinstance(yield_curve, ql.YieldTermStructure):
             self.yield_curve_handle.linkTo(yield_curve)
         elif date is not None and yield_curve is not None:
             self.yield_curve_handle.linkTo(yield_curve.yield_curve(date=date))
 
-    def update_process(self, date=None, yield_curve=None, mean_reversion=0, rate_volatility=0, beta=0, eta=0,
-                       rho=0, **kwargs):
+    def update_process(self, mean, sigma, beta, eta, rho, date=None, yield_curve=None, **kwargs):
 
         self.yield_curve_update(date=date, yield_curve=yield_curve)
-        self.mean_reversion = mean_reversion
-        self.rate_volatility = rate_volatility
+        self.mean = mean
+        self.sigma = sigma
         self.beta = beta
         self.eta = eta
         self.rho = rho
@@ -72,58 +72,53 @@ class HullWhiteProcess(BaseInterestRateProcess):
 
     def __init__(self, yield_curve):
         super().__init__(yield_curve)
-        self.ts_name = "HULL_WHITE"
+        self.process_name = "HULL_WHITE"
 
-    def update_process(self, date=None, yield_curve=None, mean_reversion=0, rate_volatility=0, beta=0, eta=0,
-                       rho=0, **kwargs):
+    def update_process(self, mean, sigma, beta=0, eta=0, rho=0, date=None, yield_curve=None,
+                       **kwargs):
 
         self.yield_curve_update(date=date, yield_curve=yield_curve)
-        self.mean_reversion = mean_reversion
-        self.rate_volatility = rate_volatility
+        self.mean = mean
+        self.sigma = sigma
         self.beta = beta
         self.eta = eta
         self.rho = rho
-        self.interest_rate_process = ql.HullWhiteProcess(self.yield_curve_handle, self.mean_reversion,
-                                                         self.rate_volatility)
+        self.process = ql.HullWhiteProcess(self.yield_curve_handle, self.mean, self.sigma)
 
     def update_process_from_ts(self, date, mean_timeseries, sigma_timeseries, yield_curve=None, last_available=True,
                                fill_value=np.nan):
 
         date = to_datetime(date)
-        mean_reversion = mean_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        rate_volatility = sigma_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        self.update_process(date=date, yield_curve=yield_curve, mean_reversion=mean_reversion,
-                            rate_volatility=rate_volatility)
-        return self.interest_rate_process
+        mean = mean_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        sigma = sigma_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        self.update_process(date=date, yield_curve=yield_curve, mean=mean, sigma=sigma)
+        return self.process
 
 
 class G2Process(BaseInterestRateProcess):
 
     def __init__(self, yield_curve):
         super().__init__(yield_curve)
-        self.ts_name = "G2"
+        self.process_name = "G2"
 
-    def update_process(self, date=None, yield_curve=None, mean_reversion=0, rate_volatility=0, beta=0, eta=0,
-                       rho=0, **kwargs):
+    def update_process(self, mean, sigma, beta, eta, rho, date=None, yield_curve=None, **kwargs):
 
         self.yield_curve_update(date=date, yield_curve=yield_curve)
-        self.mean_reversion = mean_reversion
-        self.rate_volatility = rate_volatility
+        self.mean = mean
+        self.sigma = sigma
         self.beta = beta
         self.eta = eta
         self.rho = rho
-        self.interest_rate_process = ql.G2Process(self.mean_reversion, self.rate_volatility, self.beta, self.eta,
-                                                  self.rho)
+        self.process = ql.G2Process(self.mean, self.sigma, self.beta, self.eta, self.rho)
 
     def update_process_from_ts(self, date, mean_timeseries, sigma_timeseries, beta_timeseries, eta_timeseries,
                                rho_timeseries, yield_curve=None, last_available=True, fill_value=np.nan):
 
         date = to_datetime(date)
-        mean_reversion = mean_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        rate_volatility = sigma_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        mean = mean_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        sigma = sigma_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
         beta = beta_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
         eta = eta_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
         rho = rho_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        self.update_process(date=date, yield_curve=yield_curve, mean_reversion=mean_reversion,
-                            rate_volatility=rate_volatility, beta=beta, eta=eta, rho=rho)
-        return self.interest_rate_process
+        self.update_process(date=date, yield_curve=yield_curve, mean=mean, sigma=sigma, beta=beta, eta=eta, rho=rho)
+        return self.process

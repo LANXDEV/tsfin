@@ -77,14 +77,11 @@ class Grid:
     def get_dates(self):
         # get list of scheduled dates
         dates = [self.schedule[i] for i in range(self.get_size())]
-        # [dates.append(self.schedule[i]) for i in range(self.get_size())]
         return dates
 
     def get_times(self):
         # get list of scheduled times
         times = [self.dayCounter.yearFraction(self.schedule[0], self.schedule[i]) for i in range(self.get_size())]
-        # [times.append(self.dayCounter.yearFraction(self.schedule[0], self.schedule[i]))
-        #  for i in range(self.get_size())]
         return times
 
     def get_maturity(self):

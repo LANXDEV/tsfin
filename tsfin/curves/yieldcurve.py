@@ -21,7 +21,6 @@ YieldCurveTimeSeries, a class to handle a time series of yield curves.
 from collections import namedtuple, Counter
 from operator import attrgetter
 import QuantLib as ql
-from tsfin.constants import ISSUE_DATE_ATTRIBUTES
 from tsfin.base.qlconverters import to_ql_date
 from tsfin.base.basetools import to_list, conditional_vectorize, find_le, find_gt
 
@@ -35,7 +34,7 @@ ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_
 class YieldCurveTimeSeries:
 
     def __init__(self, ts_collection=None, calendar=None, day_counter=None, keep_only_on_the_run_month=False,
-                 ignore_errors=False, min_future_tenor=None, max_future_tenor=None, **other_rate_helper_args):
+                 ignore_errors=False, min_future_tenor='1M', max_future_tenor='5Y', **other_rate_helper_args):
         """Time series of QuantLib YieldTermStructures objects.
 
         The QuantLib YieldTermStructure objects are stored in the dict self.yield_curves and are 'lazy' created and
@@ -66,24 +65,6 @@ class YieldCurveTimeSeries:
         self.max_future_tenor = max_future_tenor
         self.other_rate_helper_args = other_rate_helper_args
 
-        self.issue_dates = dict()
-        # TODO: Remove issue_dates inspection from this class and add an issue_date attribute to all instrument.
-        # classes.
-        # Saving the issue dates.
-        for ts in ts_collection:
-            issue_date = None
-            for issue_attribute in ISSUE_DATE_ATTRIBUTES:
-                try:
-                    issue_date = to_ql_date(ts.get_attribute(issue_attribute))
-                    break
-                except AttributeError:
-                    continue
-            if issue_date is None:
-                # If impossible to decide the issue_date, it remains equal to "None" as we initialized above.
-                # Then set it to 2000-01-01.
-                issue_date = DEFAULT_ISSUE_DATE
-            self.issue_dates[ts.ts_name] = issue_date
-
     def _get_helpers(self, date):
 
         helpers = dict()
@@ -94,7 +75,7 @@ class YieldCurveTimeSeries:
         max_future_date = self.calendar.advance(date, ql.PeriodParser.parse(self.max_future_tenor))
         for ts in self.ts_collection:
             ts_name = ts.ts_name
-            issue_date = self.issue_dates[ts_name]
+            issue_date = ts.issue_date
             helper = ts.rate_helper(date=date, min_future_date=min_future_date, max_future_date=max_future_date,
                                     **self.other_rate_helper_args)
 
@@ -139,25 +120,21 @@ class YieldCurveTimeSeries:
         for date in dates:
             ql_date = to_ql_date(date)
             ql.Settings.instance().evaluationDate = ql_date
-
-            helpers_dict = self._get_helpers(date)
+            helpers_dict = self._get_helpers(ql_date)
 
             # Instantiate the curve
             helpers = [ndhelper.helper for ndhelper in helpers_dict.values()]
-            # Just bootstraping the nodes
-            yield_curve = ql.PiecewiseLinearZero(ql_date, helpers, self.day_counter)
-
-            # Get dates and discounts
-            node_dates = yield_curve.dates()
-            node_rates = [yield_curve.zeroRate(date, self.day_counter, ql.Continuous).rate() for date in node_dates]
+            # Just bootstrapping the nodes
+            piecewise_curve = self._piecewise_curve(date=ql_date,
+                                                    helpers=helpers,
+                                                    day_counter=self.day_counter,
+                                                    piecewise_type="cubic_zero")
             # Freezing the curve so that nothing is bothered by changing the singleton (global variable) evaluationDate.
-            yield_curve = ql.MonotonicCubicZeroCurve(node_dates, node_rates,
-                                                     self.day_counter,
-                                                     self.calendar,
-                                                     ql.MonotonicCubic(),
-                                                     ql.Continuous,
-                                                     )
-            yield_curve.enableExtrapolation()
+            yield_curve = self._interpolation(piecewise_curve=piecewise_curve,
+                                              day_counter=self.day_counter,
+                                              calendar=self.calendar,
+                                              compounding=ql.Continuous,
+                                              interpolation_type="cubic_zero")
             self.yield_curves[date] = yield_curve
 
     def _update_all_curves(self):
@@ -202,7 +179,7 @@ class YieldCurveTimeSeries:
                     except ValueError:
                         # No latest date less than 'date', try to find earliest date higher than 'date' instead.
                         latest_available_date = find_gt(curve_dates, date)
-                    return self.yield_curve(latest_available_date)
+                    return self.yield_curve(to_ql_date(latest_available_date))
             else:
                 self.update_curves(date)
             return self.yield_curves[date]
@@ -426,6 +403,7 @@ class YieldCurveTimeSeries:
         scalar
             Zero rate for `to_time`, implied by the yield curve at `date`.
         """
+        to_time = float(to_time)
         return self.yield_curve(date).zeroRate(to_time, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date1', 'to_date2')
@@ -512,3 +490,85 @@ class YieldCurveTimeSeries:
     @staticmethod
     def _date_to_month_year(dt_object):
         return str(dt_object.month()) + '-' + str(dt_object.year())
+
+    @staticmethod
+    def _piecewise_curve(date, helpers, day_counter, piecewise_type):
+        """
+        Parameters
+        ----------
+        date: QuantLib.Date
+            Date of the yield curve.
+        helpers: list of QuantLib.RateHelper
+            The Rate Helpers of the instruments used in the piecewise interpolation.
+        day_counter: QuantLib.DayCounter
+            The curve day count
+        piecewise_type: str
+            The curve interpolation type.
+        Returns
+        -------
+            QuantLib.PiecewiseCurve
+        """
+        if piecewise_type == "cubic_zero":
+            piecewise_curve = ql.PiecewiseCubicZero(date, helpers, day_counter)
+        elif piecewise_type == "log_cubic_discount":
+            piecewise_curve = ql.PiecewiseLogCubicDiscount(date, helpers, day_counter)
+        elif piecewise_type == "log_linear_discount":
+            piecewise_curve = ql.PiecewiseLogCubicDiscount(date, helpers, day_counter)
+        else:
+            piecewise_curve = ql.PiecewiseLinearZero(date, helpers, day_counter)
+        return piecewise_curve
+
+    @staticmethod
+    def _interpolation(piecewise_curve, day_counter, calendar, compounding, interpolation_type):
+
+        """
+        Parameters
+        ----------
+        piecewise_curve: QuantLib.PiecewiseCurve
+            The curve to extract the nodes (rates and dates)
+        day_counter: QuantLib.DayCounter
+            The curve day count
+        calendar: QuantLib.Calendar
+            The curve calendar.
+        compounding: QuantLib.Compounding
+            Compounding convention for the rate.
+        interpolation_type: str
+            The curve interpolation method
+        Returns
+        -------
+            QuantLib.YieldTermStructure
+        """
+
+        node_dates, node_rates = zip(*piecewise_curve.nodes())
+        if interpolation_type == "cubic_zero":
+            yield_curve = ql.CubicZeroCurve(node_dates, node_rates,
+                                            day_counter,
+                                            calendar,
+                                            ql.Cubic(),
+                                            compounding)
+        elif interpolation_type == "log_linear_zero":
+            yield_curve = ql.LogLinearZeroCurve(node_dates, node_rates,
+                                                day_counter,
+                                                calendar,
+                                                ql.LogLinear(),
+                                                compounding)
+        elif interpolation_type == "log_cubic_zero":
+            yield_curve = ql.LogCubicZeroCurve(node_dates, node_rates,
+                                               day_counter,
+                                               calendar,
+                                               ql.DefaultLogCubic(),
+                                               compounding)
+        elif interpolation_type == "monotonic_cubic_zero":
+            yield_curve = ql.MonotonicCubicZeroCurve(node_dates, node_rates,
+                                                     day_counter,
+                                                     calendar,
+                                                     ql.MonotonicCubic(),
+                                                     compounding)
+        else:
+            yield_curve = ql.ZeroCurve(node_dates, node_rates,
+                                       day_counter,
+                                       calendar,
+                                       ql.Linear(),
+                                       compounding)
+        yield_curve.enableExtrapolation()
+        return yield_curve

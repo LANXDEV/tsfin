@@ -17,3 +17,5 @@ from tsfin.instruments.cupomcambial import CupomCambial
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.fraddi import FraDDI
 from tsfin.instruments.currencyspot import Currency
+# Helper
+from tsfin.instruments.helper_classes import SpreadHandle, Grid
