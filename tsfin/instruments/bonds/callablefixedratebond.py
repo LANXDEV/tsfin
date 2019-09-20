@@ -19,7 +19,7 @@ import QuantLib as ql
 from tsfin.base.qlconverters import to_ql_date, to_ql_short_rate_model
 from tsfin.base.basetools import conditional_vectorize, to_datetime
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_call_component
-from tsfin.constants import CALLED_DATE, EXPIRE_DATE_OVRD
+from tsfin.constants import CALLED_DATE
 
 
 class CallableFixedRateBond(_BaseBond):
@@ -134,3 +134,190 @@ class CallableFixedRateBond(_BaseBond):
         bond.setPricingEngine(engine)
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         return bond.OAS(quote, yield_curve_relinkable_handle, day_counter, compounding, frequency, settlement_date)
+
+    @default_arguments
+    @conditional_vectorize('quote', 'date')
+    def oas_clean_price(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding,
+                        frequency, settlement_days, **kwargs):
+        """
+        Warning
+        -------
+        This method has only been tested with ``model=QuantLib.HullWhite``.
+
+        Parameters
+        ----------
+        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
+            The yield curve object against which the z-spreads will be calculated.
+        model: str
+            A string representing one of QuantLib Short Rate models, for simulating evolution of rates.
+            **Currently only tested with QuantLib.HullWhite.**
+        model_params: tuple, dict
+            Parameter set for the model.
+            * tuple format: (param1, param2, ...)
+                If a tuple is passed, assumes the model parameters are fixed for all possibly vectorized calculation
+                dates.
+            * dict format: {date1: (param1, param2, ...), date2: (param1, param2, ...), ... }
+                If a dict is passed, assumes it contains a parameter set for each date of the possibly vectorized
+                calculation dates.
+
+        last: bool, optional
+            Whether to last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional
+            Bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional
+            Date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            Compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            Compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
+            Default: see :py:func:`default_arguments`.
+
+        Returns
+        -------
+        scalar
+            Bond's clean price from the option-adjusted spread relative to `yield_curve_timeseries`.
+        """
+
+        bond = self.bond
+        date = to_ql_date(date)
+        yield_curve_handle = yield_curve_timeseries.yield_curve_handle(date=date)
+        oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
+                       quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
+                       settlement_days=settlement_days, **kwargs)
+        ql.Settings.instance().evaluationDate = date
+        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        return bond.cleanPriceOAS(float(oas), yield_curve_handle, day_counter, compounding, frequency, settlement_date)
+
+    @default_arguments
+    @conditional_vectorize('quote', 'date')
+    def oas_duration(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding,
+                     frequency, settlement_days, **kwargs):
+        """
+        Warning
+        -------
+        This method has only been tested with ``model=QuantLib.HullWhite``.
+
+        Parameters
+        ----------
+        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
+            The yield curve object against which the z-spreads will be calculated.
+        model: str
+            A string representing one of QuantLib Short Rate models, for simulating evolution of rates.
+            **Currently only tested with QuantLib.HullWhite.**
+        model_params: tuple, dict
+            Parameter set for the model.
+            * tuple format: (param1, param2, ...)
+                If a tuple is passed, assumes the model parameters are fixed for all possibly vectorized calculation
+                dates.
+            * dict format: {date1: (param1, param2, ...), date2: (param1, param2, ...), ... }
+                If a dict is passed, assumes it contains a parameter set for each date of the possibly vectorized
+                calculation dates.
+
+        last: bool, optional
+            Whether to last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional
+            Bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional
+            Date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            Compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            Compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
+            Default: see :py:func:`default_arguments`.
+
+        Returns
+        -------
+        scalar
+            Bond's duration from the option-adjusted spread relative to `yield_curve_timeseries`.
+        """
+
+        bond = self.bond
+        date = to_ql_date(date)
+        yield_curve_handle = yield_curve_timeseries.yield_curve_handle(date=date)
+        oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
+                       quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
+                       settlement_days=settlement_days, **kwargs)
+        ql.Settings.instance().evaluationDate = date
+        return bond.effectiveDuration(float(oas), yield_curve_handle, day_counter, compounding, frequency)
+
+    @default_arguments
+    @conditional_vectorize('quote', 'date')
+    def oas_convexity(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding,
+                      frequency, settlement_days, **kwargs):
+        """
+        Warning
+        -------
+        This method has only been tested with ``model=QuantLib.HullWhite``.
+
+        Parameters
+        ----------
+        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
+            The yield curve object against which the z-spreads will be calculated.
+        model: str
+            A string representing one of QuantLib Short Rate models, for simulating evolution of rates.
+            **Currently only tested with QuantLib.HullWhite.**
+        model_params: tuple, dict
+            Parameter set for the model.
+            * tuple format: (param1, param2, ...)
+                If a tuple is passed, assumes the model parameters are fixed for all possibly vectorized calculation
+                dates.
+            * dict format: {date1: (param1, param2, ...), date2: (param1, param2, ...), ... }
+                If a dict is passed, assumes it contains a parameter set for each date of the possibly vectorized
+                calculation dates.
+
+        last: bool, optional
+            Whether to last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional
+            Bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional
+            Date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            Compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            Compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
+            Default: see :py:func:`default_arguments`.
+
+        Returns
+        -------
+        scalar
+            Bond's convexity from the option-adjusted spread relative to `yield_curve_timeseries`.
+        """
+
+        bond = self.bond
+        date = to_ql_date(date)
+        yield_curve_handle = yield_curve_timeseries.yield_curve_handle(date=date)
+        oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
+                       quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
+                       settlement_days=settlement_days, **kwargs)
+        ql.Settings.instance().evaluationDate = date
+        return bond.effectiveConvexity(float(oas), yield_curve_handle, day_counter, compounding, frequency)
