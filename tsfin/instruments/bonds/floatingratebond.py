@@ -18,12 +18,10 @@
 from functools import wraps
 import numpy as np
 import QuantLib as ql
-from operator import itemgetter
-from datetime import timedelta
 from tsfin.base.qlconverters import to_ql_date, to_ql_calendar, to_ql_currency, to_ql_ibor_index
-from tsfin.base.basetools import conditional_vectorize, to_datetime
-from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_schedule_for_component
-from tsfin.constants import INDEX_TENOR, FIXING_DAYS, CALENDAR, YIELD, CLEAN_PRICE, DIRTY_PRICE
+from tsfin.base.basetools import conditional_vectorize
+from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments
+from tsfin.constants import INDEX_TENOR, FIXING_DAYS, CALENDAR, SPREAD
 
 
 def set_floating_rate_index(f):
@@ -43,6 +41,7 @@ def set_floating_rate_index(f):
     """
     @wraps(f)
     def new_f(self, *args, **kwargs):
+        # Just to avoid a bug when passing the dates
         try:
             date = to_ql_date(kwargs['date'][0])
         except:
@@ -78,13 +77,16 @@ class FloatingRateBond(_BaseBond):
         self.forecast_curve = ql.RelinkableYieldTermStructureHandle()
         self.index_reference_curve = ql.RelinkableYieldTermStructureHandle()
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
-        self.fixing_days = self.ts_attributes[FIXING_DAYS]
+        try:
+            self.fixing_days = self.ts_attributes[FIXING_DAYS]
+        except KeyError:
+            self.fixing_days = 0
         self.index = to_ql_ibor_index('{0}_{1}_Libor'.format(self.ts_name, self.currency), self._index_tenor,
                                       self.fixing_days, to_ql_currency(self.currency), self.calendar,
                                       self.business_convention, self.month_end, self.day_counter,
                                       self.index_reference_curve)
         self.gearings = [1]  # TODO: Make it possible to have a list of different gearings.
-        self.spreads = [float(self.ts_attributes["SPREAD"])]  # TODO: Make it possible to have different spreads.
+        self.spreads = [float(self.ts_attributes[SPREAD])]  # TODO: Make it possible to have different spreads.
         self.caps = []  # TODO: Make it possible to have caps.
         self.floors = []  # TODO: Make it possible to have floors.
         self.in_arrears = False  # TODO: Check if this can be made variable.
@@ -96,7 +98,6 @@ class FloatingRateBond(_BaseBond):
                                         self.day_counter, self.business_convention, self.index.fixingDays(),
                                         self.gearings, self.spreads, self.caps, self.floors, self.in_arrears,
                                         self.redemption, self.issue_date)
-        self.coupon_dates = [cf.date() for cf in self.bond.cashflows()]
         # Store the fixing dates of the coupon. These will be useful later.
         self.index_calendar = self.index.fixingCalendar()
         self.index_bus_day_convention = self.index.businessDayConvention()
@@ -160,8 +161,10 @@ class FloatingRateBond(_BaseBond):
         """
         if kwargs.get('bypass_set_floating_rate_index'):
             return
-
-        reference_curve = self.reference_curve.yield_curve(date)
+        if not isinstance(self.reference_curve, ql.YieldTermStructure):
+            reference_curve = self.reference_curve.yield_curve(date)
+        else:
+            reference_curve = self.reference_curve
         self.forecast_curve.linkTo(reference_curve)
         self.index_reference_curve.linkTo(reference_curve)
 

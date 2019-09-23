@@ -23,7 +23,7 @@ from tsfin.base.qlconverters import to_ql_date
 from tsfin.base.basetools import to_datetime
 from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base.instrument import Instrument
-from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond
+from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond
 from tsfin.instruments.interest_rates.depositrate import DepositRate
 from tsfin.instruments.interest_rates.zerorate import ZeroRate
 from tsfin.instruments.interest_rates.ois import OISRate
@@ -36,7 +36,7 @@ from tsfin.instruments.interest_rates.eurodollar_future import EurodollarFuture
 from tsfin.instruments.equities.equity import Equity
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
-    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF
+    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF, CONTINGENTCONVERTIBLE
 
 
 def generate_instruments(ts_collection, indices=None, index_curves=None):
@@ -87,6 +87,14 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
                 instrument = FixedRateBond(ts)
             elif bond_type == CALLABLEFIXEDRATE:
                 instrument = CallableFixedRateBond(ts)
+            elif bond_type == CONTINGENTCONVERTIBLE:
+                # Floating rate bonds need some special treatment.
+                reference_curve = index_curves[str(ts.get_attribute(INDEX)).upper()] if index_curves is not None \
+                        else None
+                index_timeseries = indices[str(ts.get_attribute(INDEX_TIME_SERIES)).upper()] if indices is not None \
+                    else None
+                instrument = ContingentConvertibleBond(ts, reference_curve=reference_curve,
+                                                       index_timeseries=index_timeseries)
             else:
                 instrument_list.append(ts)
                 continue
