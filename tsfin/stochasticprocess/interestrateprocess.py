@@ -20,6 +20,7 @@ A class for modelling interest rate processes and its different implementations
 import QuantLib as ql
 import numpy as np
 from tsfin.tools import to_datetime
+from tsfin.base import to_ql_short_rate_model
 
 
 def get_interest_rate_process(model_name, yield_curve):
@@ -42,6 +43,7 @@ class BaseInterestRateProcess:
         self.process_name = None
         self.yield_curve = yield_curve
         self.yield_curve_handle = ql.RelinkableYieldTermStructureHandle()
+        self.model = None
         self.process = None
         self.mean = 0
         self.sigma = 0
@@ -66,6 +68,15 @@ class BaseInterestRateProcess:
         self.beta = beta
         self.eta = eta
         self.rho = rho
+
+    def update_model(self, date=None, yield_curve=None, **kwargs):
+
+        self.yield_curve_update(date=date, yield_curve=yield_curve)
+
+    def discount_bond(self, to_time1, to_time2):
+
+        rate = self.yield_curve_handle.zeroRate(to_time1, ql.Continuous, ql.NoFrequency).rate()
+        return self.model.discountBond(to_time1, to_time2, rate)
 
 
 class HullWhiteProcess(BaseInterestRateProcess):
@@ -94,12 +105,20 @@ class HullWhiteProcess(BaseInterestRateProcess):
         self.update_process(date=date, yield_curve=yield_curve, mean=mean, sigma=sigma)
         return self.process
 
+    def update_model(self, date=None, yield_curve=None, **kwargs):
+
+        self.yield_curve_update(date=date, yield_curve=yield_curve)
+        mean = kwargs.get('mean', self.mean)
+        sigma = kwargs.get('sigma', self.sigma)
+        self.model = to_ql_short_rate_model(self.process_name, self.yield_curve_handle, mean, sigma)
+
 
 class G2Process(BaseInterestRateProcess):
 
     def __init__(self, yield_curve):
         super().__init__(yield_curve)
         self.process_name = "G2"
+        self.model = ql.G2
 
     def update_process(self, mean, sigma, beta, eta, rho, date=None, yield_curve=None, **kwargs):
 
@@ -122,3 +141,14 @@ class G2Process(BaseInterestRateProcess):
         rho = rho_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
         self.update_process(date=date, yield_curve=yield_curve, mean=mean, sigma=sigma, beta=beta, eta=eta, rho=rho)
         return self.process
+
+    def update_model(self, date=None, yield_curve=None, **kwargs):
+
+        self.yield_curve_update(date=date, yield_curve=yield_curve)
+        mean = kwargs.get('mean', self.mean)
+        sigma = kwargs.get('sigma', self.sigma)
+        beta = kwargs.get('beta', self.beta)
+        eta = kwargs.get('eta', self.eta)
+        rho = kwargs.get('rho', self.rho)
+        self.model = to_ql_short_rate_model(self.process_name, self.yield_curve_handle, mean, sigma, beta, eta, rho)
+

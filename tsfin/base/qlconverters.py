@@ -395,12 +395,13 @@ def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_con
                         yield_curve_handle)
 
 
-def to_ql_short_rate_model(arg):
+def to_ql_short_rate_model(name, *args):
     """Converts a string with the short rate model name to the corresponding QuantLib object.
 
     Parameters
     ----------
-    arg: str
+    name: str
+    args: needed arguments for each of the short rate models
 
     Returns
     -------
@@ -409,12 +410,12 @@ def to_ql_short_rate_model(arg):
     QuantLib.G2
     """
 
-    if arg.upper() == 'HULL_WHITE':
-        return ql.HullWhite
-    elif arg.upper() == 'BLACK_KARASINSKI':
-        return ql.BlackKarasinski
-    elif arg.upper() == 'G2':
-        return ql.G2
+    if name.upper() == 'HULL_WHITE':
+        return ql.HullWhite(*args)
+    elif name.upper() == 'BLACK_KARASINSKI':
+        return ql.BlackKarasinski(*args)
+    elif name.upper() == 'G2':
+        return ql.G2(*args)
 
 
 def ql_tenor_to_maturity_date(base_date, tenor):

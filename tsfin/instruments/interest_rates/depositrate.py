@@ -82,12 +82,15 @@ class DepositRate(Instrument):
         """
         return 0
 
-    def _get_fixing_maturity_dates(self, start_date, end_date):
+    def _get_fixing_maturity_dates(self, start_date, end_date, fixing_at_start_date=False):
         start_date = self.calendar.adjust(start_date, self.business_convention)
         end_date = self.calendar.adjust(end_date, self.business_convention)
         fixing_dates = list()
         maturity_dates = list()
-        fixing_date = self.index.fixingDate(start_date)
+        if fixing_at_start_date:
+            fixing_date = start_date
+        else:
+            fixing_date = self.index.fixingDate(start_date)
         maturity_date = self.index.maturityDate(self.index.valueDate(fixing_date))
         while maturity_date < end_date:
             fixing_dates.append(fixing_date)
@@ -132,7 +135,7 @@ class DepositRate(Instrument):
 
     @default_arguments
     @conditional_vectorize('date')
-    def performance(self, start_date=None, date=None, spread=None, **kwargs):
+    def performance(self, start_date=None, date=None, spread=None, fixing_at_start_date=False, **kwargs):
         """Performance of investment in the interest rate, taking tenor into account.
 
         If the period between start_date and date is larger the the deposit rate's tenor, considers the investment
@@ -146,6 +149,8 @@ class DepositRate(Instrument):
             End date of the investment period.
         spread: float
             rate to be added to the return calculation.
+        fixing_at_start_date: bool
+            Whether to use the start date as the first fixing date or not.
 
         Returns
         -------
@@ -161,7 +166,7 @@ class DepositRate(Instrument):
             return np.nan
         start_date = to_ql_date(start_date)
         date = to_ql_date(date)
-        fixing_dates, maturity_dates = self._get_fixing_maturity_dates(start_date, date)
+        fixing_dates, maturity_dates = self._get_fixing_maturity_dates(start_date, date, fixing_at_start_date)
         fixings = self.timeseries.get_values(index=[to_datetime(fixing_date) for fixing_date in fixing_dates])
 
         if spread is not None:
