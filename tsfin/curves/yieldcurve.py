@@ -119,7 +119,6 @@ class YieldCurveTimeSeries:
 
         for date in dates:
             ql_date = to_ql_date(date)
-            ql.Settings.instance().evaluationDate = ql_date
             helpers_dict = self._get_helpers(ql_date)
 
             # Instantiate the curve

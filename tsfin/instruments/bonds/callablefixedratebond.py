@@ -122,14 +122,13 @@ class CallableFixedRateBond(_BaseBond):
         bond = self.bond
         date = to_ql_date(date)
         yield_curve_relinkable_handle = yield_curve_timeseries.yield_curve_relinkable_handle(date=date)
-        ql_model = to_ql_short_rate_model(model)
         ql.Settings.instance().evaluationDate = date
         if isinstance(model_params, dict):
             # Assumes model parameters are given for each date.
-            ql_model = ql_model(yield_curve_relinkable_handle, *model_params[date])
+            ql_model = to_ql_short_rate_model(model, yield_curve_relinkable_handle, *model_params[date])
         else:
             # Only one set of model parameters are given (calibrated for, say, a specific date).
-            ql_model = ql_model(yield_curve_relinkable_handle, *model_params)
+            ql_model = to_ql_short_rate_model(model, yield_curve_relinkable_handle, *model_params)
         engine = ql.TreeCallableFixedRateBondEngine(ql_model, 40)
         bond.setPricingEngine(engine)
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)

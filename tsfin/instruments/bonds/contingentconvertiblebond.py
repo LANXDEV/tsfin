@@ -108,11 +108,8 @@ class ContingentConvertibleBond(FloatingRateBond):
         self.fixed_schedule = ql.Schedule(self.first_accrual_date, self.coupon_reset_date, self.coupon_frequency,
                                           self.calendar, self.business_convention, self.business_convention,
                                           self.date_generation, self.month_end)
-        self.float_schedule = ql.Schedule(self.coupon_reset_date, self.maturity_date, self.coupon_frequency,
-                                          self.calendar, self.business_convention, self.business_convention,
-                                          self.date_generation, self.month_end)
         fixed_schedule_len = len(self.fixed_schedule) - 1
-        float_schedule_len = len(self.float_schedule) - 1
+        float_schedule_len = len(self.schedule) - fixed_schedule_len - 1
         self.gearings = [0]*fixed_schedule_len + [1]*float_schedule_len
         self.total_spreads = self.fixed_coupons*fixed_schedule_len + self.spreads*float_schedule_len
         called_date = self.ts_attributes[CALLED_DATE]
