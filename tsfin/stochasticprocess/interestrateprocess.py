@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2018 Lanx Capital Investimentos LTDA.
+# Copyright (C) 2016-2019 Lanx Capital Investimentos LTDA.
 #
 # This file is part of Time Series Finance (tsfin).
 #
@@ -73,9 +73,8 @@ class BaseInterestRateProcess:
 
         self.yield_curve_update(date=date, yield_curve=yield_curve)
 
-    def discount_bond(self, to_time1, to_time2):
+    def discount_bond(self, to_time1, to_time2, rate):
 
-        rate = self.yield_curve_handle.zeroRate(to_time1, ql.Continuous, ql.NoFrequency).rate()
         return self.model.discountBond(to_time1, to_time2, rate)
 
 

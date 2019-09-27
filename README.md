@@ -22,9 +22,9 @@ pip install git+https://github.com/LANXDEV/tsfin/
 
 ## Dependencies
 
-- [NumPy](https://www.numpy.org): 1.14.2 or higher
-- [pandas](https://pandas.pydata.org/): 0.22.0 or higher
-- [QuantLib-Python](https://www.quantlib.org/install/windows-python.shtml): 1.12 or higher
+- [NumPy](https://www.numpy.org): 1.16.0 or higher
+- [pandas](https://pandas.pydata.org/): 0.24.2 or higher
+- [QuantLib-Python](https://www.quantlib.org/install/windows-python.shtml): 1.16 or higher
 - [Time Series I/O](https://github.com/LANXDEV/tsio)
 
 

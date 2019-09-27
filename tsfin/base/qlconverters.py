@@ -71,6 +71,8 @@ def to_ql_frequency(arg):
         return ql.Weekly
     elif arg.upper() == "DAILY":
         return ql.Daily
+    elif arg.upper() == 'NOFREQUENCY':
+        return ql.NoFrequency
     else:
         raise ValueError("Unable to convert {} to a QuantLib frequency".format(arg))
 
@@ -115,6 +117,8 @@ def to_ql_calendar(arg):
         return ql.SouthAfrica()
     elif arg.upper() == 'TU':
         return ql.Turkey()
+    elif arg.upper() == 'NULL':
+        return ql.NullCalendar()
     else:
         raise ValueError("Unable to convert {} to a QuantLib calendar".format(arg))
 
@@ -172,6 +176,10 @@ def to_ql_business_convention(arg):
     if arg.upper() == "FOLLOWING":
         return ql.Following
     elif arg.upper() == "MODIFIEDFOLLOWING":
+        return ql.ModifiedFollowing
+    elif arg.upper() == "PRECEDING":
+        return ql.Following
+    elif arg.upper() == "MODIFIEDPRECEDING":
         return ql.ModifiedFollowing
     elif arg.upper() == "UNADJUSTED":
         return ql.Unadjusted
@@ -257,24 +265,6 @@ def to_ql_compounding(arg):
         return ql.Continuous
     else:
         raise ValueError("Unable to convert {} to a QuantLib compounding specification".format(arg))
-
-
-def to_ql_overnight_index(arg):
-    """Converts a string with overnight index name to the corresponding QuantLib object.
-
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.OvernightIndex
-
-    """
-    if arg.upper() == "FEDFUNDS":
-        return ql.FedFunds()
-    else:
-        raise ValueError("Unable to convert {} to a QuantLib overnight index".format(arg))
 
 
 def to_ql_rate_index(arg, tenor=None):
