@@ -19,9 +19,8 @@ Helper Classes for different Quantlib functions
 """
 
 import QuantLib as ql
-import numpy as np
 from tsfin.constants import TENOR_PERIOD, MATURITY_DATE
-from tsfin.base.qlconverters import to_ql_date
+from tsfin.base.qlconverters import to_ql_date, to_ql_day_counter, to_ql_calendar
 from tsfin.base.basetools import conditional_vectorize
 
 
@@ -66,27 +65,28 @@ class SpreadHandle:
 
 
 # class for hosting schedule-related information (dates, times)
-class Grid:
+class TimeGrid:
 
-    def __init__(self, start_date, end_date, tenor):
-        # create date schedule, ignore conventions and calendars
-        self.schedule = ql.Schedule(start_date, end_date, tenor, ql.NullCalendar(), ql.Unadjusted, ql.Unadjusted,
-                                    ql.DateGeneration.Forward, False)
-        self.dayCounter = ql.Actual365Fixed()
-
-    def get_dates(self):
-        # get list of scheduled dates
-        dates = [self.schedule[i] for i in range(self.get_size())]
-        return dates
+    def __init__(self, start_date, end_date, tenor, calendar, day_counter):
+        self.start_date = to_ql_date(start_date)
+        self.end_date = to_ql_date(end_date)
+        self.tenor = ql.PeriodParser.parse(tenor)
+        self.calendar = to_ql_calendar(calendar)
+        self.day_counter = to_ql_day_counter(day_counter)
+        self.schedule = ql.Schedule(self.start_date, self.end_date, self.tenor, self.calendar, ql.Unadjusted,
+                                    ql.Unadjusted, ql.DateGeneration.Forward, False)
 
     def get_times(self):
         # get list of scheduled times
-        times = [self.dayCounter.yearFraction(self.schedule[0], self.schedule[i]) for i in range(self.get_size())]
-        return times
+        return [self.day_counter.yearFraction(self.schedule.startDate(), date) for date in self.schedule]
+
+    def get_dates(self):
+        # get list of scheduled dates
+        return [date for date in self.schedule]
 
     def get_maturity(self):
         # get maturity in time units
-        return self.dayCounter.yearFraction(self.schedule[0], self.schedule[self.get_steps()])
+        return self.day_counter.yearFraction(self.schedule.startDate(), self.schedule.endDate())
 
     def get_steps(self):
         # get number of steps in schedule

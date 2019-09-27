@@ -39,7 +39,7 @@ from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE,
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF, CONTINGENTCONVERTIBLE
 
 
-def generate_instruments(ts_collection, indices=None, index_curves=None):
+def generate_instruments(ts_collection, indexes=None, index_curves=None):
     """ Given a collection of :py:obj:`TimeSeries`, instantiate instruments with each one of them.
 
     If an element is not an instance of :py:class:`TimeSeries`, does nothing with it.
@@ -48,7 +48,7 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
     ----------
     ts_collection: :py:obj:`TimeSeriesCollection`
         Collection of time series.
-    indices: dict, optional
+    indexes: dict, optional
         Dictionary with ``{index_name: index_time_series}``, where `index_name` is the name of the 'index' (e.g.:
         libor3m, CDI), in the INDEX attribute of a time series. `index_time_series` is a :py:obj:`TimeSeries`
         representing the index. This is currently needed only for floating rate bonds. Default is None.
@@ -75,26 +75,22 @@ def generate_instruments(ts_collection, indices=None, index_curves=None):
 
         if ts_type == BOND:
             bond_type = str(ts.get_attribute(BOND_TYPE)).upper()
-            if bond_type == FLOATINGRATE:
+            if bond_type in [FLOATINGRATE, CONTINGENTCONVERTIBLE]:
                 # Floating rate bonds need some special treatment.
                 reference_curve = index_curves[str(ts.get_attribute(INDEX)).upper()] if index_curves is not None \
                         else None
-                index_timeseries = indices[str(ts.get_attribute(INDEX_TIME_SERIES)).upper()] if indices is not None \
+                index_timeseries = indexes[str(ts.get_attribute(INDEX_TIME_SERIES)).upper()] if indexes is not None \
                     else None
-                instrument = FloatingRateBond(ts, reference_curve=reference_curve,
-                                              index_timeseries=index_timeseries)
+                if bond_type == FLOATINGRATE:
+                    instrument = FloatingRateBond(ts, reference_curve=reference_curve,
+                                                  index_timeseries=index_timeseries)
+                elif bond_type == CONTINGENTCONVERTIBLE:
+                    instrument = ContingentConvertibleBond(ts, reference_curve=reference_curve,
+                                                           index_timeseries=index_timeseries)
             elif bond_type == FIXEDRATE:
                 instrument = FixedRateBond(ts)
             elif bond_type == CALLABLEFIXEDRATE:
                 instrument = CallableFixedRateBond(ts)
-            elif bond_type == CONTINGENTCONVERTIBLE:
-                # Floating rate bonds need some special treatment.
-                reference_curve = index_curves[str(ts.get_attribute(INDEX)).upper()] if index_curves is not None \
-                        else None
-                index_timeseries = indices[str(ts.get_attribute(INDEX_TIME_SERIES)).upper()] if indices is not None \
-                    else None
-                instrument = ContingentConvertibleBond(ts, reference_curve=reference_curve,
-                                                       index_timeseries=index_timeseries)
             else:
                 instrument_list.append(ts)
                 continue
@@ -343,6 +339,11 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
 
 
 def to_np_array(ql_matrix):
+    """
+
+    :param ql_matrix: QuantLib.Matrix, QuantLib.Array
+    :return: numpy array
+    """
 
     if isinstance(ql_matrix, ql.Array):
         return np.array(ql_matrix, dtype=np.float64)
@@ -356,79 +357,6 @@ def to_np_array(ql_matrix):
             for n_col in range(ql_matrix.columns()):
                 new_array[n_row, n_col] = ql_matrix[n_row][n_col]
         return new_array
-
-
-def gaussian_random_sequence_generator(dimensionality, low_discrepancy=False, seed=0):
-
-    if low_discrepancy:
-        uniform_sequence = ql.UniformLowDiscrepancySequenceGenerator(dimensionality)
-        generator = ql.GaussianLowDiscrepancySequenceGenerator(uniform_sequence)
-    else:
-        uniform_sequence = ql.UniformRandomSequenceGenerator(dimensionality, ql.UniformRandomGenerator(seed=seed))
-        generator = ql.GaussianRandomSequenceGenerator(uniform_sequence)
-    return generator
-
-
-# path generator method for uncorrelated and correlated 1-D stochastic processes
-def generate_paths(process, grid, n, low_discrepancy=False, seed=0):
-    """
-        Path generator method for uncorrelated and correlated 1-D stochastic processes
-    :param process: QuantLib.StochasticProcess1D, QuantLib.StochasticProcessArray
-        The QuantLib class of the stochastic process
-    :param grid: py:obj:`Grid`
-        A class that implements the QuantLib TimeGrid class
-    :param n: int
-        Number of samples
-    :param low_discrepancy: bool
-        Used to choose the type of Gaussian Sequence Generator.
-    :param seed: int
-        Used to fix a certain seed of the random number.
-    :return: np.array
-        The numpy array with the generated paths.
-    """
-
-    time_grid = grid.get_time_grid()
-    time_grid_length = grid.get_size()
-    process_size = process.size()
-    n_grid_steps = grid.get_steps() * process_size
-    gaussian_sequence_generator = gaussian_random_sequence_generator(dimensionality=n_grid_steps,
-                                                                     low_discrepancy=low_discrepancy, seed=seed)
-    # correlated processes, use GaussianMultiPathGenerator
-    if isinstance(process, ql.StochasticProcessArray):
-        path_generator = ql.GaussianMultiPathGenerator(process, grid.get_times(), gaussian_sequence_generator, False)
-        paths = np.zeros(shape=(2*n, process_size, time_grid_length))
-        # loop through number of paths
-        k = 0
-        for i in range(n):
-            # request multiPath, which contains the list of paths for each process
-            multi_path = path_generator.next().value()
-            multi_antithetic = path_generator.antithetic().value()
-            # loop through number of processes
-            for j in range(multi_path.assetNumber()):
-                # request path, which contains the list of simulated prices for a process
-                path = np.array(multi_path[j])
-                antithetic = np.array(multi_antithetic[j])
-                # push prices to array
-                paths[k, j, :] = np.array(path)
-                paths[k + 1, j, :] = np.array(antithetic)
-                if j == multi_path.assetNumber() - 1:
-                    k = k + 2
-        # resulting array dimension: n, process.size(), len(timeGrid)
-        return paths
-
-    # uncorrelated processes, use GaussianPathGenerator
-    else:
-        path_generator = ql.GaussianPathGenerator(process, time_grid, gaussian_sequence_generator, False)
-        paths = np.zeros(shape=(2*n, time_grid_length))
-        k = 0
-        for i in range(n):
-            path = path_generator.next().value()
-            antithetic_path = path_generator.antithetic().value()
-            paths[k, :] = path
-            paths[k + 1, :] = antithetic_path
-            k = k + 2
-        # resulting array dimension: n, len(timeGrid)
-        return paths
 
 
 def generate_discounts_array(paths, grid_dt):

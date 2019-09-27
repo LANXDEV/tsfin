@@ -512,7 +512,7 @@ class YieldCurveTimeSeries:
         elif piecewise_type == "log_cubic_discount":
             piecewise_curve = ql.PiecewiseLogCubicDiscount(date, helpers, day_counter)
         elif piecewise_type == "log_linear_discount":
-            piecewise_curve = ql.PiecewiseLogCubicDiscount(date, helpers, day_counter)
+            piecewise_curve = ql.PiecewiseLogLinearDiscount(date, helpers, day_counter)
         else:
             piecewise_curve = ql.PiecewiseLinearZero(date, helpers, day_counter)
         return piecewise_curve
