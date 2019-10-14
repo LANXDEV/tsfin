@@ -127,13 +127,13 @@ class YieldCurveTimeSeries:
             piecewise_curve = self._piecewise_curve(date=ql_date,
                                                     helpers=helpers,
                                                     day_counter=self.day_counter,
-                                                    piecewise_type="cubic_zero")
+                                                    piecewise_type="linear_zero")
             # Freezing the curve so that nothing is bothered by changing the singleton (global variable) evaluationDate.
             yield_curve = self._interpolation(piecewise_curve=piecewise_curve,
                                               day_counter=self.day_counter,
                                               calendar=self.calendar,
                                               compounding=ql.Continuous,
-                                              interpolation_type="cubic_zero")
+                                              interpolation_type="monotonic_cubic_zero")
             self.yield_curves[date] = yield_curve
 
     def _update_all_curves(self):
@@ -508,7 +508,7 @@ class YieldCurveTimeSeries:
             QuantLib.PiecewiseCurve
         """
         if piecewise_type == "cubic_zero":
-            piecewise_curve = ql.PiecewiseCubicZero(date, helpers, day_counter)
+            piecewise_curve = ql.PiecewiseCubicZero(date, helpers)
         elif piecewise_type == "log_cubic_discount":
             piecewise_curve = ql.PiecewiseLogCubicDiscount(date, helpers, day_counter)
         elif piecewise_type == "log_linear_discount":
