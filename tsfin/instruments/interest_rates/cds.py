@@ -19,13 +19,13 @@ A class for modelling interest rate swaps.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments.interest_rates.depositrate import DepositRate
+from tsfin.instruments.interest_rates.zerorate import ZeroRate
 from tsfin.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_date_generation
 from tsfin.constants import FREQUENCY, DATE_GENERATION, RECOVERY_RATE, COUPONS, BASE_SPREAD_TAG
 from tsfin.base.basetools import conditional_vectorize
 
 
-class CDSRate(DepositRate):
+class CDSRate(ZeroRate):
     """ Model for rolling interest cds rates (fixed tenor, like the ones quoted in Bloomberg).
 
     Parameters
