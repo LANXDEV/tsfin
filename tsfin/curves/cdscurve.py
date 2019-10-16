@@ -88,7 +88,7 @@ class CDSCurveTimeSeries:
 
     def _get_helpers(self, date):
         helpers = dict()
-        ql_date = to_ql_date(date)
+        date = to_ql_date(date)
 
         for ts in self.ts_collection:
             ts_name = ts.ts_name
@@ -137,15 +137,15 @@ class CDSCurveTimeSeries:
         dates = to_list(dates)
 
         for date in dates:
-            ql_date = to_ql_date(date)
-            ql.Settings.instance().evaluationDate = ql_date
+            date = to_ql_date(date)
+            ql.Settings.instance().evaluationDate = date
 
             helpers_dict = self._get_helpers(date)
 
             # Instantiate the curve
             helpers = [ndhelper.helper for ndhelper in helpers_dict.values()]
             # Just bootstrapping the nodes
-            hazard_curve = ql.PiecewiseFlatHazardRate(ql_date, helpers, self.day_counter)
+            hazard_curve = ql.PiecewiseFlatHazardRate(date, helpers, self.day_counter)
 
             hazard_curve.enableExtrapolation()
 
@@ -266,31 +266,88 @@ class CDSCurveTimeSeries:
         return self.base_yield_curve.yield_curve_relinkable_handle(date)
 
     @conditional_vectorize('date')
-    def survival_probability(self, date, period):
+    def survival_probability_to_date(self, date, to_date):
         """
         The survival probability given a date and period
 
         :param date: Date of the yield curve.
-        :param period: The tenor for the maturity.
+        :param to_date: The target date
         :return: The % chance of survival given the date and tenor.
         """
 
-        ql_date = to_ql_date(date)
-        ql_period = ql.Period(period)
-
-        return self.hazard_curves[date].survivalProbability(ql_date + ql_period)
+        date = to_ql_date(date)
+        to_date = to_ql_date(to_date)
+        return self.hazard_curve(date).survivalProbability(to_date)
 
     @conditional_vectorize('date')
-    def default_probability(self, date, period):
+    def survival_probability_to_tenor(self, date, tenor):
         """
         The survival probability given a date and period
 
         :param date: Date of the yield curve.
-        :param period: The tenor for the maturity.
+        :param tenor: The tenor for the maturity.
+        :return: The % chance of survival given the date and tenor.
+        """
+
+        date = to_ql_date(date)
+        ql_period = ql.PeriodParser.parse(str(tenor).upper())
+        to_date = self.calendar.advance(date, ql_period)
+        return self.hazard_curve(date).survivalProbability(to_date)
+
+    @conditional_vectorize('date')
+    def default_probability_to_date(self, date, to_date):
+        """
+        The survival probability given a date and period
+
+        :param date: Date of the yield curve.
+        :param to_date: The target date
         :return: The % chance of default given the date and tenor.
         """
 
-        ql_date = to_ql_date(date)
-        ql_period = ql.Period(period)
+        date = to_ql_date(date)
+        to_date = to_ql_date(to_date)
+        return self.hazard_curve(date).defaultProbability(to_date)
 
-        return self.hazard_curves[date].defaultProbability(ql_date + ql_period)
+    @conditional_vectorize('date')
+    def default_probability_to_tenor(self, date, tenor):
+        """
+        The survival probability given a date and period
+
+        :param date: Date of the yield curve.
+        :param tenor: The tenor for the maturity.
+        :return: The % chance of default given the date and tenor.
+        """
+
+        date = to_ql_date(date)
+        ql_period = ql.PeriodParser.parse(str(tenor).upper())
+        to_date = self.calendar.advance(date, ql_period)
+        return self.hazard_curve(date).defaultProbability(to_date)
+
+    @conditional_vectorize('date')
+    def hazard_rate_to_date(self, date, to_date):
+        """
+        The hazard rate of a given date
+
+        :param date: Date of the yield curve.
+        :param to_date: The target date
+        :return: The % chance of default given the date and tenor.
+        """
+
+        date = to_ql_date(date)
+        to_date = to_ql_date(to_date)
+        return self.hazard_curve(date).hazardRate(to_date)
+
+    @conditional_vectorize('date')
+    def hazard_rate_to_tenor(self, date, tenor):
+        """
+        The hazard rate of a given date
+
+        :param date: Date of the yield curve.
+        :param tenor: The tenor for the maturity.
+        :return: The % chance of default given the date and tenor.
+        """
+
+        date = to_ql_date(date)
+        ql_period = ql.PeriodParser.parse(str(tenor).upper())
+        to_date = self.calendar.advance(date, ql_period)
+        return self.hazard_curve(date).hazardRate(to_date)

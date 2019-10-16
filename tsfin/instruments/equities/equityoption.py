@@ -127,9 +127,11 @@ def option_default_arguments(f):
         kwargs['process'] = getattr(self, 'ql_process') if kwargs.get('process', None) is None else kwargs['process']
 
         # QuantLib Option Engine Arguments
-        kwargs['engine_name'] = 'BINOMIAL_VANILLA' if kwargs.get('engine_name', None) is None else kwargs['engine_name']
+        kwargs['engine_name'] = 'FINITE_DIFFERENCES_DIVIDEND' if kwargs.get('engine_name', None) is None else \
+            kwargs['engine_name']
         kwargs['model_name'] = 'LR' if kwargs.get('model_name', None) is None else kwargs['model_name']
         kwargs['time_steps'] = 801 if kwargs.get('time_steps', None) is None else kwargs['time_steps']
+        kwargs['grid_points'] = 800 if kwargs.get('grid_points', None) is None else kwargs['grid_points']
         kwargs['payoff'] = 'PLAIN_VANILLA' if kwargs.get('payoff', None) is None else kwargs['payoff']
 
         # Option build-up
@@ -171,7 +173,8 @@ def option_exercise_type(exercise_type, date, maturity):
         raise ValueError('Exercise type not supported')
 
 
-def ql_option_engine(engine_name=None, process=None, model_name=None, time_steps=None, **kwargs):
+def ql_option_engine(engine_name=None, process=None, model_name=None, time_steps=None, grid_points=None,
+                     exercise_type=None, **kwargs):
 
     if engine_name.upper() == 'BINOMIAL_VANILLA':
         return ql.BinomialVanillaEngine(process, model_name, time_steps)
@@ -181,6 +184,16 @@ def ql_option_engine(engine_name=None, process=None, model_name=None, time_steps
         return ql.AnalyticEuropeanEngine(process)
     elif engine_name.upper() == 'ANALYTIC_EUROPEAN_DIVIDEND':
         return ql.AnalyticDividendEuropeanEngine(process)
+    elif engine_name.upper() == "FINITE_DIFFERENCES":
+        if exercise_type == 'EUROPEAN':
+            return ql.FDEuropeanEngine(process, time_steps, grid_points)
+        elif exercise_type == 'AMERICAN':
+            return ql.FDAmericanEngine(process, time_steps, grid_points)
+    elif engine_name.upper() == "FINITE_DIFFERENCES_DIVIDEND":
+        if exercise_type == 'EUROPEAN':
+            return ql.FDDividendEuropeanEngine(process, time_steps, grid_points)
+        elif exercise_type == 'AMERICAN':
+            return ql.FDDividendAmericanEngineT(process, time_steps, grid_points)
     else:
         return None
 
