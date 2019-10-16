@@ -183,7 +183,7 @@ class YieldCurveTimeSeries:
                 self.update_curves(date)
             return self.yield_curves[date]
 
-    def spreaded_curve(self, date, spread, compounding, frequency):
+    def spreaded_curve(self, date, spread, compounding, frequency, day_counter=None):
         """ Get yield curve at a date, added to a spread.
 
         Parameters
@@ -196,17 +196,20 @@ class YieldCurveTimeSeries:
             The compounding convention of the spread.
         frequency: QuantLib.Frequency
             The frequency convention of the spread.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
 
         Returns
         -------
         QuantLib.ZeroSpreadedTermStructure
             The spreaded yield curve.
         """
+        day_counter = day_counter if day_counter is not None else self.day_counter
         curve_handle = ql.YieldTermStructureHandle(self.yield_curve(date=date))
         spread_handle = ql.QuoteHandle(ql.SimpleQuote(spread))
-        return ql.ZeroSpreadedTermStructure(curve_handle, spread_handle, compounding, frequency, self.day_counter)
+        return ql.ZeroSpreadedTermStructure(curve_handle, spread_handle, compounding, frequency, day_counter)
 
-    def spreaded_interpolated_curve(self, date, spread_dict, compounding, frequency):
+    def spreaded_interpolated_curve(self, date, spread_dict, compounding, frequency, day_counter=None):
         """ Get yield curve at a date, added to a spread.
 
         Parameters
@@ -219,6 +222,8 @@ class YieldCurveTimeSeries:
             Compounding convention for the rate.
         frequency: QuantLib.Frequency
             Frequency convention for the rate.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
         Returns
         -------
         QuantLib.ZeroSpreadedTermStructure
@@ -227,15 +232,18 @@ class YieldCurveTimeSeries:
 
         date = to_ql_date(date)
         curve_handle = self.yield_curve_handle(date=date)
+        day_counter = day_counter if day_counter is not None else self.day_counter
         spreads = list()
         dates = list()
         spread_dict_at_date = spread_dict[date]
         for tenor_date in sorted(spread_dict_at_date.keys()):
             dates.append(tenor_date)
-            spreads.append(ql.QuoteHandle(spread_dict_at_date[tenor_date]))
+            time = self.day_counter.yearFraction(date, tenor_date)
+            rate = spread_dict_at_date[tenor_date].equivalentRate(compounding, frequency, time).rate()
+            spreads.append(ql.QuoteHandle(ql.SimpleQuote(rate)))
 
         spreaded_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spreads, dates, compounding,
-                                                                        frequency, self.day_counter)
+                                                                        frequency, day_counter)
         spreaded_curve.enableExtrapolation()
 
         return spreaded_curve
@@ -255,7 +263,7 @@ class YieldCurveTimeSeries:
         """
         return ql.YieldTermStructureHandle(self.yield_curve(date))
 
-    def spreaded_interpolated_curve_handle(self, date, spread_dict, compounding, frequency):
+    def spreaded_interpolated_curve_handle(self, date, spread_dict, compounding, frequency, day_counter=None):
         """ Handle for a spreaded interpolated yield curve at a given date.
 
         Parameters
@@ -268,7 +276,8 @@ class YieldCurveTimeSeries:
             Compounding convention for the rate.
         frequency: QuantLib.Frequency
             Frequency convention for the rate.
-
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
         Returns
         -------
         QuantLib.YieldTermStructureHandle
@@ -276,7 +285,8 @@ class YieldCurveTimeSeries:
         """
 
         spreaded_curve = self.spreaded_interpolated_curve(date=date, spread_dict=spread_dict,
-                                                          compounding=compounding, frequency=frequency)
+                                                          compounding=compounding, frequency=frequency,
+                                                          day_counter=day_counter)
 
         return ql.YieldTermStructureHandle(spreaded_curve)
 
@@ -329,7 +339,7 @@ class YieldCurveTimeSeries:
         return self.yield_curve(date).discount(to_date)
 
     @conditional_vectorize('date', 'to_date')
-    def zero_rate_to_date(self, date, to_date, compounding, frequency, extrapolate=True):
+    def zero_rate_to_date(self, date, to_date, compounding, frequency, extrapolate=True, day_counter=None):
         """
         Parameters
         ----------
@@ -343,6 +353,8 @@ class YieldCurveTimeSeries:
             Frequency convention for the rate.
         extrapolate: bool, optional
             Whether to enable extrapolation.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
 
         Returns
         -------
@@ -350,10 +362,12 @@ class YieldCurveTimeSeries:
             Zero rate for `to_date`, implied by the yield curve at `date`.
         """
         to_date = to_ql_date(to_date)
-        return self.yield_curve(date).zeroRate(to_date, self.day_counter, compounding, frequency, extrapolate).rate()
+        day_counter = day_counter if day_counter is not None else self.day_counter
+        return self.yield_curve(date).zeroRate(to_date, day_counter, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date')
-    def spreaded_zero_rate_to_date(self, date, to_date, compounding, frequency, spread_dict, extrapolate=True):
+    def spreaded_zero_rate_to_date(self, date, to_date, compounding, frequency, spread_dict, extrapolate=True,
+                                   day_counter=None):
         """
         Parameters
         ----------
@@ -369,6 +383,8 @@ class YieldCurveTimeSeries:
             The dict with spreads and tenors.
         extrapolate: bool, optional
             Whether to enable extrapolation.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
 
         Returns
         -------
@@ -376,10 +392,11 @@ class YieldCurveTimeSeries:
             Zero rate for `to_date`, implied by the spreaded yield curve at `date`.
         """
         to_date = to_ql_date(to_date)
+        day_counter = day_counter if day_counter is not None else self.day_counter
         spread_curve = self.spreaded_interpolated_curve(date=date, spread_dict=spread_dict, compounding=compounding,
-                                                        frequency=frequency)
+                                                        frequency=frequency, day_counter=day_counter)
 
-        return spread_curve.zeroRate(to_date, self.day_counter, compounding, frequency, extrapolate).rate()
+        return spread_curve.zeroRate(to_date, day_counter, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_time')
     def zero_rate_to_time(self, date, to_time, compounding, frequency, extrapolate=True):
@@ -406,7 +423,8 @@ class YieldCurveTimeSeries:
         return self.yield_curve(date).zeroRate(to_time, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date1', 'to_date2')
-    def forward_rate_date_to_date(self, date, to_date1, to_date2, compounding, frequency, extrapolate=True):
+    def forward_rate_date_to_date(self, date, to_date1, to_date2, compounding, frequency, extrapolate=True,
+                                  day_counter=None):
         """
         Parameters
         ----------
@@ -422,6 +440,8 @@ class YieldCurveTimeSeries:
             Frequency convention for the rate.
         extrapolate: bool, optional
             Whether to enable extrapolation.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
 
         Returns
         -------
@@ -430,11 +450,13 @@ class YieldCurveTimeSeries:
         """
         to_date1 = to_ql_date(to_date1)
         to_date2 = to_ql_date(to_date2)
-        return self.yield_curve(date).forwardRate(to_date1, to_date2, self.day_counter, compounding, frequency,
+        day_counter = day_counter if day_counter is not None else self.day_counter
+        return self.yield_curve(date).forwardRate(to_date1, to_date2, day_counter, compounding, frequency,
                                                   extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date', 'to_time')
-    def forward_rate_date_to_time(self, date, to_date, to_time, compounding, frequency, extrapolate=True):
+    def forward_rate_date_to_time(self, date, to_date, to_time, compounding, frequency, extrapolate=True,
+                                  day_counter=None):
         """
         Parameters
         ----------
@@ -450,6 +472,8 @@ class YieldCurveTimeSeries:
             Frequency convention for the rate.
         extrapolate: bool, optional
             Whether to enable extrapolation.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
 
         Returns
         -------
@@ -458,7 +482,8 @@ class YieldCurveTimeSeries:
         """
         to_date = to_ql_date(to_date)
         to_date2 = self.calendar.advance(to_date, to_time)
-        return self.yield_curve(date).forwardRate(to_date, to_date2, self.day_counter, compounding, frequency,
+        day_counter = day_counter if day_counter is not None else self.day_counter
+        return self.yield_curve(date).forwardRate(to_date, to_date2, day_counter, compounding, frequency,
                                                   extrapolate).rate()
 
     @conditional_vectorize('date', 'to_time1', 'to_time2')

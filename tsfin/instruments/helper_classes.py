@@ -19,8 +19,8 @@ Helper Classes for different Quantlib functions
 """
 
 import QuantLib as ql
-from tsfin.constants import TENOR_PERIOD, MATURITY_DATE
-from tsfin.base.qlconverters import to_ql_date, to_ql_day_counter, to_ql_calendar
+from tsfin.constants import TENOR_PERIOD, MATURITY_DATE, DAY_COUNTER, COMPOUNDING, FREQUENCY
+from tsfin.base.qlconverters import to_ql_date, to_ql_day_counter, to_ql_calendar, to_ql_frequency, to_ql_compounding
 from tsfin.base.basetools import conditional_vectorize
 
 
@@ -41,8 +41,10 @@ class SpreadHandle:
                 spread_date_or_tenor = date + ql.Period(ts.ts_attributes[TENOR_PERIOD])
             except AttributeError:
                 spread_date_or_tenor = to_ql_date(ts.ts_attributes[MATURITY_DATE])
-
-            self.spreads[date][spread_date_or_tenor] = ql.SimpleQuote(spread)
+            day_counter = to_ql_day_counter(ts.ts_attributes[DAY_COUNTER])
+            compounding = to_ql_compounding(ts.ts_attributes[COMPOUNDING])
+            frequency = to_ql_frequency(ts.ts_attributes[FREQUENCY])
+            self.spreads[date][spread_date_or_tenor] = ql.InterestRate(spread, day_counter, compounding, frequency)
 
     @conditional_vectorize('date')
     def spread_handle(self, date, last_available=True):

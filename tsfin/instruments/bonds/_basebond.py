@@ -69,15 +69,15 @@ def default_arguments(f):
     """
     @wraps(f)
     def new_f(self, **kwargs):
-        if 'day_counter' not in kwargs.keys():
+        if kwargs.get('day_counter', None) is None:
             kwargs['day_counter'] = getattr(self, 'day_counter')
-        if 'compounding' not in kwargs.keys():
+        if kwargs.get('compounding', None) is None:
             kwargs['compounding'] = getattr(self, 'yield_quote_compounding')
-        if 'frequency' not in kwargs.keys():
+        if kwargs.get('frequency', None) is None:
             kwargs['frequency'] = getattr(self, 'yield_quote_frequency')
-        if 'settlement_days' not in kwargs.keys():
+        if kwargs.get('settlement_days', None) is None:
             kwargs['settlement_days'] = getattr(self, 'settlement_days')
-        if 'last' not in kwargs.keys():
+        if kwargs.get('last', None) is None:
             kwargs['last'] = False
 
         # If last True, use last available date and value for yield calculation.
