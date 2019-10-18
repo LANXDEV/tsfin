@@ -19,6 +19,7 @@ import pandas as pd
 import QuantLib as ql
 import numpy as np
 from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
+from scipy.optimize import root
 from tsfin.base.qlconverters import to_ql_date
 from tsfin.base.basetools import to_datetime
 from tsio import TimeSeries, TimeSeriesCollection
@@ -296,7 +297,7 @@ def ql_swaption_engine(model_class, term_structure):
         return model, engine
 
 
-def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_ts_collection):
+def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_ts_collection, use_scipy=False):
     """ Calibrate a Hull-White QuantLib model.
 
     Parameters
@@ -332,9 +333,14 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
         helper.setPricingEngine(engine)
         swaption_helpers.append(helper)
 
-    optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
-    end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
-    model.calibrate(swaption_helpers, optimization_method, end_criteria)
+    if use_scipy:
+        initial_condition = np.array(list(model.params()))
+        cost_function = cost_function_generator(model=model, helpers=swaption_helpers)
+        solution = root(cost_function, initial_condition, method='lm')
+    else:
+        optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
+        end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
+        model.calibrate(swaption_helpers, optimization_method, end_criteria)
     return model
 
 
@@ -369,3 +375,22 @@ def generate_discounts_array(paths, grid_dt):
         discounts = np.exp(-paths.cumsum(axis=1)*grid_dt)
         discounts[:, 0] = 1
     return discounts
+
+
+def cost_function_generator(model, helpers, norm=False):
+    """
+    function for creating a cost function to be used in by scipy solvers.
+    :param model: QuantLib.Model
+    :param helpers: QuantLib.CalibrationHelperBase
+    :param norm: bool
+    :return: cost function
+    """
+    def cost_function(params):
+        params_ = ql.Array(list(params))
+        model.setParams(params_)
+        error = [h.calibrationError() for h in helpers]
+        if norm:
+            return np.sqrt(np.sum(np.abs(error)))
+        else:
+            return error
+    return cost_function
