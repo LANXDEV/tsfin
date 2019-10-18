@@ -98,13 +98,14 @@ class BaseEquityProcess:
         if date <= base_date:
             base_date = date
         if zero_rate is None:
-            implied_curve = ql.ImpliedTermStructure(self.yield_curve.yield_curve_handle(date=base_date), date)
-            zero_rate = implied_curve.zeroRate(maturity, day_counter, compounding, frequency, True).rate()
+            zero_rate = self.yield_curve.forward_rate_date_to_date(date=base_date, to_date1=date, to_date2=maturity,
+                                                                   compounding=compounding, frequency=frequency,
+                                                                   day_counter=day_counter)
         else:
             zero_rate = float(zero_rate)
-        implied_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(ql.SimpleQuote(zero_rate)), day_counter,
-                                       compounding)
-        self.risk_free_handle.linkTo(implied_curve)
+        risk_free_curve = ql.FlatForward(0, calendar, ql.QuoteHandle(ql.SimpleQuote(zero_rate)), day_counter,
+                                         compounding)
+        self.risk_free_handle.linkTo(risk_free_curve)
 
     def volatility_update(self, volatility, calendar, day_counter):
 

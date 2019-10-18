@@ -38,9 +38,9 @@ class SpreadHandle:
         for ts in self.ts_collection:
             spread = ts.get_values(date, last_available=last_available)
             try:
-                spread_date_or_tenor = date + ql.Period(ts.ts_attributes[TENOR_PERIOD])
+                spread_date_or_tenor = ts.calendar.advance(date, ql.PeriodParser.parse(ts.ts_attributes[TENOR_PERIOD]))
             except AttributeError:
-                spread_date_or_tenor = to_ql_date(ts.ts_attributes[MATURITY_DATE])
+                spread_date_or_tenor = ts.calendar.adjust(to_ql_date(ts.ts_attributes[MATURITY_DATE]))
             day_counter = to_ql_day_counter(ts.ts_attributes[DAY_COUNTER])
             compounding = to_ql_compounding(ts.ts_attributes[COMPOUNDING])
             frequency = to_ql_frequency(ts.ts_attributes[FREQUENCY])
@@ -58,11 +58,12 @@ class SpreadHandle:
             return self.spreads[date]
 
     @conditional_vectorize('date', 'spread', 'tenor_date')
-    def update_spread_from_value(self, date, spread, tenor_date):
+    def update_spread_from_value(self, date, spread, tenor_date, day_counter, frequency, compounding):
 
         date = to_ql_date(date)
+        tenor_date = to_ql_date(tenor_date)
         self.spreads[date] = dict()
-        self.spreads[date][tenor_date] = ql.SimpleQuote(spread)
+        self.spreads[date][tenor_date] = ql.InterestRate(spread, day_counter, compounding, frequency)
         return self
 
 
