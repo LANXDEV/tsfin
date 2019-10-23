@@ -30,7 +30,7 @@ from tsfin.instruments.interest_rates.zerorate import ZeroRate
 from tsfin.instruments.interest_rates.ois import OISRate
 from tsfin.instruments.currencyfuture import CurrencyFuture
 from tsfin.instruments.interest_rates.swaprate import SwapRate
-from tsfin.instruments.interest_rates.swaption import SwapOption
+from tsfin.instruments.interest_rates.swaption import Swaption
 from tsfin.instruments.equities.equityoption import EquityOption
 from tsfin.instruments.interest_rates.cds import CDSRate
 from tsfin.instruments.interest_rates.eurodollar_future import EurodollarFuture
@@ -105,7 +105,7 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
         elif ts_type == SWAP_RATE:
             instrument = SwapRate(ts)
         elif ts_type == SWAP_VOL:
-            instrument = SwapOption(ts)
+            instrument = Swaption(ts)
         elif ts_type == OIS_RATE:
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
@@ -394,3 +394,16 @@ def cost_function_generator(model, helpers, norm=False):
         else:
             return error
     return cost_function
+
+
+def str_to_bool(arg):
+    """
+    Function to convert String True or False to boll
+    :param arg: str
+    :return: bool
+    """
+    arg = str(arg).upper()
+    if arg == 'TRUE':
+        return True
+    elif arg == 'FALSE':
+        return False

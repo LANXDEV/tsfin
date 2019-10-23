@@ -43,6 +43,18 @@ class EurodollarFuture(DepositRate):
         self.term_number = int(self.ts_attributes[TERM_NUMBER])
         self.term_period = to_ql_time_unit(self.ts_attributes[TERM_PERIOD])
         self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
+        self.final_price = ql.SimpleQuote(100)
+        self.convexity = ql.SimpleQuote(0)
+
+    def set_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._rate_helper = ql.FuturesRateHelper(ql.QuoteHandle(self.final_price), self._maturity, self.index,
+                                                 ql.QuoteHandle(self.convexity))
 
     @conditional_vectorize('date', 'start_quote', 'quote')
     def value(self, date, start_quote, quote, *args, **kwargs):
@@ -187,16 +199,18 @@ class EurodollarFuture(DepositRate):
             if not min_future_date < self._maturity < max_future_date:
                 return None
 
+        if self._rate_helper is None:
+            self.set_rate_helper()
+
         price = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(price):
             return None
         date = to_ql_date(date)
-        final_price = ql.SimpleQuote(price)
+        self.final_price.setValue(price)
 
         # convexity adjustment
         sigma = other_args.get('sigma', None)
         mean = other_args.get('mean', None)
-        convexity = ql.SimpleQuote(self.convexity_bias(date, future_price=price, sigma=sigma, mean=mean,
-                                                       last_available=last_available))
-        return ql.FuturesRateHelper(ql.QuoteHandle(final_price), self.maturity(date), self.index,
-                                    ql.QuoteHandle(convexity))
+        convexity = self.convexity_bias(date, future_price=price, sigma=sigma, mean=mean, last_available=last_available)
+        self.convexity.setValue(convexity)
+        return self._rate_helper

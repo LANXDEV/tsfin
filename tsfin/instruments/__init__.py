@@ -7,7 +7,7 @@ from tsfin.instruments.interest_rates.cds import CDSRate
 from tsfin.instruments.interest_rates.zerorate import ZeroRate
 from tsfin.instruments.interest_rates.eurodollar_future import EurodollarFuture
 from tsfin.instruments.interest_rates.swaprate import SwapRate
-from tsfin.instruments.interest_rates.swaption import SwapOption
+from tsfin.instruments.interest_rates.swaption import Swaption
 # Bonds
 from tsfin.instruments.bonds.fixedratebond import FixedRateBond
 from tsfin.instruments.bonds.callablefixedratebond import CallableFixedRateBond

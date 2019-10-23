@@ -43,6 +43,18 @@ class CDSRate(ZeroRate):
         self.recovery_rate = float(self.ts_attributes[RECOVERY_RATE])
         self.coupon = float(self.ts_attributes[COUPONS])
         self.base_yield = self.ts_attributes[BASE_SPREAD_TAG]
+        self._rate_helper = None
+
+    def set_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._rate_helper = ql.SpreadCdsHelper(ql.QuoteHandle(self.final_rate), self._tenor, 0, self.calendar,
+                                               self.frequency, self.business_convention, self.date_generation,
+                                               self.day_counter, self.recovery_rate, self.term_structure)
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
@@ -59,14 +71,14 @@ class CDSRate(ZeroRate):
         """
         return False
 
-    def cds_rate_helper(self, date, base_yield_curve_handle, last_available=True, *args, **kwargs):
+    def cds_rate_helper(self, date, base_yield_curve, last_available=True, *args, **kwargs):
         """ Helper for yield curve construction.
 
         Parameters
         ----------
         date: QuantLib.Date
             Reference date.
-        base_yield_curve_handle: YieldCurveTimeSeries.yield_curve_handle
+        base_yield_curve: YieldCurveTimeSeries.yield_curve_handle
             Yield curve used as base for discounting cash flows
         last_available: bool, optional
             Whether to use last available quotes if missing data.
@@ -81,9 +93,12 @@ class CDSRate(ZeroRate):
 
         if np.isnan(rate):
             return None
-        return ql.SpreadCdsHelper(ql.QuoteHandle(ql.SimpleQuote(rate)), self._tenor, 0, self.calendar, self.frequency,
-                                  self.business_convention, self.date_generation, self.day_counter, self.recovery_rate,
-                                  base_yield_curve_handle)
+        if self._rate_helper is None:
+            self.set_rate_helper()
+
+        self.final_rate.setValue(rate)
+        self.term_structure.linkTo(base_yield_curve)
+        return self._rate_helper
 
     @conditional_vectorize('date')
     def credit_default_swap(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,

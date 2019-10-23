@@ -34,11 +34,22 @@ class OISRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.overnight_index = to_ql_rate_index(self.ts_attributes[INDEX])
-        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
-        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
         self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
         self.payment_lag = int(self.ts_attributes[PAYMENT_LAG])
+        self.telescopic_value_dates = True
+        self.forward_start = ql.Period(0, ql.Days)
+
+    def set_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._rate_helper = ql.OISRateHelper(self.settlement_days, self._tenor, ql.QuoteHandle(self.final_rate),
+                                             self.index, self.term_structure, self.telescopic_value_dates,
+                                             self.payment_lag, self.business_convention, self.frequency, self.calendar,
+                                             self.forward_start, self.final_spread.value())
 
     def rate_helper(self, date, last_available=True, spread=0, *args, **kwargs):
         """ Rate helper object for yield curve building.
@@ -62,14 +73,14 @@ class OISRate(DepositRate):
         rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
-        date = to_ql_date(date)
         try:
             tenor = self.tenor(date)
         except ValueError:
             # Return none if the deposit rate can't retrieve a tenor (i.e. is expired).
             return None
-        final_rate = ql.SimpleQuote(rate)
-        return ql.OISRateHelper(self.settlement_days, tenor, ql.QuoteHandle(final_rate),
-                                self.overnight_index, ql.YieldTermStructureHandle(), True, 0,
-                                self.business_convention, self.frequency, self.calendar, ql.Period(0, ql.Days),
-                                float(spread))
+        if self._rate_helper is None:
+            self.set_rate_helper()
+
+        self.final_rate.setValue(rate)
+        self.final_spread.setValue(spread)
+        return self._rate_helper

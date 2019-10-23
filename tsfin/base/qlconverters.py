@@ -91,7 +91,7 @@ def to_ql_calendar(arg):
     """
 
     if arg.upper() == "US":
-        return ql.UnitedStates()
+        return ql.UnitedStates(ql.UnitedStates.GovernmentBond)
     elif arg.upper() in ["NYSE", "CE"]:
         return ql.UnitedStates(ql.UnitedStates.NYSE)
     elif arg.upper() == "FD":
@@ -180,7 +180,7 @@ def to_ql_business_convention(arg):
     elif arg.upper() == "PRECEDING":
         return ql.Following
     elif arg.upper() == "MODIFIEDPRECEDING":
-        return ql.ModifiedFollowing
+        return ql.ModifiedPreceding
     elif arg.upper() == "UNADJUSTED":
         return ql.Unadjusted
     else:
@@ -267,42 +267,6 @@ def to_ql_compounding(arg):
         raise ValueError("Unable to convert {} to a QuantLib compounding specification".format(arg))
 
 
-def to_ql_rate_index(arg, tenor=None):
-    """Converts a string with index name to the corresponding QuantLib object.
-
-    Parameters
-    ----------
-    arg: str
-    tenor: QuantLib.Period
-
-
-    Returns
-    -------
-    QuantLib.Libor
-    QuantLib.OvernightIndex
-
-    """
-    if arg.upper() == "USDLIBOR":
-        if tenor is not None:
-            return ql.USDLibor(tenor)
-        else:
-            return ql.USDLibor()
-    elif arg.upper() == "FEDFUNDS":
-        return ql.FedFunds()
-    elif arg.upper() == "EURLIBOR":
-        if tenor is not None:
-            return ql.EURLibor(tenor)
-        else:
-            return ql.EURLibor()
-    elif arg.upper() == "EONIA":
-        if tenor is not None:
-            return ql.Eonia(tenor)
-        else:
-            return ql.Eonia()
-    else:
-        raise ValueError("Unable to convert {} to a QuantLib index".format(arg))
-
-
 def to_ql_duration(arg):
     """Converts a string with duration name to the corresponding QuantLib object.
 
@@ -323,7 +287,7 @@ def to_ql_duration(arg):
         return ql.Duration.Macaulay
 
 
-def to_ql_float_index(index, tenor, yield_curve_handle=None):
+def to_ql_rate_index(index, tenor=None, yield_curve_handle=None):
     """Return the QuantLib.Index with the specified tenor and yield_curve_handle.
 
     Parameters
@@ -337,14 +301,14 @@ def to_ql_float_index(index, tenor, yield_curve_handle=None):
 
     Returns
     -------
-    QuantLib.Index
-
+    QuantLib.Libor
+    QuantLib.OvernightIndex
     """
 
     if index.upper() == "USDLIBOR":
         return ql.USDLibor(tenor, yield_curve_handle)
     elif index.upper() == "FEDFUNDS":
-        return ql.FedFunds(tenor, yield_curve_handle)
+        return ql.FedFunds(yield_curve_handle)
     elif index.upper() == "EURLIBOR":
         return ql.EURLibor(tenor, yield_curve_handle)
     elif index.upper() == "EONIA":

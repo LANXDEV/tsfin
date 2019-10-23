@@ -93,8 +93,8 @@ class CDSCurveTimeSeries:
         for ts in self.ts_collection:
             ts_name = ts.ts_name
             issue_date = self.issue_dates[ts_name]
-            yield_curve_handle = self.base_yield_curve_handle(date)
-            helper = ts.cds_rate_helper(date=date, base_yield_curve_handle=yield_curve_handle,
+            yield_curve = self.base_yield_curve.yield_curve(date)
+            helper = ts.cds_rate_helper(date=date, base_yield_curve=yield_curve,
                                         **self.other_rate_helper_args)
             if helper is not None:
                 maturity_date = helper.maturityDate()
@@ -230,41 +230,6 @@ class CDSCurveTimeSeries:
         """
         return ql.RelinkableDefaultProbabilityTermStructureHandle(self.hazard_curve(date))
 
-    @staticmethod
-    def _date_to_month_year(dt_object):
-        return str(dt_object.month()) + '-' + str(dt_object.year())
-
-    @conditional_vectorize('date')
-    def base_yield_curve_handle(self, date):
-        """ Handle for a yield curve at a given date.
-
-                Parameters
-                ----------
-                date: QuantLib.Date
-                    Date of the yield curve.
-
-                Returns
-                -------
-                QuantLib.YieldTermStructureHandle
-                    A handle to the yield term structure object.
-                """
-        return self.base_yield_curve.yield_curve_handle(date)
-
-    @conditional_vectorize('date')
-    def base_yield_curve_relinkable_handle(self, date):
-        """ A relinkable handle for a yield curve at a given date.
-
-        Parameters
-        ----------
-        date: Date of the yield curve.
-
-        Returns
-        -------
-        QuantLib.RelinkableYieldTermStructureHandle
-            A relinkable handle to the yield term structure object.
-        """
-        return self.base_yield_curve.yield_curve_relinkable_handle(date)
-
     @conditional_vectorize('date')
     def survival_probability_to_date(self, date, to_date):
         """
@@ -351,3 +316,7 @@ class CDSCurveTimeSeries:
         ql_period = ql.PeriodParser.parse(str(tenor).upper())
         to_date = self.calendar.advance(date, ql_period)
         return self.hazard_curve(date).hazardRate(to_date)
+
+    @staticmethod
+    def _date_to_month_year(dt_object):
+        return str(dt_object.month()) + '-' + str(dt_object.year())

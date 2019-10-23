@@ -273,7 +273,19 @@ class _BaseBond(Instrument):
         # TODO: Make it possible to have a list of different coupons.
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.redemption = float(self.ts_attributes[REDEMPTION])
-
+        # rate Helpers
+        self._clean_price = OrderedDict()
+        self._clean_price[self.maturity_date] = ql.SimpleQuote(100)
+        # Bond with coupons
+        self._bond_rate_helper = OrderedDict()
+        self._bond_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
+            self.day_counter, self.business_convention, self.redemption, self.issue_date)
+        # Zero Coupon bond
+        self._zero_coupon_rate_helper = OrderedDict()
+        self._zero_coupon_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, [0],
+            self.day_counter, self.business_convention, self.redemption, self.issue_date)
         self.bond = None  # Assigned later by the child bond class.
         self._bond_components_backup = None
 
@@ -439,22 +451,15 @@ class _BaseBond(Instrument):
         if curve_type == 'zero':
             if yield_type == 'ytw':
                 maturity = self.worst_date(date=reference_date_for_worst_date, quote=reference_quote_for_worst_date)
-                schedule = create_schedule_for_component(maturity, self.schedule, self.calendar,
-                                                         self.business_convention, self.coupon_frequency,
-                                                         self.date_generation, self.month_end)
             elif yield_type == 'ytw_rolling_call':
                 maturity = self.worst_date_rolling_call(date=reference_date_for_worst_date,
                                                         quote=reference_quote_for_worst_date)
-                schedule = create_schedule_for_component(maturity, self.schedule, self.calendar,
-                                                         self.business_convention, self.coupon_frequency,
-                                                         self.date_generation, self.month_end)
             else:
-                schedule = self.schedule
+                maturity = self.maturity_date
             clean_price = self.clean_price(date=date, quote=quote)
-            ql.Settings.instance().evaluationDate = date
-            return ql.FixedRateBondHelper(ql.QuoteHandle(ql.SimpleQuote(clean_price)), self.settlement_days,
-                                          self.face_amount, schedule, self.coupons, self.day_counter,
-                                          self.business_convention, self.redemption, self.issue_date)
+            self._clean_price[maturity].setValue(clean_price)
+            return self._bond_rate_helper[maturity]
+
         elif curve_type == 'par':
             if yield_type == 'ytw':
                 maturity = self.worst_date(date=reference_date_for_worst_date,
@@ -471,18 +476,11 @@ class _BaseBond(Instrument):
                                          quote=quote)
             else:
                 yld, maturity = self.ytm(date=date, quote=quote), self.maturity_date
-            # Convert rate to simple compounding because DepositRateHelper expects simple rates.
             time = self.day_counter.yearFraction(date, maturity)
-            tenor = ql.Period(self.calendar.businessDaysBetween(date, maturity), ql.Days)
-            simple_yld = ql.InterestRate(yld,
-                                         self.day_counter,
-                                         self.yield_quote_compounding,
-                                         self.yield_quote_frequency).equivalentRate(ql.Simple,
-                                                                                    ql.Annual,
-                                                                                    time).rate()
-            ql.Settings.instance().evaluationDate = date
-            return ql.DepositRateHelper(ql.QuoteHandle(ql.SimpleQuote(simple_yld)), tenor, 0, self.calendar,
-                                        self.business_convention, False, self.day_counter)
+            discount = ql.InterestRate(yld, self.day_counter, self.yield_quote_compounding,
+                                       self.yield_quote_frequency).discountFactor(time)
+            self._clean_price[maturity].setValue(discount*100)
+            return self._zero_coupon_rate_helper[maturity]
         else:
             raise ValueError("Bond class rate_helper method does not support curve_type = {}".format(curve_type))
 

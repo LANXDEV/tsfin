@@ -1,32 +1,57 @@
+# Copyright (C) 2016-2018 Lanx Capital Investimentos LTDA.
+#
+# This file is part of Time Series Finance (tsfin).
+#
+# Time Series Finance (tsfin) is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your option)
+# any later version.
+#
+# Time Series Finance (tsfin) is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
+"""
+A class for modelling interest rate swaption.
+"""
 import numpy as np
 import QuantLib as ql
 from tsfin.instruments.interest_rates.swaprate import SwapRate
-from tsfin.base.qlconverters import to_ql_float_index, to_ql_currency
-from tsfin.constants import MATURITY_TENOR, CURRENCY, FIXED_LEG_TENOR, INDEX
+from tsfin.constants import MATURITY_TENOR
 
 
-class SwapOption(SwapRate):
+class Swaption(SwapRate):
 
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.term_structure = ql.RelinkableYieldTermStructureHandle()
-        self.currency = to_ql_currency(self.ts_attributes[CURRENCY])
-        self.month_end = False
-        self.index = to_ql_float_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
+        # Database Attributes
         self.maturity_tenor = ql.PeriodParser.parse(self.ts_attributes[MATURITY_TENOR])
-        self.fixed_leg_tenor = ql.PeriodParser.parse(self.ts_attributes[FIXED_LEG_TENOR])
 
-    def rate_helper(self, date, last_available=True, *args, **kwargs):
+    def set_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
 
-        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._rate_helper = ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(self.final_rate),
+                                              self.index, self.fixed_leg_tenor, self.fixed_leg_day_counter,
+                                              self.index.dayCounter(), self.term_structure)
 
-        if np.isnan(rate):
-            return None
+    def is_expired(self, date, *args, **kwargs):
+        """ Returns False.
 
-        final_rate = ql.SimpleQuote(rate)
-        return ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(final_rate), self.index,
-                                 self.fixed_leg_tenor, self.day_counter, self.index.dayCounter(), self.term_structure)
+        Parameters
+        ----------
+        date: QuantLib.Date
+            The date.
 
-    def set_yield_curve(self, yield_curve):
-
-        self.term_structure.linkTo(yield_curve)
+        Returns
+        -------
+        bool
+            Always False.
+        """
+        return False

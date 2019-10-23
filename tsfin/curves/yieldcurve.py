@@ -118,13 +118,14 @@ class YieldCurveTimeSeries:
         dates = to_list(dates)
 
         for date in dates:
-            ql_date = to_ql_date(date)
-            helpers_dict = self._get_helpers(ql_date)
+            date = to_ql_date(date)
+            ql.Settings.instance().evaluationDate = date
+            helpers_dict = self._get_helpers(date)
 
             # Instantiate the curve
             helpers = [ndhelper.helper for ndhelper in helpers_dict.values()]
             # Just bootstrapping the nodes
-            piecewise_curve = self._piecewise_curve(date=ql_date,
+            piecewise_curve = self._piecewise_curve(date=date,
                                                     helpers=helpers,
                                                     day_counter=self.day_counter,
                                                     piecewise_type="linear_zero")
@@ -157,6 +158,7 @@ class YieldCurveTimeSeries:
         QuantLib.YieldTermStructure
             The yield curve at `date`.
         """
+        date = to_ql_date(date)
         try:
             # Try to return the yield curves if it is stored in self.yield_curves.
             return self.yield_curves[date]
@@ -321,7 +323,7 @@ class YieldCurveTimeSeries:
         return ql.ImpliedTermStructure(self.yield_curve_handle(date), future_date)
 
     @conditional_vectorize('date', 'to_date')
-    def discount_to_date(self, date, to_date):
+    def discount_to_date(self, date, to_date, extrapolate=True):
         """
         Parameters
         ----------
@@ -329,6 +331,8 @@ class YieldCurveTimeSeries:
             The date of the yield curve.
         to_date: QuantLib.Date, (c-vectorized)
             The maturity for the discount rate.
+        extrapolate: bool, optional
+            Whether to enable extrapolation.
 
         Returns
         -------
@@ -336,7 +340,26 @@ class YieldCurveTimeSeries:
             The discount rate for `to_date` implied by the yield curve at `date`.
         """
         to_date = to_ql_date(to_date)
-        return self.yield_curve(date).discount(to_date)
+        return self.yield_curve(date).discount(to_date, extrapolate)
+
+    @conditional_vectorize('date', 'to_time')
+    def discount_to_time(self, date, to_time, extrapolate=True):
+        """
+        Parameters
+        ----------
+        date: QuantLib.Date, (c-vectorized)
+            The date of the yield curve.
+        to_time: scalar, (c-vectorized)
+            Tenor in years of the zero rate.
+        extrapolate: bool, optional
+            Whether to enable extrapolation.
+
+        Returns
+        -------
+        scalar
+            The discount rate for `to_date` implied by the yield curve at `date`.
+        """
+        return self.yield_curve(date).discount(to_time, extrapolate)
 
     @conditional_vectorize('date', 'to_date')
     def zero_rate_to_date(self, date, to_date, compounding, frequency, extrapolate=True, day_counter=None):
