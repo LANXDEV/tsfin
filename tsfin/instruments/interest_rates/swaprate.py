@@ -20,8 +20,9 @@ A class for modelling interest rate swaps.
 import numpy as np
 import QuantLib as ql
 from tsfin.instruments.interest_rates.depositrate import DepositRate
-from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_rate_index, to_ql_business_convention
-from tsfin.constants import CALENDAR, INDEX, DAY_COUNTER, TENOR_PERIOD, BUSINESS_CONVENTION, INDEX_TENOR
+from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_business_convention
+from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, \
+    FIXED_LEG_TENOR
 
 
 class SwapRate(DepositRate):
@@ -37,14 +38,29 @@ class SwapRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        # Database Attributes
+        self.fixed_business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
         self.fixed_calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
-        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
-        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        self.fixed_leg_tenor = ql.PeriodParser.parse(self.ts_attributes[FIXED_LEG_TENOR])
+        self.fixed_leg_day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
+        # QuantLib Attributes
         self.index_calendar = self.index.fixingCalendar()
-        self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.calendar = ql.JointCalendar(self.fixed_calendar, self.index_calendar)
+        # Swap Index
+        self.swap_index = ql.SwapIndex(self.ts_name, self._tenor, self.settlement_days, self.currency, self.calendar,
+                                       self.fixed_leg_tenor, self.fixed_business_convention, self.fixed_leg_day_counter,
+                                       self.index)
+
+    def set_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._rate_helper = ql.SwapRateHelper(ql.QuoteHandle(self.final_rate), self.swap_index,
+                                              ql.QuoteHandle(self.final_spread))
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
@@ -78,10 +94,12 @@ class SwapRate(DepositRate):
         """
         # Returns None if impossible to obtain a rate helper from this time series
 
+        if self._rate_helper is None:
+            self.set_rate_helper()
+
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
 
         if np.isnan(rate):
             return None
-        final_rate = ql.SimpleQuote(rate)
-        return ql.SwapRateHelper(ql.QuoteHandle(final_rate), self._tenor, self.calendar, self.frequency,
-                                 self.business_convention, self.day_counter, self.index)
+        self.final_rate.setValue(rate)
+        return self._rate_helper

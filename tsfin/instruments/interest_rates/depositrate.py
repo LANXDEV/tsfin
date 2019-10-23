@@ -19,10 +19,10 @@ DepositRate class, to represent deposit rates.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.constants import TENOR_PERIOD, COMPOUNDING, FREQUENCY, ISSUE_DATE, INDEX, INDEX_TENOR
+from tsfin.constants import TENOR_PERIOD, COMPOUNDING, FREQUENCY, ISSUE_DATE, INDEX, INDEX_TENOR, CURRENCY
 from tsfin.base.instrument import default_arguments
 from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
-    to_ql_compounding, to_ql_rate_index
+    to_ql_compounding, to_ql_rate_index, to_ql_currency
 
 
 DEFAULT_ISSUE_DATE = ql.Date.minDate()
@@ -38,22 +38,48 @@ class DepositRate(Instrument):
     """
     def __init__(self, timeseries, *args, **kwargs):
         super().__init__(timeseries)
+        # Database Attributes
         try:
             self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
         except KeyError:
             self._tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._tenor)
-        self.calendar = self.index.fixingCalendar()
-        self.day_counter = self.index.dayCounter()
-        self.compounding = to_ql_compounding(self.ts_attributes[COMPOUNDING])
-        self.frequency = to_ql_frequency(self.ts_attributes[FREQUENCY])
-        self.business_convention = self.index.businessDayConvention()
-        self.fixing_days = self.index.fixingDays()
-        self.month_end = self.index.endOfMonth()
         try:
             self.issue_date = to_ql_date(to_datetime(self.ts_attributes[ISSUE_DATE]))
         except KeyError:
             self.issue_date = DEFAULT_ISSUE_DATE
+        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
+        self.compounding = to_ql_compounding(self.ts_attributes[COMPOUNDING])
+        self.frequency = to_ql_frequency(self.ts_attributes[FREQUENCY])
+        self.currency = to_ql_currency(self.ts_attributes[CURRENCY])
+        # QuantLib Objects
+        self.term_structure = ql.RelinkableYieldTermStructureHandle()
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
+        # QuantLib Attributes
+        self.calendar = self.index.fixingCalendar()
+        self.day_counter = self.index.dayCounter()
+        self.business_convention = self.index.businessDayConvention()
+        self.fixing_days = self.index.fixingDays()
+        self.month_end = self.index.endOfMonth()
+        # Rate Helper
+        self.final_rate = ql.SimpleQuote(0)
+        self.final_spread = ql.SimpleQuote(0)
+        # Defined
+        self._rate_helper = None
+
+    def set_yield_curve(self, yield_curve):
+
+        self.term_structure.linkTo(yield_curve)
+
+    def set_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._rate_helper = ql.DepositRateHelper(ql.QuoteHandle(self.final_rate), self._tenor, self.fixing_days,
+                                                 self.calendar, self.business_convention, self.month_end,
+                                                 self.day_counter)
 
     def is_expired(self, date, *args, **kwargs):
         """Check if the deposit rate is expired.
@@ -193,8 +219,10 @@ class DepositRate(Instrument):
             Rate helper for yield curve construction.
         """
         # Returns None if impossible to obtain a rate helper from this time series
+
         if self.is_expired(date):
             return None
+
         rate = self.timeseries.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
@@ -204,10 +232,11 @@ class DepositRate(Instrument):
         except ValueError:
             # Return none if the deposit rate can't retrieve a tenor (i.e. is expired).
             return None
+        if self._rate_helper is None:
+            self.set_rate_helper()
         # Convert rate to simple compounding because DepositRateHelper expects simple rates.
         time = self.day_counter.yearFraction(date, self.index.maturityDate(date))
         rate = ql.InterestRate(rate, self.day_counter, self.compounding,
                                self.frequency).equivalentRate(ql.Simple, ql.Annual, time).rate()
-        final_rate = ql.SimpleQuote(rate)
-        return ql.DepositRateHelper(ql.QuoteHandle(final_rate), tenor, self.fixing_days, self.calendar,
-                                    self.business_convention, self.month_end, self.day_counter)
+        self.final_rate.setValue(rate)
+        return self._rate_helper

@@ -59,6 +59,10 @@ class CallableFixedRateBond(_BaseBond):
                                                                     self.month_end, self.settlement_days,
                                                                     self.face_amount, self.coupons,
                                                                     self.day_counter, self.issue_date)
+            self._clean_price[call_date] = ql.SimpleQuote(100)
+            self._bond_rate_helper[call_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+                self._clean_price[call_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
+                self.day_counter, self.business_convention, self.redemption, self.issue_date)
 
         self.bond = ql.CallableFixedRateBond(self.settlement_days, self.face_amount, self.schedule, self.coupons,
                                              self.day_counter, self.business_convention, self.redemption,
