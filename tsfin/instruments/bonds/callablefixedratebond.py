@@ -59,16 +59,44 @@ class CallableFixedRateBond(_BaseBond):
                                                                     self.month_end, self.settlement_days,
                                                                     self.face_amount, self.coupons,
                                                                     self.day_counter, self.issue_date)
-            self._clean_price[call_date] = ql.SimpleQuote(100)
-            self._bond_rate_helper[call_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
-                self._clean_price[call_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
-                self.day_counter, self.business_convention, self.redemption, self.issue_date)
 
         self.bond = ql.CallableFixedRateBond(self.settlement_days, self.face_amount, self.schedule, self.coupons,
                                              self.day_counter, self.business_convention, self.redemption,
                                              self.issue_date, self.callability_schedule)
         self.bond_components[self.maturity_date] = self.bond  # Add the original bond to bond_components.
         self._bond_components_backup = self.bond_components.copy()
+
+    def set_coupon_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        for call_date, call_price in self.call_schedule.ts_values.iteritems():
+            self._clean_price[call_date] = ql.SimpleQuote(100)
+            self._bond_rate_helper[call_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+                self._clean_price[call_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
+                self.day_counter, self.business_convention, self.redemption, self.issue_date)
+        self._bond_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
+            self.day_counter, self.business_convention, self.redemption, self.issue_date)
+
+    def set_zero_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        for call_date, call_price in self.call_schedule.ts_values.iteritems():
+            self._clean_price[call_date] = ql.SimpleQuote(100)
+            self._zero_coupon_rate_helper[call_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+                self._clean_price[call_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
+                self.day_counter, self.business_convention, self.redemption, self.issue_date)
+        self._zero_coupon_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, [0],
+            self.day_counter, self.business_convention, self.redemption, self.issue_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')

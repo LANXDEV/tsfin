@@ -278,14 +278,8 @@ class _BaseBond(Instrument):
         self._clean_price[self.maturity_date] = ql.SimpleQuote(100)
         # Bond with coupons
         self._bond_rate_helper = OrderedDict()
-        self._bond_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
-            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
-            self.day_counter, self.business_convention, self.redemption, self.issue_date)
         # Zero Coupon bond
         self._zero_coupon_rate_helper = OrderedDict()
-        self._zero_coupon_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
-            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, [0],
-            self.day_counter, self.business_convention, self.redemption, self.issue_date)
         self.bond = None  # Assigned later by the child bond class.
         self._bond_components_backup = None
 
@@ -405,6 +399,28 @@ class _BaseBond(Instrument):
         """
         self.bond.setPricingEngine(pricing_engine)
 
+    def set_coupon_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._bond_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
+            self.day_counter, self.business_convention, self.redemption, self.issue_date)
+
+    def set_zero_rate_helper(self):
+        """Set Rate Helper if None has been defined yet
+
+        Returns
+        -------
+        QuantLib.RateHelper
+        """
+        self._zero_coupon_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
+            self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, [0],
+            self.day_counter, self.business_convention, self.redemption, self.issue_date)
+
     def rate_helper(self, date, last_available=True, yield_type='ytm', curve_type='zero', max_inactive_days=3,
                     reference_date_for_worst_date=None, **kwargs):
         """
@@ -458,9 +474,14 @@ class _BaseBond(Instrument):
                 maturity = self.maturity_date
             clean_price = self.clean_price(date=date, quote=quote)
             self._clean_price[maturity].setValue(clean_price)
-            return self._bond_rate_helper[maturity]
+            try:
+                return self._bond_rate_helper[maturity]
+            except KeyError:
+                self.set_coupon_rate_helper()
+                return self._bond_rate_helper[maturity]
 
         elif curve_type == 'par':
+
             if yield_type == 'ytw':
                 maturity = self.worst_date(date=reference_date_for_worst_date,
                                            quote=reference_quote_for_worst_date)
@@ -480,7 +501,11 @@ class _BaseBond(Instrument):
             discount = ql.InterestRate(yld, self.day_counter, self.yield_quote_compounding,
                                        self.yield_quote_frequency).discountFactor(time)
             self._clean_price[maturity].setValue(discount*100)
-            return self._zero_coupon_rate_helper[maturity]
+            try:
+                return self._zero_coupon_rate_helper[maturity]
+            except KeyError:
+                self.set_zero_rate_helper()
+                return self._zero_coupon_rate_helper[maturity]
         else:
             raise ValueError("Bond class rate_helper method does not support curve_type = {}".format(curve_type))
 
