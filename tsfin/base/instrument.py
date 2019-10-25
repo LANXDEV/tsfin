@@ -22,7 +22,8 @@ import numpy as np
 import QuantLib as ql
 from tsio.tools import to_datetime, at_index
 from tsfin.constants import QUOTES, TENOR_PERIOD, MATURITY_DATE
-from tsfin.base import conditional_vectorize, to_ql_date
+from tsfin.base.basetools import conditional_vectorize
+from tsfin.base.qlconverters import to_ql_date
 
 
 DEFAULT_ISSUE_DATE = ql.Date(1, 1, 2000)
