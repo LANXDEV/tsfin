@@ -20,7 +20,7 @@ A class for modelling interest rate processes and its different implementations
 import QuantLib as ql
 import numpy as np
 from tsfin.base import to_list, to_ql_date
-from tsfin.instruments.helper_classes import TimeGrid
+from tsfin.instruments import TimeGrid
 
 
 class PathGenerator:

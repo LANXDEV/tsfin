@@ -22,7 +22,7 @@ import QuantLib as ql
 from tsfin.constants import MATURITY_DATE, FUTURE_CONTRACT_SIZE, TICK_SIZE, TICK_VALUE, TERM_NUMBER, \
     TERM_PERIOD, SETTLEMENT_DAYS
 from tsfin.base import conditional_vectorize, to_datetime, to_ql_date, to_ql_time_unit
-from tsfin.instruments.interest_rates.depositrate import DepositRate
+from tsfin.instruments import DepositRate
 
 
 class EurodollarFuture(DepositRate):

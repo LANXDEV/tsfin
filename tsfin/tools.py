@@ -20,10 +20,8 @@ import QuantLib as ql
 import numpy as np
 from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
 from scipy.optimize import root
-from tsfin.base.qlconverters import to_ql_date
-from tsfin.base.basetools import to_datetime
 from tsio import TimeSeries, TimeSeriesCollection
-from tsfin.base.instrument import Instrument
+from tsfin.base import Instrument, to_datetime, to_ql_date
 from tsfin.instruments import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond, \
     DepositRate, ZeroRate, OISRate, CurrencyFuture, SwapRate, Swaption, EquityOption, CDSRate, EurodollarFuture, \
     Equity

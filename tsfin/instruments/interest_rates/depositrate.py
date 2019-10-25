@@ -20,12 +20,8 @@ DepositRate class, to represent deposit rates.
 import numpy as np
 import QuantLib as ql
 from tsfin.constants import TENOR_PERIOD, COMPOUNDING, FREQUENCY, ISSUE_DATE, INDEX, INDEX_TENOR, CURRENCY
-from tsfin.base.instrument import default_arguments
-from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
-    to_ql_compounding, to_ql_rate_index, to_ql_currency
-
-
-DEFAULT_ISSUE_DATE = ql.Date(1, 1, 2000)
+from tsfin.base import Instrument, default_arguments, conditional_vectorize, to_datetime, to_ql_date, to_ql_frequency, \
+    to_ql_compounding, to_ql_rate_index, to_ql_currency, DEFAULT_ISSUE_DATE
 
 
 class DepositRate(Instrument):

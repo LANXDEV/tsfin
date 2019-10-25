@@ -19,9 +19,8 @@ A class for modelling OIS (Overnight Indexed Swap) rates.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments.interest_rates.depositrate import DepositRate
-from tsfin.base.qlconverters import to_ql_date, to_ql_rate_index, to_ql_calendar
-from tsfin.constants import INDEX, TENOR_PERIOD, SETTLEMENT_DAYS, PAYMENT_LAG, CALENDAR
+from tsfin.instruments import DepositRate
+from tsfin.constants import SETTLEMENT_DAYS, PAYMENT_LAG
 
 
 class OISRate(DepositRate):

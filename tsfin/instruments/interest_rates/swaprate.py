@@ -19,10 +19,9 @@ A class for modelling interest rate swaps.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments.interest_rates.depositrate import DepositRate
-from tsfin.base.qlconverters import to_ql_calendar, to_ql_day_counter, to_ql_business_convention
-from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, \
-    FIXED_LEG_TENOR
+from tsfin.instruments import DepositRate
+from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention
+from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, FIXED_LEG_TENOR
 
 
 class SwapRate(DepositRate):

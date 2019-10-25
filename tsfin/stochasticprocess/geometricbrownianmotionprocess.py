@@ -18,7 +18,6 @@
 A class for modelling geometric brownian motion processes.
 """
 import QuantLib as ql
-from tsfin.base import to_ql_date
 
 
 class GeometricBrownianMotion:

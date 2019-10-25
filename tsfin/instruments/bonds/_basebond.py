@@ -21,7 +21,7 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 import QuantLib as ql
-from tsfin.base.instrument import Instrument
+from tsfin.base import Instrument
 from tsfin.constants import BOND_TYPE, QUOTE_TYPE, CURRENCY, YIELD_QUOTE_COMPOUNDING, \
     YIELD_QUOTE_FREQUENCY, ISSUE_DATE, FIRST_ACCRUAL_DATE, MATURITY_DATE, CALENDAR, \
     BUSINESS_CONVENTION, DATE_GENERATION, SETTLEMENT_DAYS, FACE_AMOUNT, COUPONS, DAY_COUNTER, REDEMPTION, DISCOUNT, \

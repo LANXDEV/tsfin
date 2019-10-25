@@ -21,9 +21,12 @@ from functools import wraps
 import numpy as np
 import QuantLib as ql
 from tsio.tools import to_datetime, at_index
-from tsfin.constants import QUOTES, TENOR_PERIOD, MATURITY_DATE, QUOTE_TYPE
+from tsfin.constants import QUOTES, TENOR_PERIOD, MATURITY_DATE
 from tsfin.base.basetools import conditional_vectorize
 from tsfin.base.qlconverters import to_ql_date
+
+
+DEFAULT_ISSUE_DATE = ql.Date(1, 1, 2000)
 
 
 def default_arguments(f):
