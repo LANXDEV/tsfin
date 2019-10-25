@@ -23,7 +23,7 @@ import QuantLib as ql
 from tsio.tools import at_index
 from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize, \
-    to_list, filter_series
+    filter_series
 
 
 def trunc(values, decs=0):

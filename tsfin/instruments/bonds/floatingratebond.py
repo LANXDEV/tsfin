@@ -18,8 +18,7 @@
 from functools import wraps
 import numpy as np
 import QuantLib as ql
-from tsfin.base.qlconverters import to_ql_date, to_ql_calendar, to_ql_currency, to_ql_ibor_index
-from tsfin.base.basetools import conditional_vectorize
+from tsfin.base import to_ql_date, to_ql_calendar, to_ql_currency, to_ql_ibor_index, conditional_vectorize
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments
 from tsfin.constants import INDEX_TENOR, FIXING_DAYS, CALENDAR, SPREAD
 

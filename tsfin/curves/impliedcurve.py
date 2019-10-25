@@ -19,8 +19,7 @@ ImpliedYieldCurveTimeSeries, a class to handle a time series of implied yield cu
 """
 
 import QuantLib as ql
-from tsfin.base.qlconverters import to_ql_date
-from tsfin.base.basetools import conditional_vectorize
+from tsfin.base import to_ql_date, conditional_vectorize
 
 
 class ImpliedYieldCurveTimeSeries:

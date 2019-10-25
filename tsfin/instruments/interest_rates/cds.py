@@ -19,10 +19,9 @@ A class for modelling interest rate swaps.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments.interest_rates.zerorate import ZeroRate
-from tsfin.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_date_generation
+from tsfin.instruments import ZeroRate
+from tsfin.base import to_ql_date, to_ql_frequency, to_ql_date_generation, conditional_vectorize
 from tsfin.constants import FREQUENCY, DATE_GENERATION, RECOVERY_RATE, COUPONS, BASE_SPREAD_TAG
-from tsfin.base.basetools import conditional_vectorize
 
 
 class CDSRate(ZeroRate):

@@ -21,11 +21,8 @@ YieldCurveTimeSeries, a class to handle a time series of yield curves.
 from collections import namedtuple, Counter
 from operator import attrgetter
 import QuantLib as ql
-from tsfin.base.qlconverters import to_ql_date
-from tsfin.base.basetools import to_list, conditional_vectorize, find_le, find_gt
+from tsfin.base import to_list, conditional_vectorize, find_le, find_gt, to_ql_date
 
-# The default issue_date is used if it is impossible to decide the issue date of a given TimeSeries.
-DEFAULT_ISSUE_DATE = ql.Date(1, 1, 2000)
 
 # ExtRateHelpers are a named tuples containing QuantLib RateHelpers objects and other meta-information.
 ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_date', 'helper'])

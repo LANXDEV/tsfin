@@ -20,8 +20,8 @@ Helper Classes for different Quantlib functions
 
 import QuantLib as ql
 from tsfin.constants import TENOR_PERIOD, MATURITY_DATE, DAY_COUNTER, COMPOUNDING, FREQUENCY
-from tsfin.base.qlconverters import to_ql_date, to_ql_day_counter, to_ql_calendar, to_ql_frequency, to_ql_compounding
-from tsfin.base.basetools import conditional_vectorize
+from tsfin.base import to_ql_date, to_ql_day_counter, to_ql_calendar, to_ql_frequency, to_ql_compounding, \
+    conditional_vectorize
 
 
 class SpreadHandle:

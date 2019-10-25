@@ -16,8 +16,7 @@
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 
 import QuantLib as ql
-from tsfin.base.qlconverters import to_ql_date, to_ql_short_rate_model
-from tsfin.base.basetools import conditional_vectorize, to_datetime
+from tsfin.base import conditional_vectorize, to_datetime,  to_ql_date, to_ql_short_rate_model
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_call_component
 from tsfin.constants import CALLED_DATE
 

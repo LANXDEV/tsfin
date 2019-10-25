@@ -20,8 +20,8 @@ A class for modelling Equity Options
 import QuantLib as ql
 import numpy as np
 from functools import wraps
-from tsfin.constants import CALENDAR, MATURITY_DATE, \
-    DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE
+from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, \
+    UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE
 from tsfin.base import Instrument, to_ql_date, conditional_vectorize, to_ql_calendar, to_ql_day_counter, to_datetime, \
     to_list
 

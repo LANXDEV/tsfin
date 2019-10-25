@@ -20,10 +20,8 @@ Currency class, to represent Currency Spot.
 import numpy as np
 import pandas as pd
 import QuantLib as ql
-from tsio.tools import at_index
 from tsfin.constants import CALENDAR, CURRENCY, BASE_CURRENCY, COUNTRY, BASE_CALENDAR
-from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize, \
-    to_list, filter_series
+from tsfin.base import Instrument, to_ql_calendar
 
 
 class Currency(Instrument):

@@ -21,12 +21,8 @@ YieldCurveTimeSeries, a class to handle a time series of yield curves.
 from collections import namedtuple, Counter
 from operator import attrgetter
 import QuantLib as ql
-from tsfin.constants import ISSUE_DATE_ATTRIBUTES
-from tsfin.base.qlconverters import to_ql_date
-from tsfin.base.basetools import to_list, conditional_vectorize, find_le, find_gt
+from tsfin.base import to_ql_date, to_list, conditional_vectorize, find_le, find_gt
 
-# The default issue_date is used if it is impossible to decide the issue date of a given TimeSeries.
-DEFAULT_ISSUE_DATE = ql.Date.minDate()
 
 # ExtRateHelpers are a named tuples containing QuantLib RateHelpers objects and other meta-information.
 ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_date', 'helper'])
@@ -68,31 +64,13 @@ class CDSCurveTimeSeries:
         self.ignore_errors = ignore_errors
         self.other_rate_helper_args = other_rate_helper_args
 
-        self.issue_dates = dict()
-        # TODO: Remove issue_dates inspection from this class and add an issue_date attribute to all instrument.
-        # classes.
-        # Saving the issue dates.
-        for ts in ts_collection:
-            issue_date = None
-            for issue_attribute in ISSUE_DATE_ATTRIBUTES:
-                try:
-                    issue_date = to_ql_date(ts.get_attribute(issue_attribute))
-                    break
-                except AttributeError:
-                    continue
-            if issue_date is None:
-                # If impossible to decide the issue_date, it remains equal to "None" as we initialized above.
-                # Then set it to 2000-01-01.
-                issue_date = DEFAULT_ISSUE_DATE
-            self.issue_dates[ts.ts_name] = issue_date
-
     def _get_helpers(self, date):
         helpers = dict()
         date = to_ql_date(date)
 
         for ts in self.ts_collection:
             ts_name = ts.ts_name
-            issue_date = self.issue_dates[ts_name]
+            issue_date = ts.issue_date
             yield_curve = self.base_yield_curve.yield_curve(date)
             helper = ts.cds_rate_helper(date=date, base_yield_curve=yield_curve,
                                         **self.other_rate_helper_args)

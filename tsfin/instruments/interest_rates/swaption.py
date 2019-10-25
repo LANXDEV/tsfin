@@ -19,7 +19,7 @@ A class for modelling interest rate swaption.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments.interest_rates.swaprate import SwapRate
+from tsfin.instruments import SwapRate
 from tsfin.constants import MATURITY_TENOR
 
 
