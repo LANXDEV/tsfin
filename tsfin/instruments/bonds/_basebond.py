@@ -1618,8 +1618,8 @@ class _BaseBond(Instrument):
         """
         bond = self.bond
         date = to_ql_date(date)
-        yield_curve = yield_curve_timeseries.yield_curve(date=date)
         ql.Settings.instance().evaluationDate = date
+        yield_curve = yield_curve_timeseries.yield_curve(date=date)
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
         clean_quote = quote

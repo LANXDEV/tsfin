@@ -25,7 +25,7 @@ from tsfin.base import Instrument, conditional_vectorize, to_datetime, to_ql_dat
     to_ql_compounding, to_ql_rate_index, to_ql_currency
 
 
-DEFAULT_ISSUE_DATE = ql.Date.minDate()
+DEFAULT_ISSUE_DATE = ql.Date(1, 1, 2000)
 
 
 class DepositRate(Instrument):
