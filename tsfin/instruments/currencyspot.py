@@ -17,8 +17,6 @@
 """
 Currency class, to represent Currency Spot.
 """
-import numpy as np
-import pandas as pd
 import QuantLib as ql
 from tsfin.constants import CALENDAR, CURRENCY, BASE_CURRENCY, COUNTRY, BASE_CALENDAR
 from tsfin.base import Instrument, to_ql_calendar

@@ -19,12 +19,14 @@ A class for modelling interest rate swaps.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.instruments import ZeroRate
-from tsfin.base import to_ql_date, to_ql_frequency, to_ql_date_generation, conditional_vectorize
-from tsfin.constants import FREQUENCY, DATE_GENERATION, RECOVERY_RATE, COUPONS, BASE_SPREAD_TAG
+from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
+from tsfin.base import to_ql_date, to_ql_frequency, to_ql_date_generation, conditional_vectorize, \
+    to_ql_business_convention, to_ql_calendar, to_ql_day_counter
+from tsfin.constants import FREQUENCY, DATE_GENERATION, RECOVERY_RATE, COUPONS, BASE_SPREAD_TAG, CALENDAR, \
+    TENOR_PERIOD, BUSINESS_CONVENTION, DAY_COUNTER, FIXING_DAYS
 
 
-class CDSRate(ZeroRate):
+class CDSRate(BaseInterestRate):
     """ Model for rolling interest cds rates (fixed tenor, like the ones quoted in Bloomberg).
 
     Parameters
@@ -37,21 +39,23 @@ class CDSRate(ZeroRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
+        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
+        self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
         self.date_generation = to_ql_date_generation(self.ts_attributes[DATE_GENERATION])
         self.coupon_frequency = ql.Period(to_ql_frequency(self.ts_attributes[FREQUENCY]))
         self.recovery_rate = float(self.ts_attributes[RECOVERY_RATE])
         self.coupon = float(self.ts_attributes[COUPONS])
         self.base_yield = self.ts_attributes[BASE_SPREAD_TAG]
-        self._rate_helper = None
-
-    def set_rate_helper(self):
-        """Set Rate Helper if None has been defined yet
-
-        Returns
-        -------
-        QuantLib.RateHelper
-        """
-        self._rate_helper = ql.SpreadCdsHelper(ql.QuoteHandle(self.final_rate), self._tenor, 0, self.calendar,
+        self.month_end = False
+        self.term_structure = ql.RelinkableYieldTermStructureHandle()
+        # Rate Helper
+        self.helper_rate = ql.SimpleQuote(0)
+        self.helper_spread = ql.SimpleQuote(0)
+        self.helper_convexity = ql.SimpleQuote(0)
+        self._rate_helper = ql.SpreadCdsHelper(ql.QuoteHandle(self.helper_rate), self._tenor, 0, self.calendar,
                                                self.frequency, self.business_convention, self.date_generation,
                                                self.day_counter, self.recovery_rate, self.term_structure)
 
@@ -95,7 +99,7 @@ class CDSRate(ZeroRate):
         if self._rate_helper is None:
             self.set_rate_helper()
 
-        self.final_rate.setValue(rate)
+        self.helper_rate.setValue(rate)
         self.term_structure.linkTo(base_yield_curve)
         return self._rate_helper
 

@@ -17,14 +17,15 @@
 """
 A class for modelling interest rate swaps.
 """
-import numpy as np
+from copy import copy
 import QuantLib as ql
-from tsfin.instruments import DepositRate
-from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention
-from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, FIXED_LEG_TENOR
+from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
+from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_rate_index
+from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, FIXED_LEG_TENOR, INDEX, \
+    INDEX_TENOR
 
 
-class SwapRate(DepositRate):
+class SwapRate(BaseInterestRate):
     """ Model for rolling interest rate swap rates (fixed tenor, like the ones quoted in Bloomberg).
 
     Parameters
@@ -37,29 +38,32 @@ class SwapRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        # Database Attributes
+        self._maturity = None
+        # Swap Database Attributes
+        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         self.fixed_business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
         self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
         self.fixed_calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.fixed_leg_tenor = ql.PeriodParser.parse(self.ts_attributes[FIXED_LEG_TENOR])
         self.fixed_leg_day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
+        # QuantLib Objects
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
         # QuantLib Attributes
-        self.index_calendar = self.index.fixingCalendar()
-        self.calendar = ql.JointCalendar(self.fixed_calendar, self.index_calendar)
+        self.calendar = ql.JointCalendar(self.fixed_calendar, self.index.fixingCalendar())
+        self.day_counter = self.index.dayCounter()
+        self.business_convention = self.index.businessDayConvention()
+        self.fixing_days = self.index.fixingDays()
+        self.month_end = self.index.endOfMonth()
         # Swap Index
         self.swap_index = ql.SwapIndex(self.ts_name, self._tenor, self.settlement_days, self.currency, self.calendar,
                                        self.fixed_leg_tenor, self.fixed_business_convention, self.fixed_leg_day_counter,
                                        self.index)
-
-    def set_rate_helper(self):
-        """Set Rate Helper if None has been defined yet
-
-        Returns
-        -------
-        QuantLib.RateHelper
-        """
-        self._rate_helper = ql.SwapRateHelper(ql.QuoteHandle(self.final_rate), self.swap_index,
-                                              ql.QuoteHandle(self.final_spread))
+        # Rate Helper
+        self.helper_rate = ql.SimpleQuote(0)
+        self.helper_spread = ql.SimpleQuote(0)
+        self.helper_convexity = ql.SimpleQuote(0)
+        self._rate_helper = ql.SwapRateHelper(ql.QuoteHandle(self.helper_rate), self.swap_index,
+                                              ql.QuoteHandle(self.helper_spread))
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
@@ -75,30 +79,3 @@ class SwapRate(DepositRate):
             Always False.
         """
         return False
-
-    def rate_helper(self, date, last_available=True, *args, **kwargs):
-        """ Helper for yield curve construction.
-
-        Parameters
-        ----------
-        date: QuantLib.Date
-            Reference date.
-        last_available: bool, optional
-            Whether to use last available quotes if missing data.
-
-        Returns
-        -------
-        QuantLib.RateHelper
-            Rate helper for yield curve construction.
-        """
-        # Returns None if impossible to obtain a rate helper from this time series
-
-        if self._rate_helper is None:
-            self.set_rate_helper()
-
-        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
-
-        if np.isnan(rate):
-            return None
-        self.final_rate.setValue(rate)
-        return self._rate_helper

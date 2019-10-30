@@ -306,13 +306,25 @@ def to_ql_rate_index(index, tenor=None, yield_curve_handle=None):
     """
 
     if index.upper() == "USDLIBOR":
-        return ql.USDLibor(tenor, yield_curve_handle)
+        if yield_curve_handle is None:
+            return ql.USDLibor(tenor)
+        else:
+            return ql.USDLibor(tenor, yield_curve_handle)
     elif index.upper() == "FEDFUNDS":
-        return ql.FedFunds(yield_curve_handle)
+        if yield_curve_handle is None:
+            return ql.FedFunds()
+        else:
+            return ql.FedFunds(yield_curve_handle)
     elif index.upper() == "EURLIBOR":
-        return ql.EURLibor(tenor, yield_curve_handle)
+        if yield_curve_handle is None:
+            return ql.EURLibor(tenor)
+        else:
+            return ql.EURLibor(tenor, yield_curve_handle)
     elif index.upper() == "EONIA":
-        return ql.Eonia(tenor, yield_curve_handle)
+        if yield_curve_handle is None:
+            return ql.Eonia(tenor)
+        else:
+            return ql.Eonia(tenor, yield_curve_handle)
 
 
 def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,

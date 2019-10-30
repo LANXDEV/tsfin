@@ -19,8 +19,48 @@ A class for modelling interest rate processes and its different implementations
 """
 import QuantLib as ql
 import numpy as np
-from tsfin.base import to_list, to_ql_date
-from tsfin.instruments import TimeGrid
+from tsfin.base import to_list, to_ql_date, to_ql_calendar, to_ql_day_counter
+
+
+# class for hosting schedule-related information (dates, times)
+class TimeGrid:
+
+    def __init__(self, start_date, end_date, tenor, calendar, day_counter):
+        self.start_date = to_ql_date(start_date)
+        self.end_date = to_ql_date(end_date)
+        self.tenor = ql.PeriodParser.parse(tenor)
+        self.calendar = to_ql_calendar(calendar)
+        self.day_counter = to_ql_day_counter(day_counter)
+        self.schedule = ql.Schedule(self.start_date, self.end_date, self.tenor, self.calendar, ql.Unadjusted,
+                                    ql.Unadjusted, ql.DateGeneration.Forward, False)
+
+    def get_times(self):
+        # get list of scheduled times
+        return [self.day_counter.yearFraction(self.schedule.startDate(), date) for date in self.schedule]
+
+    def get_dates(self):
+        # get list of scheduled dates
+        return [date for date in self.schedule]
+
+    def get_maturity(self):
+        # get maturity in time units
+        return self.day_counter.yearFraction(self.schedule.startDate(), self.schedule.endDate())
+
+    def get_steps(self):
+        # get number of steps in schedule
+        return self.get_size() - 1
+
+    def get_size(self):
+        # get total number of items in schedule
+        return len(self.schedule)
+
+    def get_time_grid(self):
+        # get QuantLib TimeGrid object, constructed by using list of scheduled times
+        return ql.TimeGrid(self.get_times(), self.get_size())
+
+    def get_dt(self):
+        # get constant time step
+        return self.get_maturity() / self.get_steps()
 
 
 class PathGenerator:

@@ -193,7 +193,10 @@ def ql_option_engine(engine_name=None, process=None, model_name=None, time_steps
         if exercise_type == 'EUROPEAN':
             return ql.FDDividendEuropeanEngine(process, time_steps, grid_points)
         elif exercise_type == 'AMERICAN':
-            return ql.FDDividendAmericanEngineT(process, time_steps, grid_points)
+            try:
+                return ql.FDDividendAmericanEngineT(process, time_steps, grid_points)
+            except AttributeError:
+                return ql.FDDividendAmericanEngine(process, time_steps, grid_points)
     else:
         return None
 

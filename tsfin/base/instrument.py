@@ -26,9 +26,6 @@ from tsfin.base.basetools import conditional_vectorize
 from tsfin.base.qlconverters import to_ql_date
 
 
-DEFAULT_ISSUE_DATE = ql.Date(1, 1, 2000)
-
-
 def default_arguments(f):
     """ Decorator to set default arguments for :py:class:`TimeSeries` methods.
 
