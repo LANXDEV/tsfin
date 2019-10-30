@@ -19,12 +19,13 @@ import pandas as pd
 import QuantLib as ql
 import numpy as np
 from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
-from scipy.optimize import root
 from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base import Instrument, to_datetime, to_ql_date
-from tsfin.instruments import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond, \
-    DepositRate, ZeroRate, OISRate, CurrencyFuture, SwapRate, Swaption, EquityOption, CDSRate, EurodollarFuture, \
-    Equity
+from tsfin.instruments.interest_rates import DepositRate, ZeroRate, OISRate, SwapRate, Swaption, CDSRate, \
+    EurodollarFuture
+from tsfin.instruments.equities import Equity, EquityOption
+from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond
+from tsfin.instruments import CurrencyFuture, Currency
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF, CONTINGENTCONVERTIBLE
@@ -287,7 +288,7 @@ def ql_swaption_engine(model_class, term_structure):
         return model, engine
 
 
-def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_ts_collection, use_scipy=False):
+def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_ts_collection):
     """ Calibrate a Hull-White QuantLib model.
 
     Parameters
@@ -323,14 +324,9 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
         helper.setPricingEngine(engine)
         swaption_helpers.append(helper)
 
-    if use_scipy:
-        initial_condition = np.array(list(model.params()))
-        cost_function = cost_function_generator(model=model, helpers=swaption_helpers)
-        solution = root(cost_function, initial_condition, method='lm')
-    else:
-        optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
-        end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
-        model.calibrate(swaption_helpers, optimization_method, end_criteria)
+    optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
+    end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
+    model.calibrate(swaption_helpers, optimization_method, end_criteria)
     return model
 
 
@@ -397,3 +393,57 @@ def str_to_bool(arg):
         return True
     elif arg == 'FALSE':
         return False
+
+
+def cash_flows_from_df(df):
+    """
+    return the cash flows for IRR calculation
+    :param df: Pandas.DataFrame
+        DataFrame with the cash flows
+    :return: list, int, date
+    """
+    first_amount = df.first('1D').values
+    first_date = df.first('1D').index[0]
+
+    df = df.sort_index()
+    cash_flow = list()
+
+    if first_amount > 0:
+        df *= -1
+    first_amount = np.abs(first_amount)
+
+    for date, value in df.iteritems():
+        cash_flow.append(ql.SimpleCashFlow(float(value), to_ql_date(date)))
+
+    return cash_flow, first_amount, first_date
+
+
+def ql_irr(cash_flow, first_amount, first_date):
+    """
+    Calculate the IRR from a given cash flow
+    :param cash_flow: list
+        List of QuantLib.SimpleCashFlow (s)
+    :param first_amount: Int
+        The Amount of the first cash flow
+    :param first_date: Date-Like
+        The date of the first cash flow
+    :return: float
+    """
+
+    ql.Settings.instance().evaluationDate = to_ql_date(first_date)
+    custom_bond = ql.Bond(0, ql.NullCalendar(), 100, ql.Date(), ql.Date(), cash_flow)
+    fixed_rate = custom_bond.bondYield(float(first_amount), ql.Actual365Fixed(), ql.Compounded, ql.Annual)
+
+    return fixed_rate
+
+
+def ql_irr_from_df(df):
+    """
+    Consolidated function to calculate the IRR from a Pandas.DataFrame
+    :param df: Pandas.DataFrame
+    :return: float
+        The IRR
+    """
+    cash_flow, first_amount, first_date = cash_flows_from_df(df)
+    rate = ql_irr(cash_flow=cash_flow, first_amount=first_amount, first_date=first_date)
+    return rate

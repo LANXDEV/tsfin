@@ -121,12 +121,13 @@ class YieldCurveTimeSeries:
             # Instantiate the curve
             helpers = [ndhelper.helper for ndhelper in helpers_dict.values()]
             # Just bootstrapping the nodes
-            piecewise_curve = self._piecewise_curve(date=date,
-                                                    helpers=helpers,
-                                                    day_counter=self.day_counter,
-                                                    piecewise_type="linear_zero")
+            node_dates, node_rates = self._piecewise_curve(date=date,
+                                                           helpers=helpers,
+                                                           day_counter=self.day_counter,
+                                                           piecewise_type="linear_zero")
             # Freezing the curve so that nothing is bothered by changing the singleton (global variable) evaluationDate.
-            yield_curve = self._interpolation(piecewise_curve=piecewise_curve,
+            yield_curve = self._interpolation(node_dates=node_dates,
+                                              node_rates=node_rates,
                                               day_counter=self.day_counter,
                                               calendar=self.calendar,
                                               compounding=ql.Continuous,
@@ -559,16 +560,19 @@ class YieldCurveTimeSeries:
             piecewise_curve = ql.PiecewiseLogLinearDiscount(date, helpers, day_counter)
         else:
             piecewise_curve = ql.PiecewiseLinearZero(date, helpers, day_counter)
-        return piecewise_curve
+        node_dates, node_rates = zip(*piecewise_curve.nodes())
+        return node_dates, node_rates
 
     @staticmethod
-    def _interpolation(piecewise_curve, day_counter, calendar, compounding, interpolation_type):
+    def _interpolation(node_dates, node_rates, day_counter, calendar, compounding, interpolation_type):
 
         """
         Parameters
         ----------
-        piecewise_curve: QuantLib.PiecewiseCurve
-            The curve to extract the nodes (rates and dates)
+        node_dates: list
+            The list of dates
+        node_rates: list
+            The list of rates
         day_counter: QuantLib.DayCounter
             The curve day count
         calendar: QuantLib.Calendar
@@ -581,8 +585,6 @@ class YieldCurveTimeSeries:
         -------
             QuantLib.YieldTermStructure
         """
-
-        node_dates, node_rates = zip(*piecewise_curve.nodes())
         if interpolation_type == "cubic_zero":
             yield_curve = ql.CubicZeroCurve(node_dates, node_rates,
                                             day_counter,

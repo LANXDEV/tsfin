@@ -17,27 +17,40 @@
 """
 A class for modelling interest rate swaption.
 """
-import numpy as np
 import QuantLib as ql
-from tsfin.instruments import SwapRate
-from tsfin.constants import MATURITY_TENOR
+from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
+from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_rate_index
+from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, FIXED_LEG_TENOR, INDEX, \
+    MATURITY_TENOR, INDEX_TENOR
 
 
-class Swaption(SwapRate):
+class Swaption(BaseInterestRate):
 
     def __init__(self, timeseries):
         super().__init__(timeseries)
-        # Database Attributes
+        self._maturity = None
+        # Swaption Database Attributes
+        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
+        self.fixed_business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
+        self.fixed_calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self.fixed_leg_tenor = ql.PeriodParser.parse(self.ts_attributes[FIXED_LEG_TENOR])
+        self.fixed_leg_day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.maturity_tenor = ql.PeriodParser.parse(self.ts_attributes[MATURITY_TENOR])
-
-    def set_rate_helper(self):
-        """Set Rate Helper if None has been defined yet
-
-        Returns
-        -------
-        QuantLib.RateHelper
-        """
-        self._rate_helper = ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(self.final_rate),
+        # QuantLib Objects
+        self.term_structure = ql.RelinkableYieldTermStructureHandle()
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        # QuantLib Attributes
+        self.calendar = ql.JointCalendar(self.fixed_calendar, self.index.fixingCalendar())
+        self.day_counter = self.index.dayCounter()
+        self.business_convention = self.index.businessDayConvention()
+        self.fixing_days = self.index.fixingDays()
+        self.month_end = self.index.endOfMonth()
+        # Rate Helper
+        self.helper_rate = ql.SimpleQuote(0)
+        self.helper_spread = ql.SimpleQuote(0)
+        self.helper_convexity = ql.SimpleQuote(0)
+        self._rate_helper = ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(self.helper_rate),
                                               self.index, self.fixed_leg_tenor, self.fixed_leg_day_counter,
                                               self.index.dayCounter(), self.term_structure)
 

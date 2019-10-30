@@ -17,13 +17,13 @@
 """
 A class for modelling OIS (Overnight Indexed Swap) rates.
 """
-import numpy as np
 import QuantLib as ql
-from tsfin.instruments import DepositRate
-from tsfin.constants import SETTLEMENT_DAYS, PAYMENT_LAG
+from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
+from tsfin.base import to_ql_rate_index
+from tsfin.constants import SETTLEMENT_DAYS, INDEX, PAYMENT_LAG, INDEX_TENOR
 
 
-class OISRate(DepositRate):
+class OISRate(BaseInterestRate):
     """ Class to model OIS (Overnight Indexed Swap) rates.
 
     Parameters
@@ -33,53 +33,22 @@ class OISRate(DepositRate):
     """
     def __init__(self, timeseries):
         super().__init__(timeseries)
+        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
         self.payment_lag = int(self.ts_attributes[PAYMENT_LAG])
         self.telescopic_value_dates = True
-        self.forward_start = ql.Period(0, ql.Days)
-
-    def set_rate_helper(self):
-        """Set Rate Helper if None has been defined yet
-
-        Returns
-        -------
-        QuantLib.RateHelper
-        """
-        self._rate_helper = ql.OISRateHelper(self.settlement_days, self._tenor, ql.QuoteHandle(self.final_rate),
-                                             self.index, self.term_structure, self.telescopic_value_dates,
-                                             self.payment_lag, self.business_convention, self.frequency, self.calendar,
-                                             self.forward_start, self.final_spread.value())
-
-    def rate_helper(self, date, last_available=True, spread=0, *args, **kwargs):
-        """ Rate helper object for yield curve building.
-
-        Parameters
-        ----------
-        date: QuantLib.Date
-            Reference date.
-        last_available: bool
-            Whether to use last available information if missing data.
-        spread: float
-            The spread to be added to the OIS rate. Default 0.
-        Returns
-        -------
-        QuantLib.RateHelper
-            Rate helper object for yield curve construction.
-        """
-        # Returns None if impossible to obtain a rate helper from this time series
-        if self.is_expired(date):
-            return None
-        rate = self.get_values(index=date, last_available=last_available, fill_value=np.nan)
-        if np.isnan(rate):
-            return None
-        try:
-            tenor = self.tenor(date)
-        except ValueError:
-            # Return none if the deposit rate can't retrieve a tenor (i.e. is expired).
-            return None
-        if self._rate_helper is None:
-            self.set_rate_helper()
-
-        self.final_rate.setValue(rate)
-        self.final_spread.setValue(spread)
-        return self._rate_helper
+        # QuantLib Objects
+        self.term_structure = ql.RelinkableYieldTermStructureHandle()
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        # QuantLib Attributes
+        self.calendar = self.index.fixingCalendar()
+        self.day_counter = self.index.dayCounter()
+        self.business_convention = self.index.businessDayConvention()
+        self.fixing_days = self.index.fixingDays()
+        self.month_end = self.index.endOfMonth()
+        # Rate Helper
+        self.helper_rate = ql.SimpleQuote(100)
+        self.helper_spread = ql.SimpleQuote(0)
+        self.helper_convexity = ql.SimpleQuote(0)
+        self._rate_helper = ql.OISRateHelper(self.settlement_days, self._tenor, ql.QuoteHandle(self.helper_rate),
+                                             self.index, self.term_structure, self.telescopic_value_dates)

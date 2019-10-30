@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import QuantLib as ql
 from tsio import TimeSeries, TimeSeriesCollection
-from tsfin.instruments import DepositRate
+from tsfin.instruments.interest_rates.depositrate import DepositRate
 from tsfin.curves import YieldCurveTimeSeries
 from tsfin.base import to_ql_date, to_list, find_le, find_gt
 

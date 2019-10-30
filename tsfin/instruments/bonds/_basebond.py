@@ -21,14 +21,12 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 import QuantLib as ql
-from tsfin.base import Instrument
+from tsfin.base import Instrument, to_ql_date, to_ql_frequency, to_ql_business_convention, to_ql_calendar, \
+    to_ql_compounding, to_ql_date_generation, to_ql_day_counter, conditional_vectorize, find_le, to_datetime
 from tsfin.constants import BOND_TYPE, QUOTE_TYPE, CURRENCY, YIELD_QUOTE_COMPOUNDING, \
     YIELD_QUOTE_FREQUENCY, ISSUE_DATE, FIRST_ACCRUAL_DATE, MATURITY_DATE, CALENDAR, \
     BUSINESS_CONVENTION, DATE_GENERATION, SETTLEMENT_DAYS, FACE_AMOUNT, COUPONS, DAY_COUNTER, REDEMPTION, DISCOUNT, \
     YIELD, CLEAN_PRICE, DIRTY_PRICE, COUPON_FREQUENCY, EXPIRE_DATE_OVRD, YIELD_CURVE
-from tsfin.base.qlconverters import to_ql_date, to_ql_frequency, to_ql_business_convention, to_ql_calendar, \
-    to_ql_compounding, to_ql_date_generation, to_ql_day_counter
-from tsfin.base.basetools import conditional_vectorize, find_le, to_datetime
 
 
 def default_arguments(f):
@@ -275,7 +273,6 @@ class _BaseBond(Instrument):
         self.redemption = float(self.ts_attributes[REDEMPTION])
         # rate Helpers
         self._clean_price = OrderedDict()
-        self._clean_price[self.maturity_date] = ql.SimpleQuote(100)
         # Bond with coupons
         self._bond_rate_helper = OrderedDict()
         # Zero Coupon bond
@@ -406,6 +403,7 @@ class _BaseBond(Instrument):
         -------
         QuantLib.RateHelper
         """
+        self._clean_price[self.maturity_date] = ql.SimpleQuote(100)
         self._bond_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
             self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
             self.day_counter, self.business_convention, self.redemption, self.issue_date)
@@ -417,6 +415,7 @@ class _BaseBond(Instrument):
         -------
         QuantLib.RateHelper
         """
+        self._clean_price[self.maturity_date] = ql.SimpleQuote(100)
         self._zero_coupon_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
             self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, [0],
             self.day_counter, self.business_convention, self.redemption, self.issue_date)
@@ -473,11 +472,12 @@ class _BaseBond(Instrument):
             else:
                 maturity = self.maturity_date
             clean_price = self.clean_price(date=date, quote=quote)
-            self._clean_price[maturity].setValue(clean_price)
             try:
+                self._clean_price[maturity].setValue(clean_price)
                 return self._bond_rate_helper[maturity]
             except KeyError:
                 self.set_coupon_rate_helper()
+                self._clean_price[maturity].setValue(clean_price)
                 return self._bond_rate_helper[maturity]
 
         elif curve_type == 'par':
@@ -500,11 +500,12 @@ class _BaseBond(Instrument):
             time = self.day_counter.yearFraction(date, maturity)
             discount = ql.InterestRate(yld, self.day_counter, self.yield_quote_compounding,
                                        self.yield_quote_frequency).discountFactor(time)
-            self._clean_price[maturity].setValue(discount*100)
             try:
+                self._clean_price[maturity].setValue(discount * 100)
                 return self._zero_coupon_rate_helper[maturity]
             except KeyError:
                 self.set_zero_rate_helper()
+                self._clean_price[maturity].setValue(discount * 100)
                 return self._zero_coupon_rate_helper[maturity]
         else:
             raise ValueError("Bond class rate_helper method does not support curve_type = {}".format(curve_type))
@@ -1618,8 +1619,8 @@ class _BaseBond(Instrument):
         """
         bond = self.bond
         date = to_ql_date(date)
-        ql.Settings.instance().evaluationDate = date
         yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        ql.Settings.instance().evaluationDate = date
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
         clean_quote = quote

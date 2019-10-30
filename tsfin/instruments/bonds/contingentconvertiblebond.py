@@ -18,7 +18,7 @@
 import QuantLib as ql
 from tsfin.base import to_datetime, to_list, to_ql_date
 from tsfin.instruments.bonds._basebond import create_schedule_for_component
-from tsfin.instruments import FloatingRateBond
+from tsfin.instruments.bonds.floatingratebond import FloatingRateBond
 from tsfin.constants import COUPON_TYPE_RESET_DATE, CALLED_DATE, COUPONS
 
 
