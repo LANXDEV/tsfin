@@ -1617,25 +1617,23 @@ class _BaseBond(Instrument):
         scalar
             Bond's z-spread to maturity relative to `yield_curve_timeseries`.
         """
-        bond = self.bond
         date = to_ql_date(date)
-        yield_curve = yield_curve_timeseries.yield_curve(date=date)
-        ql.Settings.instance().evaluationDate = date
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
-        clean_quote = quote
         if self.is_expired(settlement_date):
             return np.nan
+        yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        ql.Settings.instance().evaluationDate = date
         if self.quote_type == CLEAN_PRICE:
-            clean_quote = quote
+            pass
         elif self.quote_type == DIRTY_PRICE:
-            clean_quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
+            quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
         elif self.quote_type == YIELD:
-            clean_quote = self.clean_price_from_ytm(last=last, quote=quote, date=date, day_counter=day_counter,
-                                                    compounding=compounding, frequency=frequency,
-                                                    bypass_set_floating_rate_index=True,
-                                                    settlement_days=settlement_days)
-        z_spread = ql.BondFunctions_zSpread(bond, clean_quote, yield_curve, day_counter, compounding, frequency,
+            quote = self.clean_price_from_ytm(last=last, quote=quote, date=date, day_counter=day_counter,
+                                              compounding=compounding, frequency=frequency,
+                                              bypass_set_floating_rate_index=True,
+                                              settlement_days=settlement_days)
+        z_spread = ql.BondFunctions_zSpread(self.bond, quote, yield_curve, day_counter, compounding, frequency,
                                             settlement_date)
         return z_spread
 
