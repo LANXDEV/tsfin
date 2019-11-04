@@ -39,7 +39,7 @@ class Swaption(BaseInterestRate):
         self.maturity_tenor = ql.PeriodParser.parse(self.ts_attributes[MATURITY_TENOR])
         # QuantLib Objects
         self.term_structure = ql.RelinkableYieldTermStructureHandle()
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
         # QuantLib Attributes
         self.calendar = ql.JointCalendar(self.fixed_calendar, self.index.fixingCalendar())
         self.day_counter = self.index.dayCounter()
