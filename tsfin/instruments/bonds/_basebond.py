@@ -1633,9 +1633,8 @@ class _BaseBond(Instrument):
                                               compounding=compounding, frequency=frequency,
                                               bypass_set_floating_rate_index=True,
                                               settlement_days=settlement_days)
-        z_spread = ql.BondFunctions_zSpread(self.bond, quote, yield_curve, day_counter, compounding, frequency,
-                                            settlement_date)
-        return z_spread
+        return ql.BondFunctions_zSpread(self.bond, quote, yield_curve, day_counter, compounding, frequency,
+                                        settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')

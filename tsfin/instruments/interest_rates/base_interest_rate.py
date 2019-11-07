@@ -300,7 +300,7 @@ class BaseInterestRate(Instrument):
 
         if self.is_expired(date):
             return None
-        rate = self.timeseries.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
         date = to_ql_date(date)
