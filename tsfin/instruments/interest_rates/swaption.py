@@ -38,7 +38,6 @@ class Swaption(BaseInterestRate):
         self.fixed_leg_day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.maturity_tenor = ql.PeriodParser.parse(self.ts_attributes[MATURITY_TENOR])
         # QuantLib Objects
-        self.term_structure = ql.RelinkableYieldTermStructureHandle()
         self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
         # QuantLib Attributes
         self.calendar = ql.JointCalendar(self.fixed_calendar, self.index.fixingCalendar())
@@ -50,9 +49,13 @@ class Swaption(BaseInterestRate):
         self.helper_rate = ql.SimpleQuote(0)
         self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
-        self._rate_helper = ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(self.helper_rate),
-                                              self.index, self.fixed_leg_tenor, self.fixed_leg_day_counter,
-                                              self.index.dayCounter(), self.term_structure)
+
+    def set_rate_helper(self):
+
+        if self._rate_helper is None:
+            self._rate_helper = ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(self.helper_rate),
+                                                  self.index, self.fixed_leg_tenor, self.fixed_leg_day_counter,
+                                                  self.index.dayCounter(), self.term_structure)
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.

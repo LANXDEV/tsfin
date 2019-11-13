@@ -57,7 +57,7 @@ class BaseInterestRate(Instrument):
         self._index_tenor = None
         self._maturity = None
         # QuantLib Objects
-        self.term_structure = None
+        self.term_structure = ql.RelinkableYieldTermStructureHandle()
         self.index = None
         # QuantLib Attributes
         self.calendar = None
@@ -73,9 +73,21 @@ class BaseInterestRate(Instrument):
         # Defined
         self._rate_helper = None
 
-    def set_yield_curve(self, yield_curve):
+    def set_rate_helper(self):
 
-        self.term_structure.linkTo(yield_curve)
+        if self._rate_helper is None:
+            self._rate_helper = None
+
+    def link_to_term_structure(self, date, yield_curve):
+
+        """
+        :param date: QuantLib.Date
+            The yield curve base date
+        :param yield_curve: :py:obj:`YieldCurveTimeSeries"
+        :return:
+        """
+        date = to_ql_date(date)
+        self.term_structure.linkTo(yield_curve.yield_curve(date=date))
 
     def set_rate(self, date, rate, spread=None, sigma=None, mean=None, **kwargs):
 
@@ -303,6 +315,17 @@ class BaseInterestRate(Instrument):
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
+        self.set_rate_helper()
         date = to_ql_date(date)
         self.set_rate(date=date, rate=rate, spread=spread, sigma=sigma, mean=mean, **other_args)
         return self._rate_helper
+
+    def spread_rate(self, date, last_available=True, **kwargs):
+
+        date = to_ql_date(date)
+        if self.is_expired(date):
+            return None
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if np.isnan(rate):
+            return None
+        return ql.InterestRate(rate, self.day_counter, self.compounding, self.frequency)

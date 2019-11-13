@@ -261,7 +261,7 @@ class CurrencyFuture(Instrument):
         return ql.Period(self.calendar.businessDaysBetween(date, self.maturity_date), ql.Days)
 
     def cash_to_date(self, start_date, date, *args, **kwargs):
-        """Cashflow received/paid by the holder of a contract.
+        """Cash flow received/paid by the holder of a contract.
 
         Parameters
         ----------

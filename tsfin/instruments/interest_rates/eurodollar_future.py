@@ -59,8 +59,12 @@ class EurodollarFuture(BaseInterestRate):
         self.helper_rate = ql.SimpleQuote(100)
         self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
-        self._rate_helper = ql.FuturesRateHelper(ql.QuoteHandle(self.helper_rate), self._maturity, self.index,
-                                                 ql.QuoteHandle(self.helper_convexity))
+
+    def set_rate_helper(self):
+
+        if self._rate_helper is None:
+            self._rate_helper = ql.FuturesRateHelper(ql.QuoteHandle(self.helper_rate), self._maturity, self.index,
+                                                     ql.QuoteHandle(self.helper_convexity))
 
     @conditional_vectorize('date', 'start_quote', 'quote')
     def value(self, date, start_quote, quote, *args, **kwargs):

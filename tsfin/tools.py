@@ -310,8 +310,7 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
     # This has only been tested for model_class = HullWhite
     date = to_ql_date(date)
     print("Calibrating {0} short rate model for date = {1}".format(model_class, date))
-    yield_curve = term_structure_ts.yield_curve(date=date)
-    term_structure = ql.YieldTermStructureHandle(yield_curve)
+    term_structure = term_structure_ts.yield_curve_handle(date=date)
 
     ql.Settings.instance().evaluationDate = date
     model, engine = ql_swaption_engine(model_class=model_class, term_structure=term_structure)
@@ -319,7 +318,7 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
     swaption_helpers = list()
     swaption_vol = generate_instruments(swaption_vol_ts_collection)
     for swaption in swaption_vol:
-        swaption.set_yield_curve(yield_curve=yield_curve)
+        swaption.link_to_term_structure(date=date, yield_curve=term_structure_ts)
         helper = swaption.rate_helper(date=date)
         helper.setPricingEngine(engine)
         swaption_helpers.append(helper)
