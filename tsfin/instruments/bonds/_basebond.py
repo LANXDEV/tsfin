@@ -376,6 +376,8 @@ class _BaseBond(Instrument):
             return True
         elif date >= self.maturity_date:
             return True
+        elif self.calendar.isHoliday(date):
+            return True
         return False
 
     def maturity(self, *args, **kwargs):
@@ -814,12 +816,12 @@ class _BaseBond(Instrument):
         """
         bond = kwargs.get('bond', self.bond)  # Useful to pass bonds other than self as arguments.
         date = to_ql_date(date)
-        ql.Settings.instance().evaluationDate = date
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
         if self.is_expired(settlement_date):
             # input("Returning nan because its expired date: {0}, settlement {1}".format(date, settlement_date))
             return np.nan
+        ql.Settings.instance().evaluationDate = date
         if quote_type is None:
             quote_type = self.quote_type
         if quote_type == CLEAN_PRICE:
@@ -1169,7 +1171,7 @@ class _BaseBond(Instrument):
         date = to_ql_date(date)
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
                                                 self.business_convention)
-        if self.is_expired(settlement_date):
+        if self.is_expired(date) or self.is_expired(settlement_date):
             return np.nan
         return self.bond.cleanPrice(ytm, day_counter, compounding, frequency, settlement_date)
 
@@ -1251,7 +1253,7 @@ class _BaseBond(Instrument):
         date = to_ql_date(date)
         settlement_date = self.calendar.advance(date, ql.Period(self.settlement_days, ql.Days),
                                                 self.business_convention)
-        if self.is_expired(settlement_date):
+        if self.is_expired(date) or self.is_expired(settlement_date):
             return np.nan
         return self.bond.dirtyPrice(ytm, day_counter, compounding, frequency, settlement_date)
 

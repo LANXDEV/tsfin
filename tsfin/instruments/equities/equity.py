@@ -21,9 +21,14 @@ import numpy as np
 import pandas as pd
 import QuantLib as ql
 from tsio.tools import at_index
-from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER
+from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize, \
     filter_series
+
+
+UNADJUSTED_PRICE = 'UNADJUSTED_PRICE'
+DIVIDENDS = 'DIVIDENDS'
+DIVIDEND_YIELD = 'EQY_DVD_YLD_12M'
 
 
 def trunc(values, decs=0):
@@ -48,24 +53,24 @@ class Equity(Instrument):
         except KeyError:
             self.underlying_name = self.ts_attributes[TICKER]
 
-    def ts_prices(self, dpdf=False):
+    def ts_prices(self, dividend_adjusted=False):
         """
 
-        :param dpdf: bool
+        :param dividend_adjusted: bool
             If true it will use the adjusted price for calculation.
         :return: pandas.Series
         """
-        if dpdf:
-            return self.price
+        if dividend_adjusted:
+            return getattr(self.timeseries, QUOTES)
         else:
-            return self.unadjusted_price
+            return getattr(self.timeseries, UNADJUSTED_PRICE)
 
-    def ts_returns(self):
+    def ts_returns(self, dividend_adjusted=True):
         """
         Daily returns from trading days.
         :return: pandas.Series
         """
-        price = self.price.ts_values
+        price = self.ts_prices(dividend_adjusted=dividend_adjusted)
         start_date = to_ql_date(price.first_valid_index())
         end_date = to_ql_date(price.last_valid_index())
         holiday_list = to_datetime(ql_holiday_list(start_date, end_date, self.calendar))
@@ -87,7 +92,28 @@ class Equity(Instrument):
         vol.name = "({})(VOLATILITY)".format(self.ts_name)
         return vol
 
-    @conditional_vectorize('date')
+    def _dividends_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
+        """
+        Cash amount paid by a unit of the instrument between `start_date` and `date`.
+        :param start_date: Date-like
+            Start date of the range
+        :param date: Date-like
+            Final date of the range
+        :param tax_adjust: float
+            The tax value to adjust the dividends received
+        :return: pandas.Series
+        """
+        start_date = to_datetime(start_date)
+        date = to_datetime(date)
+        ts_dividends = getattr(self.timeseries, DIVIDENDS).ts_values
+        if start_date >= date:
+            start_date = date
+        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
+        ts_dividends *= (1 - float(tax_adjust))
+        ts_dividends = ts_dividends[ts_dividends != 0]
+        return ts_dividends
+
+    @conditional_vectorize('start_date', 'date')
     def cash_flow_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
         """
         Cash amount paid by a unit of the instrument between `start_date` and `date`.
@@ -99,17 +125,10 @@ class Equity(Instrument):
             The tax value to adjust the dividends received
         :return: float
         """
-        start_date = to_datetime(start_date)
-        date = to_datetime(date)
-        ts_dividends = self.dividends.ts_values
-        if start_date >= date:
-            start_date = date
-        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
-        ts_dividends *= (1 - float(tax_adjust))
-        ts_dividends = ts_dividends[ts_dividends != 0]
+        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust, *args, **kwargs)
         return list((ts_date, ts_value) for ts_date, ts_value in ts_dividends.iteritems())
 
-    @conditional_vectorize('date')
+    @conditional_vectorize('start_date', 'date')
     def cash_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
         """
         Cash amount paid by a unit of the instrument between `start_date` and `date`.
@@ -121,19 +140,12 @@ class Equity(Instrument):
             The tax value to adjust the dividends received
         :return: float
         """
-        start_date = to_datetime(start_date)
-        date = to_datetime(date)
-        ts_dividends = self.dividends.ts_values
-        if start_date >= date:
-            start_date = date
-        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
-        ts_dividends *= (1 - float(tax_adjust))
-        ts_dividends = ts_dividends[ts_dividends != 0]
+        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust, *args, **kwargs)
         return sum(ts_dividends)
 
     @conditional_vectorize('quote', 'date')
-    def performance(self, start_date=None, start_quote=None, date=None, quote=None, tax_adjust=0, dpdf=False,
-                    *args, **kwargs):
+    def performance(self, start_date=None, start_quote=None, date=None, quote=None, tax_adjust=0,
+                    dividend_adjusted=False, *args, **kwargs):
 
         """
         Performance of a unit of the instrument.
@@ -147,11 +159,11 @@ class Equity(Instrument):
             The quote of the instrument at `date`. Defaults to the quote at `date`.
         :param tax_adjust: float
             The tax value to adjust the dividends received
-        :param dpdf: bool
+        :param dividend_adjusted: bool
             If true it will use the adjusted price for calculation.
         :return: scalar, None
         """
-        quotes = self.ts_prices(dpdf=dpdf)
+        quotes = self.ts_prices(dividend_adjusted=dividend_adjusted)
 
         first_available_date = quotes.ts_values.first_valid_index()
         if start_date is None:
@@ -159,15 +171,15 @@ class Equity(Instrument):
         if start_date < first_available_date:
             start_date = first_available_date
         if start_quote is None:
-            start_quote = self.spot_price(date=start_date, dpdf=dpdf)
+            start_quote = self.spot_price(date=start_date, dividend_adjusted=dividend_adjusted)
         if quote is None:
-            quote = self.spot_price(date=date, dpdf=dpdf)
+            quote = self.spot_price(date=date, dividend_adjusted=dividend_adjusted)
         if date < start_date:
             return np.nan
 
         start_value = start_quote
         value = quote
-        if dpdf:
+        if dividend_adjusted:
             dividends = 0
         else:
             start_date = self.calendar.advance(to_ql_date(start_date), ql.Period(1, ql.Days), ql.Following)
@@ -176,7 +188,7 @@ class Equity(Instrument):
         return (value + dividends) / start_value - 1
 
     @conditional_vectorize('date')
-    def spot_price(self, date, last_available=True, fill_value=np.nan, dpdf=False):
+    def spot_price(self, date, last_available=True, fill_value=np.nan, dividend_adjusted=False):
         """
         Return the daily series of unadjusted price at date(s).
         :param date: Date-like
@@ -185,12 +197,12 @@ class Equity(Instrument):
             Whether to use last available data in case dates are missing.
         :param fill_value: scalar
             Default value in case `date` can't be found.
-        :param dpdf: bool
+        :param dividend_adjusted: bool
             If true it will use the adjusted price for calculation.
         :return: pandas.Series
         """
         date = to_datetime(date)
-        prices = self.ts_prices(dpdf=dpdf)
+        prices = self.ts_prices(dividend_adjusted=dividend_adjusted)
         return prices.get_values(index=date, last_available=last_available, fill_value=fill_value)
 
     @conditional_vectorize('date')
@@ -207,7 +219,8 @@ class Equity(Instrument):
         """
         date = to_datetime(date)
         try:
-            return self.dividends.get_values(index=date, last_available=last_available, fill_value=fill_value)
+            return getattr(self.timeseries, DIVIDENDS).get_values(index=date, last_available=last_available,
+                                                                  fill_value=fill_value)
         except KeyError:
             return 0
 
@@ -225,7 +238,8 @@ class Equity(Instrument):
         """
         date = to_datetime(date)
         try:
-            return self.eqy_dvd_yld_12m.get_values(index=date, last_available=last_available, fill_value=fill_value)
+            return getattr(self.timeseries, DIVIDEND_YIELD).get_values(index=date, last_available=last_available,
+                                                                       fill_value=fill_value)
         except KeyError:
             return 0
 

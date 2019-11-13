@@ -50,14 +50,17 @@ class CDSRate(BaseInterestRate):
         self.coupon = float(self.ts_attributes[COUPONS])
         self.base_yield = self.ts_attributes[BASE_SPREAD_TAG]
         self.month_end = False
-        self.term_structure = ql.RelinkableYieldTermStructureHandle()
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(0)
         self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
-        self._rate_helper = ql.SpreadCdsHelper(ql.QuoteHandle(self.helper_rate), self._tenor, 0, self.calendar,
-                                               self.frequency, self.business_convention, self.date_generation,
-                                               self.day_counter, self.recovery_rate, self.term_structure)
+
+    def set_rate_helper(self):
+
+        if self._rate_helper is None:
+            self._rate_helper = ql.SpreadCdsHelper(ql.QuoteHandle(self.helper_rate), self._tenor, 0, self.calendar,
+                                                   self.frequency, self.business_convention, self.date_generation,
+                                                   self.day_counter, self.recovery_rate, self.term_structure)
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
@@ -93,14 +96,10 @@ class CDSRate(BaseInterestRate):
         """
         # Returns None if impossible to obtain a rate helper from this time series
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
-
         if np.isnan(rate):
             return None
-        if self._rate_helper is None:
-            self.set_rate_helper()
-
         self.helper_rate.setValue(rate)
-        self.term_structure.linkTo(base_yield_curve)
+        self.link_to_term_structure(date=date, yield_curve=base_yield_curve)
         return self._rate_helper
 
     @conditional_vectorize('date')

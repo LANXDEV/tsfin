@@ -22,16 +22,16 @@ pip install git+https://github.com/LANXDEV/tsfin/
 
 ## Dependencies
 
-- [NumPy](https://www.numpy.org): 1.16.0 or higher
-- [pandas](https://pandas.pydata.org/): 0.24.2 or higher
-- [QuantLib-Python](https://www.quantlib.org/install/windows-python.shtml): 1.16 or higher
+- [NumPy](https://www.numpy.org): 1.17.0 or higher
+- [pandas](https://pandas.pydata.org/): 0.25.0 or higher
+- [QuantLib-Python](https://www.quantlib.org/install/windows-python.shtml): 1.17 or higher
 - [Time Series I/O](https://github.com/LANXDEV/tsio)
 
 
 ## Authors
 
 * **Vinícius Calasans** - [vcalasans](https://github.com/vcalasans)
-
+* **Pedro Coelho** - [PCoelho89](https://github.com/PCoelho89)
 
 ## Acknowledgements
 
@@ -41,7 +41,6 @@ analysts:
 
 - Tulio Ribeiro
 - Eduardo Thiele
-- Pedro Coelho
 - Humberto Nardiello
 
 

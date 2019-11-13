@@ -20,49 +20,54 @@ SingleSpreadYieldCurveTimeSeries, a class to handle a time series of single spre
 """
 
 import QuantLib as ql
-from tsfin.base import to_ql_date, conditional_vectorize
+from tsfin.base import to_ql_date, conditional_vectorize, to_list
 
 
 class InterpolatedSpreadYieldCurveTimeSeries:
 
-    def __init__(self, yield_curve_time_series, spreads, compounding, frequency, day_counter):
+    def __init__(self, yield_curve_time_series, spreads_ts_collection, day_counter, compounding=ql.Compounded,
+                 frequency=ql.Annual, **kwargs):
         self.yield_curve_time_series = yield_curve_time_series
-        self.spreads = spreads
+        self.spreads_ts_collection = spreads_ts_collection
+        self.day_counter = day_counter
         self.compounding = compounding
         self.frequency = frequency
-        self.day_counter = day_counter
         self.spreaded_curves = dict()
 
-    def spreaded_curve(self, date, spreads=None, compounding=None, frequency=None, day_counter=None):
+    def update_curves(self, dates, compounding=None, frequency=None, day_counter=None):
 
-        ql_date = to_ql_date(date)
-        if compounding is None:
-            compounding = self.compounding
-        if frequency is None:
-            frequency = self.frequency
-        if day_counter is None:
-            day_counter = self.day_counter
-        if spreads is None:
-            spreads_at_date = self.spreads[ql_date]
-        else:
-            spreads_at_date = spreads[ql_date]
+        dates = to_list(dates)
+        for date in dates:
+            date = to_ql_date(date)
+            if compounding is None:
+                compounding = self.compounding
+            if frequency is None:
+                frequency = self.frequency
+            if day_counter is None:
+                day_counter = self.day_counter
 
-        spread_list = list()
-        date_list = list()
-        for tenor_date in sorted(spreads_at_date.keys()):
-            date_list.append(tenor_date)
-            time = self.day_counter.yearFraction(date, tenor_date)
-            rate = spreads_at_date[tenor_date].equivalentRate(compounding, frequency, time).rate()
-            spread_list.append(ql.QuoteHandle(ql.SimpleQuote(rate)))
+            # ql.Settings.instance().evaluationDate = date
+            spread_dict = dict()
+            for ts in self.spreads_ts_collection:
+                maturity = ts.maturity(date=date)
+                rate = ts.spread_rate(date=date).equivalentRate(day_counter, compounding, frequency,
+                                                                date, maturity).rate()
+                spread_dict[maturity] = rate
 
-        curve_handle = self.yield_curve_time_series.yield_curve_handle(date=ql_date)
-        yield_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spread_list, date_list, compounding,
-                                                                     frequency, day_counter)
-        yield_curve.enableExtrapolation()
+            date_list = list()
+            spread_list = list()
+            for maturity in sorted(spread_dict.keys()):
+                date_list.append(maturity)
+                spread_list.append(ql.QuoteHandle(ql.SimpleQuote(spread_dict[maturity])))
 
-        self.spreaded_curves[ql_date] = yield_curve
+            curve_handle = ql.YieldTermStructureHandle(self.yield_curve_time_series.yield_curve(date=date))
+            spread_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spread_list, date_list,
+                                                                          compounding, frequency, day_counter)
+            spread_curve.enableExtrapolation()
 
-    def yield_curve(self, date):
+            self.spreaded_curves[date] = spread_curve
+
+    def yield_curve(self, date, **kwargs):
 
         """ Get the QuantLib yield curve object at a given date.
 
@@ -77,13 +82,13 @@ class InterpolatedSpreadYieldCurveTimeSeries:
             The yield curve at `date`.
         """
 
-        ql_date = to_ql_date(date)
+        date = to_ql_date(date)
         try:
-            return self.spreaded_curves[ql_date]
+            return self.spreaded_curves[date]
 
         except KeyError:
-            self.spreaded_curve(date=date)
-            return self.spreaded_curves[ql_date]
+            self.update_curves(dates=date, **kwargs)
+            return self.spreaded_curves[date]
 
     def yield_curve_handle(self, date):
         """ Handle for a yield curve at a given date.
@@ -153,6 +158,7 @@ class InterpolatedSpreadYieldCurveTimeSeries:
         scalar
             Zero rate for `to_date`, implied by the yield curve at `date`.
         """
+        date = to_ql_date(date)
         to_date = to_ql_date(to_date)
         day_counter = day_counter if day_counter is not None else self.day_counter
         return self.yield_curve(date).zeroRate(to_date, day_counter, compounding, frequency, extrapolate).rate()

@@ -424,3 +424,91 @@ def to_ql_time_unit(arg):
         return ql.Days
     else:
         raise ValueError("Unable to convert {} to a QuantLib Time Unit".format(arg))
+
+
+def to_ql_option_type(arg):
+    """Converts a string with the option type to the corresponding QuantLib object.
+
+    Parameters
+    ----------
+    arg: str
+
+    Returns
+    -------
+    QuantLib.Option
+
+    """
+    if arg.upper() == 'CALL':
+        return ql.Option.Call
+    elif arg.upper() == 'PUT':
+        return ql.Option.Put
+
+
+def to_ql_option_exercise_type(exercise_type, earliest_date, maturity):
+    """
+    Returns the QuantLib object representing the exercise type.
+    :param exercise_type: str
+        The exercise name
+    :param earliest_date: QuantLib.Date
+        The earliest date of exercise
+    :param maturity: QuantLib.Date
+        The maturity / exercise date
+    :return: QuantLib.Exercise
+    """
+    if exercise_type.upper() == 'AMERICAN':
+        return ql.AmericanExercise(earliest_date, maturity)
+    elif exercise_type.upper() == 'EUROPEAN':
+        return ql.EuropeanExercise(maturity)
+    else:
+        raise ValueError('Exercise type not supported')
+
+
+def to_ql_option_engine(engine_name=None, process=None, model_name=None, time_steps=None):
+    """
+    Returns a QuantLib.PricingEngine for Options
+    :param engine_name: str
+        The engine name
+    :param process: Quant
+    :param model_name:
+    :param time_steps:
+    :return: QuantLib.PricingEngine
+    """
+    if engine_name.upper() == 'BINOMIAL_VANILLA':
+        return ql.BinomialVanillaEngine(process, model_name, time_steps)
+    elif engine_name.upper() == 'ANALYTIC_HESTON':
+        return ql.AnalyticHestonEngine(ql.HestonModel(process))
+    elif engine_name.upper() == 'ANALYTIC_EUROPEAN':
+        return ql.AnalyticEuropeanEngine(process)
+    elif engine_name.upper() == 'ANALYTIC_EUROPEAN_DIVIDEND':
+        return ql.AnalyticDividendEuropeanEngine(process)
+    elif engine_name.upper() == "FINITE_DIFFERENCES":
+        return ql.FdBlackScholesVanillaEngine(process)
+    else:
+        return None
+
+
+def to_ql_one_asset_option(payoff, exercise):
+    """
+    Returns the QuantLib object representing an option.
+    :param payoff: QuantLib.StrikedTypePayoff
+        The QuantLib object representing the payoff
+    :param exercise: QuantLib.Exercise
+        The QuantLib Object representing the exercise type
+    :return: QuantLib.OneAssetOption
+    """
+    return ql.VanillaOption(payoff, exercise)
+
+
+def to_ql_option_payoff(payoff_type, ql_option_type, strike):
+    """
+    Returns the QuantLib object representing an option payoff.
+    :param payoff_type: str:
+        The option payoff type name
+    :param ql_option_type: QuantLib.Option.Call, QuantLib.Option.Put
+        The option type (Call or Put)
+    :param strike: float
+        The strike value
+    :return: QuantLib.StrikedTypePayoff
+    """
+    if str(payoff_type).upper() == 'PLAIN_VANILLA':
+        return ql.PlainVanillaPayoff(ql_option_type, strike)

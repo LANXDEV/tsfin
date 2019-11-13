@@ -71,8 +71,7 @@ class CDSCurveTimeSeries:
         for ts in self.ts_collection:
             ts_name = ts.ts_name
             issue_date = ts.issue_date
-            yield_curve = self.base_yield_curve.yield_curve(date)
-            helper = ts.cds_rate_helper(date=date, base_yield_curve=yield_curve,
+            helper = ts.cds_rate_helper(date=date, base_yield_curve=self.base_yield_curve,
                                         **self.other_rate_helper_args)
             if helper is not None:
                 maturity_date = helper.maturityDate()

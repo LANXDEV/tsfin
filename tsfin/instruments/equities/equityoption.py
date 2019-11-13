@@ -21,12 +21,78 @@ import QuantLib as ql
 import numpy as np
 from functools import wraps
 from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, \
-    UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE
+    UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE, EARLIEST_DATE, PAYOFF_TYPE
 from tsfin.base import Instrument, to_ql_date, conditional_vectorize, to_ql_calendar, to_ql_day_counter, to_datetime, \
-    to_list
+    to_list, to_ql_option_type, to_ql_one_asset_option, to_ql_option_payoff, to_ql_option_engine, \
+    to_ql_option_exercise_type
+
+
+MID_PRICE = 'PX_MID'
+IMPLIED_VOL = 'IVOL_MID'
 
 
 def option_default_arguments(f):
+    """ Decorator to set default arguments for :py:class:`EquityOption` methods.
+        QuantLib option is a fairly complex instrument to assemble, you need a series of default values
+        that may be specific to the option timeseries or are specific to the method used for calculation.
+        All values may be overridden through keyword arguments.
+
+    Parameters
+    ----------
+    f: method
+        A method to be increased with default arguments.
+
+    Returns
+    -------
+    function
+        `f`, increased with default arguments.
+
+    Note
+    ----
+
+    +----------------------------+------------------------------------------------+
+    | Missing Attributes or Overrides   | Default Value(s)                        |
+    +==================================+==========================================+
+    | process                          | self.ql_process                          |
+    +----------------------------------+------------------------------------------+
+    | engine_name                      | 'FINITE_DIFFERENCES_DIVIDEND',           |
+    |                                  | see to_ql_option_engine for other        |
+    |                                  |  possible values                         |
+    +----------------------------------+------------------------------------------+
+    | model_name                       | 'LR', see ql_option_engine for other     |
+    |                                  | possible values                          |
+    +----------------------------------+------------------------------------------+
+    | time_steps                       | '801', see ql_option_engine for other    |
+    |                                  | possible values                          |
+    +----------------------------------+------------------------------------------+
+    """
+
+    @wraps(f)
+    def new_f(self, **kwargs):
+
+        # QuantLib Process
+        if kwargs.get('process', None) is not None:
+            self.ql_process = kwargs['process']
+
+        # Yield Curve
+        if kwargs.get('yield_curve', None) is not None:
+            self.yield_curve = kwargs['yield_curve']
+
+        # QuantLib Option Engine Arguments
+        engine_name = 'FINITE_DIFFERENCES' if kwargs.get('engine_name', None) is None else \
+            kwargs['engine_name']
+        model_name = 'LR' if kwargs.get('model_name', None) is None else kwargs['model_name']
+        time_steps = 801 if kwargs.get('time_steps', None) is None else kwargs['time_steps']
+        # Option build-up
+        option_engine = to_ql_option_engine(engine_name=engine_name, process=self.ql_process.process,
+                                            model_name=model_name, time_steps=time_steps)
+        self.set_pricing_engine(option_engine)
+        return f(self, **kwargs)
+
+    return new_f
+
+
+def option_default_values(f):
     """ Decorator to set default arguments for :py:class:`EquityOption` methods.
         QuantLib option is a fairly complex instrument to assemble, you need a series of default values
         that may be specific to the option timeseries or are specific to the method used for calculation.
@@ -61,29 +127,6 @@ def option_default_arguments(f):
     | volatility                       | None                                     |
     |                                  |(It will self calculate the implied vol)  |
     +----------------------------------+------------------------------------------+
-    | process                          | self.ql_process                          |
-    +----------------------------------+------------------------------------------+
-    | calendar                         | self.calendar                            |
-    +----------------------------------+------------------------------------------+
-    | day_counter                      | self.day_counter                         |
-    +----------------------------------+------------------------------------------+
-    | maturity                         | self.option_maturity                     |
-    +----------------------------------+------------------------------------------+
-    | engine_name                      | 'BINOMIAL_VANILLA', see ql_option_engine |
-    |                                  | for other possible values                |
-    +----------------------------------+------------------------------------------+
-    | model_name                       | 'LR', see ql_option_engine for other     |
-    |                                  | possible values                          |
-    +----------------------------------+------------------------------------------+
-    | time_steps                       | '801', see ql_option_engine for other    |
-    |                                  | possible values                          |
-    +----------------------------------+------------------------------------------+
-    | exercise_type                    | self.exercise_type                       |
-    +----------------------------------+------------------------------------------+
-    | option_type                      | self.option_type                         |
-    +----------------------------------+------------------------------------------+
-    | strike                           | self.strike                              |
-    +----------------------------------+------------------------------------------+
     """
 
     @wraps(f)
@@ -110,106 +153,8 @@ def option_default_arguments(f):
             if kwargs.get('option_price', None) is None else kwargs['option_price']
         kwargs['quote'] = kwargs['option_price'] if kwargs.get('quote', None) is None else kwargs['quote']
         kwargs['volatility'] = kwargs.get('volatility', None)
-
-        # Timeseries Attributes
-        kwargs['calendar'] = getattr(self, 'calendar') if kwargs.get('calendar', None) is None else kwargs['calendar']
-        kwargs['day_counter'] = getattr(self, 'day_counter') if kwargs.get('day_counter', None) is None else \
-            kwargs['day_counter']
-        kwargs['maturity'] = getattr(self, 'option_maturity') if kwargs.get('maturity', None) is None else \
-            to_ql_date(kwargs['maturity'])
-        kwargs['exercise_type'] = getattr(self, 'exercise_type') if kwargs.get('exercise_type', None) is None else \
-            kwargs['exercise_type']
-        kwargs['option_type'] = getattr(self, 'option_type') if kwargs.get('option_type', None) is None else \
-            kwargs['option_type']
-        kwargs['strike'] = getattr(self, 'strike') if kwargs.get('strike', None) is None else kwargs['strike']
-
-        # QuantLib Process
-        kwargs['process'] = getattr(self, 'ql_process') if kwargs.get('process', None) is None else kwargs['process']
-
-        # QuantLib Option Engine Arguments
-        kwargs['engine_name'] = 'FINITE_DIFFERENCES_DIVIDEND' if kwargs.get('engine_name', None) is None else \
-            kwargs['engine_name']
-        kwargs['model_name'] = 'LR' if kwargs.get('model_name', None) is None else kwargs['model_name']
-        kwargs['time_steps'] = 801 if kwargs.get('time_steps', None) is None else kwargs['time_steps']
-        kwargs['grid_points'] = 800 if kwargs.get('grid_points', None) is None else kwargs['grid_points']
-        kwargs['payoff'] = 'PLAIN_VANILLA' if kwargs.get('payoff', None) is None else kwargs['payoff']
-
-        # Option build-up
-        ql_exercise = option_exercise_type(exercise_type=kwargs['exercise_type'], date=kwargs['date'],
-                                           maturity=kwargs['maturity'])
-        ql_option_type = to_ql_option_type(kwargs['option_type'])
-        payoff = ql_option_payoff(payoff_type=kwargs['payoff'], ql_option_type=ql_option_type, strike=kwargs['strike'])
-        self.option = ql_option_instrument(payoff, ql_exercise)
         return f(self, **kwargs)
     return new_f
-
-
-def to_ql_option_type(arg):
-    """Converts a string with the option type to the corresponding QuantLib object.
-
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Option
-
-    """
-    if arg.upper() == 'CALL':
-        return ql.Option.Call
-    elif arg.upper() == 'PUT':
-        return ql.Option.Put
-
-
-def option_exercise_type(exercise_type, date, maturity):
-    if exercise_type.upper() == 'AMERICAN':
-        if date > maturity:
-            date = maturity
-        return ql.AmericanExercise(date, maturity)
-    elif exercise_type.upper() == 'EUROPEAN':
-        return ql.EuropeanExercise(maturity)
-    else:
-        raise ValueError('Exercise type not supported')
-
-
-def ql_option_engine(engine_name=None, process=None, model_name=None, time_steps=None, grid_points=None,
-                     exercise_type=None, **kwargs):
-
-    if engine_name.upper() == 'BINOMIAL_VANILLA':
-        return ql.BinomialVanillaEngine(process, model_name, time_steps)
-    elif engine_name.upper() == 'ANALYTIC_HESTON':
-        return ql.AnalyticHestonEngine(ql.HestonModel(process))
-    elif engine_name.upper() == 'ANALYTIC_EUROPEAN':
-        return ql.AnalyticEuropeanEngine(process)
-    elif engine_name.upper() == 'ANALYTIC_EUROPEAN_DIVIDEND':
-        return ql.AnalyticDividendEuropeanEngine(process)
-    elif engine_name.upper() == "FINITE_DIFFERENCES":
-        if exercise_type == 'EUROPEAN':
-            return ql.FDEuropeanEngine(process, time_steps, grid_points)
-        elif exercise_type == 'AMERICAN':
-            return ql.FDAmericanEngine(process, time_steps, grid_points)
-    elif engine_name.upper() == "FINITE_DIFFERENCES_DIVIDEND":
-        if exercise_type == 'EUROPEAN':
-            return ql.FDDividendEuropeanEngine(process, time_steps, grid_points)
-        elif exercise_type == 'AMERICAN':
-            try:
-                return ql.FDDividendAmericanEngineT(process, time_steps, grid_points)
-            except AttributeError:
-                return ql.FDDividendAmericanEngine(process, time_steps, grid_points)
-    else:
-        return None
-
-
-def ql_option_instrument(*args):
-
-    return ql.VanillaOption(*args)
-
-
-def ql_option_payoff(payoff_type, ql_option_type, strike):
-
-    if str(payoff_type).upper() == 'PLAIN_VANILLA':
-        return ql.PlainVanillaPayoff(ql_option_type, strike)
 
 
 class EquityOption(Instrument):
@@ -228,15 +173,27 @@ class EquityOption(Instrument):
         self.option_type = self.ts_attributes[OPTION_TYPE]
         self.strike = float(self.ts_attributes[STRIKE_PRICE])
         self.contract_size = float(self.ts_attributes[OPTION_CONTRACT_SIZE])
-        self.option_maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
+        self.maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.exercise_type = self.ts_attributes[EXERCISE_TYPE]
         self.underlying_name = self.ts_attributes[UNDERLYING_INSTRUMENT]
+        try:
+            self.earliest_date = to_ql_date(self.ts_attributes[EARLIEST_DATE])
+        except KeyError:
+            self.earliest_date = ql.Date.minDate()
+        self.exercise = to_ql_option_exercise_type(self.exercise_type, self.earliest_date, self.maturity)
+        self.payoff = to_ql_option_payoff(self.ts_attributes[PAYOFF_TYPE], to_ql_option_type(self.option_type),
+                                          self.strike)
+        self.option = to_ql_one_asset_option(self.payoff, self.exercise)
+        self.yield_curve = None
         self.underlying_instrument = None
         self.ql_process = None
-        self.option = None
-        self.implied_volatility = dict()
+        self._implied_volatility = dict()
+
+    def set_yield_curve(self, yield_curve):
+
+        self.yield_curve = yield_curve
 
     def set_underlying_instrument(self, underlying_instrument):
         """
@@ -252,7 +209,7 @@ class EquityOption(Instrument):
             A class used to handle the Black Scholes Merton model from QuantLib.
         :return:
         """
-        self.ql_process = ql_process
+        self.ql_process = ql_process(calendar=self.calendar, day_counter=self.day_counter)
 
     def set_pricing_engine(self, ql_engine):
         """
@@ -272,7 +229,7 @@ class EquityOption(Instrument):
             True if the instrument is expired or matured, False otherwise.
         """
         date = to_ql_date(date)
-        if date >= self.option_maturity:
+        if date >= self.maturity:
             return True
         return False
 
@@ -283,10 +240,11 @@ class EquityOption(Instrument):
         :return QuantLib.Date, None
             Date representing the maturity or expiry of the instrument. Returns None if there is no maturity.
         """
-        return self.option_maturity
+        return self.maturity
 
-    @conditional_vectorize('date', 'quote', 'volatility')
     @option_default_arguments
+    @conditional_vectorize('date', 'quote', 'volatility')
+    @option_default_values
     def value(self, date, base_date, quote, volatility, dividend_tax, last_available, exercise_type, *args, **kwargs):
         """Try to deduce dirty value for a unit of the time series (as a financial instrument).
 
@@ -336,7 +294,7 @@ class EquityOption(Instrument):
         :return scalar, None
             Performance of a unit of the option.
         """
-        first_available_date = self.px_mid.ts_values.first_valid_index()
+        first_available_date = getattr(self.timeseries, MID_PRICE).ts_values.first_valid_index()
         if start_date is None:
             start_date = first_available_date
         if start_date < first_available_date:
@@ -355,25 +313,23 @@ class EquityOption(Instrument):
         """
         return self.contract_size * self.strike
 
-    def intrinsic(self, date, spot_price, strike, **kwargs):
+    def intrinsic(self, date, spot_price):
         """
         :param date: date-like
             The date
         :param spot_price: float
             The underlying spot price.
-        :param strike: float
-            The options strike price
         :return: float
             The intrinsic value o the option at date.
         """
-        if date > self.option_maturity:
+        if date > self.maturity:
             return 0
         else:
             intrinsic = 0
             if self.option_type == 'CALL':
-                intrinsic = spot_price - strike
-            if self.option_type == 'PUT':
-                intrinsic = strike - spot_price
+                intrinsic = spot_price - self.strike
+            elif self.option_type == 'PUT':
+                intrinsic = self.strike - spot_price
             if intrinsic < 0:
                 return 0
             else:
@@ -382,15 +338,17 @@ class EquityOption(Instrument):
     def ts_mid_price(self, date, last_available=True, fill_value=np.nan):
 
         date = to_datetime(to_list(date))
-        return self.px_mid.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        return getattr(self.timeseries, MID_PRICE).get_values(index=date, last_available=last_available,
+                                                              fill_value=fill_value)
 
     def ts_implied_volatility(self, date, last_available=False, fill_value=np.nan):
 
         date = to_datetime(to_list(date))
-        return self.ivol_mid.get_values(index=date, last_available=last_available, fill_value=fill_value)
+        return getattr(self.timeseries, IMPLIED_VOL).get_values(index=date, last_available=last_available,
+                                                                fill_value=fill_value)
 
-    def option_engine(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, volatility,
-                      process, calendar, day_counter, maturity, engine_name, **kwargs):
+    def volatility_update(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, volatility,
+                          **kwargs):
 
         """
         :param date: QuantLib.Date
@@ -407,54 +365,50 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: QuantLib.VanillaOption
             This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
             and greeks.
         """
-        process.update_process(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                               calendar=calendar, day_counter=day_counter, volatility=0.2, maturity=maturity,
-                               dividend_tax=dividend_tax)
 
-        self.set_pricing_engine(ql_option_engine(engine_name=engine_name, process=process.process, **kwargs))
+        self.ql_process.dividend_yield.setValue(dividend_yield * (1-float(dividend_tax)))
+        self.ql_process.spot_price.setValue(spot_price)
+        if base_date > date:
+            base_date = date
+        zero_rate = self.yield_curve.forward_rate_date_to_date(date=base_date, to_date1=date, to_date2=self.maturity,
+                                                               compounding=ql.Continuous, frequency=ql.NoFrequency,
+                                                               day_counter=self.day_counter)
+        self.ql_process.risk_free_rate.setValue(zero_rate)
 
         if date > base_date:
             date = base_date
         if volatility is not None:
-            self.implied_volatility[date] = ql.SimpleQuote(volatility)
-        try:
-            process.volatility_update(volatility=self.implied_volatility[date], calendar=calendar,
-                                      day_counter=day_counter)
-        except KeyError:
+            self.ql_process.volatility.setValue(volatility)
+            self._implied_volatility[date] = volatility
+        else:
+            self.ql_process.volatility.setValue(0.2)
+            self._implied_volatility[date] = None
+
+        if self._implied_volatility[date] is None:
             try:
-                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process.process,
+                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=self.ql_process.process,
                                                             accuracy=1.0e-4, maxEvaluations=100)
 
             except RuntimeError:
                 # need a better fix for this, some days it's impossible to find the implied vol so we use the prior
                 # day volatility as a proxy.
-                prior_date = calendar.advance(date, -1, ql.Days)
+                prior_date = self.calendar.advance(date, -1, ql.Days)
                 mid_price = float(self.ts_mid_price(date=prior_date, last_available=True))
-                implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=process.process,
+                ql.Settings.instance().evaluationDate = prior_date
+                implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.process,
                                                             accuracy=1.0e-4, maxEvaluations=100)
-            self.implied_volatility[date] = ql.SimpleQuote(implied_vol)
-            process.volatility_update(volatility=self.implied_volatility[date], calendar=calendar,
-                                      day_counter=day_counter)
+                ql.Settings.instance().evaluationDate = date
+            self._implied_volatility[date] = implied_vol
+            self.ql_process.volatility.setValue(implied_vol)
 
-    @conditional_vectorize('date', 'volatility', 'spot_price')
     @option_default_arguments
-    def price(self, date, base_date, spot_price, volatility, dividend_yield, dividend_tax, last_available, process,
-              calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'volatility', 'spot_price')
+    @option_default_values
+    def price(self, date, base_date, spot_price, volatility, dividend_yield, dividend_tax, **kwargs):
         """
         :param date: date-like
             The date.
@@ -466,37 +420,22 @@ class EquityOption(Instrument):
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option price at date.
         """
         if self.is_expired(date=date):
-            return self.intrinsic(date=maturity, spot_price=spot_price, **kwargs)
+            return self.intrinsic(date=self.maturity, spot_price=spot_price)
         else:
-            self.option_engine(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                               dividend_tax=dividend_tax, last_available=last_available, volatility=volatility,
-                               process=process, calendar=calendar, day_counter=day_counter, maturity=maturity,
-                               engine_name=engine_name, **kwargs)
+            self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
         return self.option.NPV()
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def price_underlying(self, date, base_date, spot_price, dividend_yield, dividend_tax, last_available, volatility,
-                         process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('spot_price')
+    @option_default_values
+    def price_underlying(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
         """
         :param date: date-like
             The date.
@@ -508,35 +447,25 @@ class EquityOption(Instrument):
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option price based on the date and underlying spot price.
         """
-        price = self.price(date=date, base_date=base_date, spot_price=None, dividend_yield=dividend_yield,
-                           dividend_tax=dividend_tax, last_available=last_available, volatility=volatility,
-                           process=process, calendar=calendar, day_counter=day_counter, maturity=maturity,
-                           engine_name=engine_name, **kwargs)
-        self.ql_process.spot_price_update(spot_price=spot_price)
+        if self.is_expired(date=date):
+            return self.intrinsic(date=self.maturity, spot_price=spot_price)
+        else:
+            base_spot_price = float(self.underlying_instrument.spot_price(date=date, last_available=True))
+            self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,
+                                   dividend_yield=dividend_yield, dividend_tax=dividend_tax,
+                                   volatility=volatility, **kwargs)
+        self.ql_process.spot_price.setValue(spot_price)
         return self.option.NPV()
 
-    @conditional_vectorize('date', 'spot_price', 'volatility', 'option_price')
     @option_default_arguments
-    def delta(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available, volatility,
-              process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'volatility', 'spot_price')
+    @option_default_values
+    def delta(self, date, base_date, spot_price, volatility, dividend_yield, dividend_tax, **kwargs):
         """
         :param date: date-like
             The date.
@@ -544,46 +473,29 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option delta at date.
         """
         if self.is_expired(date=date):
-            if self.intrinsic(date=self.option_maturity, spot_price=spot_price, **kwargs) > 0:
+            if self.intrinsic(date=date, spot_price=spot_price) > 0:
                 return 1
             else:
                 return 0
         else:
-            self.option_engine(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                               dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                               volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                               maturity=maturity, engine_name=engine_name, **kwargs)
+            self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
             return self.option.delta()
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def delta_underlying(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available,
-                         volatility, process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def delta_underlying(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
         """
         :param date: date-like
             The date.
@@ -591,41 +503,32 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option delta based on the date and underlying spot price.
         """
-        delta = self.delta(date=date, base_date=base_date, spot_price=None, option_price=option_price,
-                           dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                           volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                           maturity=maturity, engine_name=engine_name, **kwargs)
-        self.ql_process.spot_price_update(spot_price=spot_price)
+        if self.is_expired(date=date):
+            if self.intrinsic(date=date, spot_price=spot_price) > 0:
+                return 1
+            else:
+                return 0
+        else:
+            base_spot_price = float(self.underlying_instrument.spot_price(date=date, last_available=True))
+            self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,
+                                   dividend_yield=dividend_yield, dividend_tax=dividend_tax,
+                                   volatility=volatility, **kwargs)
+        self.ql_process.spot_price.setValue(spot_price)
         return self.option.delta()
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def gamma(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available, volatility,
-              process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def gamma(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
         """
         :param date: date-like
             The date.
@@ -633,43 +536,26 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option gamma at date.
         """
         if self.is_expired(date=date):
             return 0
         else:
-            self.option_engine(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                               dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                               volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                               maturity=maturity, engine_name=engine_name, **kwargs)
+            self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
             return self.option.gamma()
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def theta(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available, volatility,
-              process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def theta(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
         """
         :param date: date-like
             The date.
@@ -677,43 +563,26 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option theta at date.
         """
         if self.is_expired(date=date):
             return 0
         else:
-            self.option_engine(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                               dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                               volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                               maturity=maturity, engine_name=engine_name, **kwargs)
+            self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
             return self.option.theta()
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def vega(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available, volatility,
-             process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def vega(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
         """
         :param date: date-like
             The date.
@@ -721,49 +590,32 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option vega at date.
         """
         if self.is_expired(date=date):
             return 0
         else:
-            self.option_engine(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                               dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                               volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                               maturity=maturity, engine_name=engine_name, **kwargs)
+            self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
                 try:
                     return self.option.vega()
-                except:
+                except RuntimeError:
                     return 0
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def rho(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available, volatility,
-            process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def rho(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
         """
         :param date: date-like
             The date.
@@ -771,49 +623,32 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option rho at date.
         """
         if self.is_expired(date=date):
             return 0
         else:
-            self.option_engine(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                               dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                               volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                               maturity=maturity, engine_name=engine_name, **kwargs)
+            self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
                 try:
                     return self.option.rho()
-                except:
+                except RuntimeError:
                     return 0
 
-    @conditional_vectorize('date', 'spot_price', 'option_price')
     @option_default_arguments
-    def implied_vol(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available,
-                    process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'option_price')
+    @option_default_values
+    def implied_volatility(self, date, base_date, spot_price, dividend_yield, dividend_tax, **kwargs):
         """
         :param date: date-like
             The date.
@@ -821,39 +656,22 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option volatility based on the option price and date.
         """
-        self.option_engine(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                           dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                           process=process, calendar=calendar, day_counter=day_counter, maturity=maturity,
-                           engine_name=engine_name, **kwargs)
+        self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                               dividend_tax=dividend_tax, volatility=None, **kwargs)
 
-        return self.implied_volatility[date].value()
+        return self._implied_volatility[date]
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def optionality(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available,
-                    volatility, process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def optionality(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
         """
         :param date: date-like
             The date.
@@ -861,46 +679,28 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option optionality at date.
         """
         if self.is_expired(date=date):
             return 0
         else:
-            self.option_engine(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                               dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                               volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                               maturity=maturity, engine_name=engine_name, **kwargs)
+            self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
             price = self.option.NPV()
             if date > base_date:
-                intrinsic = self.intrinsic(date=base_date, spot_price=spot_price, **kwargs)
-            else:
-                intrinsic = self.intrinsic(date=date, spot_price=spot_price, **kwargs)
+                date = base_date
+            intrinsic = self.intrinsic(date=date, spot_price=spot_price)
             return price - intrinsic
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
+    @conditional_vectorize('date')
     def underlying_price(self, date, **kwargs):
         """
         :param date: date-like
@@ -912,10 +712,10 @@ class EquityOption(Instrument):
         spot_price = self.underlying_instrument.spot_price(date=date)
         return spot_price
 
-    @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_arguments
-    def delta_value(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, last_available,
-                    volatility, process, calendar, day_counter, maturity, engine_name, **kwargs):
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def delta_value(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility,  **kwargs):
         """
         :param date: date-like
             The date.
@@ -923,34 +723,15 @@ class EquityOption(Instrument):
             When date is a future date base_date is the last date on the "present" used to estimate future values.
         :param spot_price: float
             Underlying price override value to calculate the option.
-        :param option_price: float
-            The option price used to calculate the implied volatility.
         :param dividend_yield: float
             The dividend yield of the underlying instrument
         :param dividend_tax: float
             The dividend % tax applied.
-        :param last_available: bool
-            Whether to use last available data in case dates are missing in ``quotes``.
         :param volatility: float
             Volatility override value to calculate the option.
-        :param process: QuantLib.StochasticProcess1D
-            The process used for option evaluation.
-        :param calendar: QuantLib.Calendar
-            The option calendar used to evaluate the model
-        :param day_counter: QuantLib.DayCounter
-            The option day count used to evaluate the model
-        :param maturity: ql.Date
-            The option maturity date.
-        :param engine_name: str
-            The engine name representing a QuantLib Option Pricing Engine. Other necessary arguments are passed through
-            kwargs. (see ql_option_engine for details).
         :return: float
             The option delta notional value.
         """
-        delta = self.delta(date=date, base_date=base_date, spot_price=spot_price, option_price=option_price,
-                           dividend_yield=dividend_yield, dividend_tax=dividend_tax, last_available=last_available,
-                           volatility=volatility, process=process, calendar=calendar, day_counter=day_counter,
-                           maturity=maturity, engine_name=engine_name, **kwargs)
-        spot = self.underlying_instrument.spot_price(date=date)
-        size = float(self.contract_size)
-        return delta*spot*size
+        delta = self.delta(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                           dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+        return delta*spot_price*self.contract_size

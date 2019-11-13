@@ -17,7 +17,6 @@
 """
 A class for modelling interest rate swaps.
 """
-from copy import copy
 import QuantLib as ql
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
 from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_rate_index
@@ -62,8 +61,12 @@ class SwapRate(BaseInterestRate):
         self.helper_rate = ql.SimpleQuote(0)
         self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
-        self._rate_helper = ql.SwapRateHelper(ql.QuoteHandle(self.helper_rate), self.swap_index,
-                                              ql.QuoteHandle(self.helper_spread))
+
+    def set_rate_helper(self):
+
+        if self._rate_helper is None:
+            self._rate_helper = ql.SwapRateHelper(ql.QuoteHandle(self.helper_rate), self.swap_index,
+                                                  ql.QuoteHandle(self.helper_spread))
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.

@@ -34,12 +34,13 @@ class ZeroRate(BaseInterestRate):
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
         self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
         self.month_end = False
-        self.term_structure = ql.RelinkableYieldTermStructureHandle()
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(0)
         self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
-        # Defined
-        self._rate_helper = ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate), self._tenor, self.fixing_days,
-                                                 self.calendar, self.business_convention, self.month_end,
-                                                 self.day_counter)
+
+    def set_rate_helper(self):
+        if self._rate_helper is None:
+            self._rate_helper = ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate), self._tenor, self.fixing_days,
+                                                     self.calendar, self.business_convention, self.month_end,
+                                                     self.day_counter)
