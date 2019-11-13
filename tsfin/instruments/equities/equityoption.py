@@ -173,7 +173,7 @@ class EquityOption(Instrument):
         self.option_type = self.ts_attributes[OPTION_TYPE]
         self.strike = float(self.ts_attributes[STRIKE_PRICE])
         self.contract_size = float(self.ts_attributes[OPTION_CONTRACT_SIZE])
-        self.maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
+        self._maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.exercise_type = self.ts_attributes[EXERCISE_TYPE]
@@ -182,7 +182,7 @@ class EquityOption(Instrument):
             self.earliest_date = to_ql_date(self.ts_attributes[EARLIEST_DATE])
         except KeyError:
             self.earliest_date = ql.Date.minDate()
-        self.exercise = to_ql_option_exercise_type(self.exercise_type, self.earliest_date, self.maturity)
+        self.exercise = to_ql_option_exercise_type(self.exercise_type, self.earliest_date, self._maturity)
         self.payoff = to_ql_option_payoff(self.ts_attributes[PAYOFF_TYPE], to_ql_option_type(self.option_type),
                                           self.strike)
         self.option = to_ql_one_asset_option(self.payoff, self.exercise)
@@ -229,7 +229,7 @@ class EquityOption(Instrument):
             True if the instrument is expired or matured, False otherwise.
         """
         date = to_ql_date(date)
-        if date >= self.maturity:
+        if date >= self._maturity:
             return True
         return False
 
@@ -238,9 +238,37 @@ class EquityOption(Instrument):
         :param date: date-like
             The date.
         :return QuantLib.Date, None
-            Date representing the maturity or expiry of the instrument. Returns None if there is no maturity.
+            Date representing the _maturity or expiry of the instrument. Returns None if there is no _maturity.
         """
-        return self.maturity
+        return self._maturity
+
+    @conditional_vectorize('date')
+    @option_default_values
+    def cash_flow_to_date(self, start_date, date, **kwargs):
+        """
+        Parameters
+        ----------
+        start_date: QuantLib.Date
+            The start date.
+        date: QuantLib.Date, optional, (c-vectorized)
+            The last date of the computation.
+            Default: see :py:func:`default_arguments`.
+
+        Returns
+        -------
+        scalar
+           List of Tuples with the amount paid between the period.
+
+
+        """
+        start_date = to_ql_date(start_date)
+        date = to_ql_date(date)
+        if start_date <= self._maturity <= date:
+            spot_price = float(self.underlying_instrument.spot_price(date=self._maturity, last_available=True))
+            intrinsic = self.intrinsic(self._maturity, spot_price)
+        else:
+            intrinsic = 0
+        return [(self._maturity, intrinsic)]
 
     @option_default_arguments
     @conditional_vectorize('date', 'quote', 'volatility')
@@ -322,7 +350,7 @@ class EquityOption(Instrument):
         :return: float
             The intrinsic value o the option at date.
         """
-        if date > self.maturity:
+        if date > self._maturity:
             return 0
         else:
             intrinsic = 0
@@ -374,7 +402,7 @@ class EquityOption(Instrument):
         self.ql_process.spot_price.setValue(spot_price)
         if base_date > date:
             base_date = date
-        zero_rate = self.yield_curve.forward_rate_date_to_date(date=base_date, to_date1=date, to_date2=self.maturity,
+        zero_rate = self.yield_curve.forward_rate_date_to_date(date=base_date, to_date1=date, to_date2=self._maturity,
                                                                compounding=ql.Continuous, frequency=ql.NoFrequency,
                                                                day_counter=self.day_counter)
         self.ql_process.risk_free_rate.setValue(zero_rate)
@@ -426,7 +454,7 @@ class EquityOption(Instrument):
             The option price at date.
         """
         if self.is_expired(date=date):
-            return self.intrinsic(date=self.maturity, spot_price=spot_price)
+            return self.intrinsic(date=self._maturity, spot_price=spot_price)
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility, **kwargs)
@@ -453,7 +481,7 @@ class EquityOption(Instrument):
             The option price based on the date and underlying spot price.
         """
         if self.is_expired(date=date):
-            return self.intrinsic(date=self.maturity, spot_price=spot_price)
+            return self.intrinsic(date=self._maturity, spot_price=spot_price)
         else:
             base_spot_price = float(self.underlying_instrument.spot_price(date=date, last_available=True))
             self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,

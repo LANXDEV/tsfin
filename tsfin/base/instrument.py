@@ -180,7 +180,7 @@ class Instrument:
 
 
         """
-        return 0
+        return []
 
     @conditional_vectorize('date')
     def cash_to_date(self, start_date, date, *args, **kwargs):
