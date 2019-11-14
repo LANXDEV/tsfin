@@ -268,7 +268,7 @@ class EquityOption(Instrument):
             intrinsic = self.intrinsic(self._maturity, spot_price)
         else:
             intrinsic = 0
-        return [(self._maturity, intrinsic)]
+        return [(self._maturity, intrinsic*self.contract_size)]
 
     @option_default_arguments
     @conditional_vectorize('date', 'quote', 'volatility')
