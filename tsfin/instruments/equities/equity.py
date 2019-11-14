@@ -27,7 +27,8 @@ from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_h
 
 
 UNADJUSTED_PRICE = 'UNADJUSTED_PRICE'
-DIVIDENDS = 'DIVIDENDS'
+EX_DIVIDENDS = 'DIVIDEND_SCHEDULE'
+PAYABLE_DIVIDENDS = 'DIVIDEND_PAYABLE'
 DIVIDEND_YIELD = 'EQY_DVD_YLD_12M'
 
 
@@ -92,7 +93,7 @@ class Equity(Instrument):
         vol.name = "({})(VOLATILITY)".format(self.ts_name)
         return vol
 
-    def _dividends_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
+    def _ex_dividends_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
         """
         Cash amount paid by a unit of the instrument between `start_date` and `date`.
         :param start_date: Date-like
@@ -105,7 +106,28 @@ class Equity(Instrument):
         """
         start_date = to_datetime(start_date)
         date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, DIVIDENDS).ts_values
+        ts_dividends = getattr(self.timeseries, EX_DIVIDENDS).ts_values
+        if start_date >= date:
+            start_date = date
+        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
+        ts_dividends *= (1 - float(tax_adjust))
+        ts_dividends = ts_dividends[ts_dividends != 0]
+        return ts_dividends
+
+    def _payable_dividends_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
+        """
+        Cash amount paid by a unit of the instrument between `start_date` and `date`.
+        :param start_date: Date-like
+            Start date of the range
+        :param date: Date-like
+            Final date of the range
+        :param tax_adjust: float
+            The tax value to adjust the dividends received
+        :return: pandas.Series
+        """
+        start_date = to_datetime(start_date)
+        date = to_datetime(date)
+        ts_dividends = getattr(self.timeseries, PAYABLE_DIVIDENDS).ts_values
         if start_date >= date:
             start_date = date
         filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
@@ -125,7 +147,8 @@ class Equity(Instrument):
             The tax value to adjust the dividends received
         :return: float
         """
-        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust, *args, **kwargs)
+        ts_dividends = self._payable_dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust,
+                                                       *args, **kwargs)
         return list((ts_date, ts_value) for ts_date, ts_value in ts_dividends.iteritems())
 
     @conditional_vectorize('start_date', 'date')
@@ -206,7 +229,7 @@ class Equity(Instrument):
         return prices.get_values(index=date, last_available=last_available, fill_value=fill_value)
 
     @conditional_vectorize('date')
-    def dividend_values(self, date, last_available=True, fill_value=np.nan):
+    def dividend_values(self, date, last_available=True, fill_value=np.nan, ex_date=True):
         """
         Daily dividend values at date.
         :param date: Date-like
@@ -215,12 +238,18 @@ class Equity(Instrument):
             Whether to use last available data in case dates are missing.
         :param fill_value: scalar
             Default value in case `date` can't be found.
+        :param ex_date: bool
+            Whether to use the dividend ex-dates or payable dates
         :return: pandas.Series
         """
         date = to_datetime(date)
         try:
-            return getattr(self.timeseries, DIVIDENDS).get_values(index=date, last_available=last_available,
-                                                                  fill_value=fill_value)
+            if ex_date:
+                return getattr(self.timeseries, EX_DIVIDENDS).get_values(index=date, last_available=last_available,
+                                                                         fill_value=fill_value)
+            else:
+                return getattr(self.timeseries, PAYABLE_DIVIDENDS).get_values(index=date, last_available=last_available,
+                                                                              fill_value=fill_value)
         except KeyError:
             return 0
 

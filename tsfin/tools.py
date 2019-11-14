@@ -28,7 +28,7 @@ from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, Floati
 from tsfin.instruments import CurrencyFuture, Currency
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
-    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, FUND_TYPE, ETF, CONTINGENTCONVERTIBLE
+    INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, CONTINGENTCONVERTIBLE, EXCHANGE_TRADED_FUND
 
 
 def generate_instruments(ts_collection, indexes=None, index_curves=None):
@@ -101,14 +101,10 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
             instrument = EquityOption(ts)
-        elif ts_type == EQUITY:
+        elif ts_type in [EQUITY, EXCHANGE_TRADED_FUND]:
             instrument = Equity(ts)
         elif ts_type == FUND:
-            fund_type = str(ts.get_attribute(FUND_TYPE)).upper()
-            if fund_type == ETF:
-                instrument = Equity(ts)
-            else:
-                instrument = Instrument(ts)
+            instrument = Instrument(ts)
 
         elif ts_type in [CDS, CDX]:
             instrument = CDSRate(ts)
