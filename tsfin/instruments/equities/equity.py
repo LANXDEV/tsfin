@@ -145,7 +145,7 @@ class Equity(Instrument):
             Final date of the range
         :param tax_adjust: float
             The tax value to adjust the dividends received
-        :return: float
+        :return: list of tuples with (date, value)
         """
         ts_dividends = self._payable_dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust,
                                                        *args, **kwargs)
@@ -163,7 +163,8 @@ class Equity(Instrument):
             The tax value to adjust the dividends received
         :return: float
         """
-        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust, *args, **kwargs)
+        ts_dividends = self._ex_dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust, *args,
+                                                  **kwargs)
         return sum(ts_dividends)
 
     @conditional_vectorize('quote', 'date')
