@@ -310,7 +310,7 @@ class BaseInterestRate(Instrument):
         """
         # Returns None if impossible to obtain a rate helper from this time series
 
-        if self.is_expired(date):
+        if self.is_expired(date, **other_args):
             return None
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
