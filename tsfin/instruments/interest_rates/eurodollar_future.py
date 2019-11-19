@@ -33,10 +33,8 @@ class EurodollarFuture(BaseInterestRate):
     timeseries: :py:obj:`TimeSeries`
         TimeSeries representing the deposit rate.
     """
-    def __init__(self, timeseries):
-        super().__init__(timeseries)
-        # Class Flags
-        self.calculate_convexity = True
+    def __init__(self, timeseries, calculate_convexity=True):
+        super().__init__(timeseries, calculate_convexity=calculate_convexity)
         # Database Attributes
         self._maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])

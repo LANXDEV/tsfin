@@ -35,12 +35,12 @@ class BaseInterestRate(Instrument):
     timeseries: :py:obj:`TimeSeries`
         TimeSeries representing the deposit rate.
     """
-    def __init__(self, timeseries, *args, **kwargs):
+    def __init__(self, timeseries, is_deposit_rate=False, calculate_convexity=False, telescopic_value_dates=False):
         super().__init__(timeseries)
         # Class Flags
-        self.is_deposit_rate = False
-        self.calculate_convexity = False
-        self.telescopic_value_dates = False
+        self.is_deposit_rate = is_deposit_rate
+        self.calculate_convexity = calculate_convexity
+        self.telescopic_value_dates = telescopic_value_dates
         # Database Attributes
         try:
             self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])

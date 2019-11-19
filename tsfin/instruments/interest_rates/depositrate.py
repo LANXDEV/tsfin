@@ -31,13 +31,12 @@ class DepositRate(BaseInterestRate):
     timeseries: :py:obj:`TimeSeries`
         TimeSeries representing the deposit rate.
     """
-    def __init__(self, timeseries, *args, **kwargs):
-        super().__init__(timeseries)
-        self.is_deposit_rate = True
+    def __init__(self, timeseries, is_deposit_rate=True):
+        super().__init__(timeseries, is_deposit_rate=is_deposit_rate)
         self._maturity = None
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         # QuantLib Objects
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
         # QuantLib Attributes
         self.calendar = self.index.fixingCalendar()
         self.day_counter = self.index.dayCounter()
@@ -62,22 +61,3 @@ class DepositRate(BaseInterestRate):
         """Returns zero.
         """
         return 0
-
-    def _get_fixing_maturity_dates(self, start_date, end_date, fixing_at_start_date=False):
-        start_date = self.calendar.adjust(start_date, self.business_convention)
-        end_date = self.calendar.adjust(end_date, self.business_convention)
-        fixing_dates = list()
-        maturity_dates = list()
-        if fixing_at_start_date:
-            fixing_date = start_date
-        else:
-            fixing_date = self.index.fixingDate(start_date)
-        maturity_date = self.index.maturityDate(self.index.valueDate(fixing_date))
-        while maturity_date < end_date:
-            fixing_dates.append(fixing_date)
-            maturity_dates.append(maturity_date)
-            fixing_date = self.index.fixingDate(maturity_date)
-            maturity_date = self.index.maturityDate(self.index.valueDate(fixing_date))
-        fixing_dates.append(fixing_date)
-        maturity_dates.append(end_date)
-        return fixing_dates, maturity_dates

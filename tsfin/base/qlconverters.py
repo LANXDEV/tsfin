@@ -99,7 +99,7 @@ def to_ql_calendar(arg):
     elif arg.upper() == "EX":
         return ql.JointCalendar(ql.UnitedStates(ql.UnitedStates.NYSE),
                                 ql.UnitedStates(ql.UnitedStates.Settlement))
-    elif arg.upper() == "GB":
+    elif arg.upper() in ["GB", "UK"]:
         return ql.UnitedKingdom()
     elif arg.upper() == "BZ":
         return ql.Brazil()
@@ -178,7 +178,7 @@ def to_ql_business_convention(arg):
     elif arg.upper() == "MODIFIEDFOLLOWING":
         return ql.ModifiedFollowing
     elif arg.upper() == "PRECEDING":
-        return ql.Following
+        return ql.Preceding
     elif arg.upper() == "MODIFIEDPRECEDING":
         return ql.ModifiedPreceding
     elif arg.upper() == "UNADJUSTED":
@@ -287,7 +287,7 @@ def to_ql_duration(arg):
         return ql.Duration.Macaulay
 
 
-def to_ql_rate_index(index, tenor=None, yield_curve_handle=None):
+def to_ql_rate_index(index, tenor=None, yield_curve_handle=ql.YieldTermStructureHandle()):
     """Return the QuantLib.Index with the specified tenor and yield_curve_handle.
 
     Parameters
@@ -306,25 +306,16 @@ def to_ql_rate_index(index, tenor=None, yield_curve_handle=None):
     """
 
     if index.upper() == "USDLIBOR":
-        if yield_curve_handle is None:
-            return ql.USDLibor(tenor)
+        if tenor == ql.Period(1, ql.Days):
+            return ql.USDLiborON(yield_curve_handle)
         else:
             return ql.USDLibor(tenor, yield_curve_handle)
     elif index.upper() == "FEDFUNDS":
-        if yield_curve_handle is None:
-            return ql.FedFunds()
-        else:
-            return ql.FedFunds(yield_curve_handle)
+        return ql.FedFunds(yield_curve_handle)
     elif index.upper() == "EURLIBOR":
-        if yield_curve_handle is None:
-            return ql.EURLibor(tenor)
-        else:
-            return ql.EURLibor(tenor, yield_curve_handle)
+        return ql.EURLibor(tenor, yield_curve_handle)
     elif index.upper() == "EONIA":
-        if yield_curve_handle is None:
-            return ql.Eonia(tenor)
-        else:
-            return ql.Eonia(tenor, yield_curve_handle)
+        return ql.Eonia(tenor, yield_curve_handle)
 
 
 def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
@@ -468,9 +459,12 @@ def to_ql_option_engine(engine_name=None, process=None, model_name=None, time_st
     Returns a QuantLib.PricingEngine for Options
     :param engine_name: str
         The engine name
-    :param process: Quant
-    :param model_name:
-    :param time_steps:
+    :param process: QuantLib.StochasticProcess
+        The QuantLib object with the option Stochastic Process.
+    :param model_name: str
+        If the engine is 'BINOMIAL_VANILLA', model_name is the binomial engine used.
+    :param time_steps: float
+        The number of steps used in the binomial engine
     :return: QuantLib.PricingEngine
     """
     if engine_name.upper() == 'BINOMIAL_VANILLA':

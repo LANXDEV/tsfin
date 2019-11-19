@@ -46,7 +46,7 @@ class SwapRate(BaseInterestRate):
         self.fixed_leg_tenor = ql.PeriodParser.parse(self.ts_attributes[FIXED_LEG_TENOR])
         self.fixed_leg_day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         # QuantLib Objects
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
         # QuantLib Attributes
         self.calendar = ql.JointCalendar(self.fixed_calendar, self.index.fixingCalendar())
         self.day_counter = self.index.dayCounter()

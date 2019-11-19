@@ -205,8 +205,8 @@ class EquityOption(Instrument):
 
     def set_ql_process(self, ql_process):
         """
-        :param ql_process: :py:class:'BlackScholesMerton'
-            A class used to handle the Black Scholes Merton model from QuantLib.
+        :param ql_process: :py:class:'BaseEquityProcess'
+            A class used to handle the Stochastic Models for Equities from QuantLib.
         :return:
         """
         self.ql_process = ql_process(calendar=self.calendar, day_counter=self.day_counter)
@@ -393,9 +393,7 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
-        :return: QuantLib.VanillaOption
-            This method returns the VanillaOption with a QuantLib engine. Used for calculating the option values
-            and greeks.
+        :return:
         """
 
         self.ql_process.dividend_yield.setValue(dividend_yield * (1-float(dividend_tax)))

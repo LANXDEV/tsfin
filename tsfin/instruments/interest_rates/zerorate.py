@@ -24,10 +24,8 @@ from tsfin.base import to_ql_business_convention, to_ql_calendar, to_ql_day_coun
 
 
 class ZeroRate(BaseInterestRate):
-
-    def __init__(self, timeseries, *args, **kwargs):
-        super().__init__(timeseries)
-        self.is_deposit_rate = True
+    def __init__(self, timeseries, is_deposit_rate=True):
+        super().__init__(timeseries, is_deposit_rate=is_deposit_rate)
         self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
@@ -44,3 +42,26 @@ class ZeroRate(BaseInterestRate):
             self._rate_helper = ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate), self._tenor, self.fixing_days,
                                                      self.calendar, self.business_convention, self.month_end,
                                                      self.day_counter)
+
+    def _get_fixing_maturity_dates(self, start_date, end_date, fixing_at_start_date=False):
+        start_date = self.calendar.adjust(start_date, self.business_convention)
+        end_date = self.calendar.adjust(end_date, self.business_convention)
+        fixing_dates = list()
+        maturity_dates = list()
+        if fixing_at_start_date:
+            fixing_date = start_date
+        else:
+            fixing_date = self.calendar.advance(start_date, -self.fixing_days, ql.Days, self.business_convention,
+                                                self.month_end)
+        value_date = self.calendar.advance(fixing_date, self.fixing_days, ql.Days, self.business_convention,
+                                           self.month_end)
+        maturity_date = self.calendar.advance(value_date, self._tenor, self.business_convention, self.month_end)
+        while maturity_date < end_date:
+            fixing_dates.append(fixing_date)
+            maturity_dates.append(maturity_date)
+            fixing_date = self.calendar.advance(maturity_date, -self.fixing_days, ql.Days, self.business_convention,
+                                                self.month_end)
+            maturity_date = self.calendar.advance(maturity_date, self._tenor, self.business_convention, self.month_end)
+        fixing_dates.append(fixing_date)
+        maturity_dates.append(end_date)
+        return fixing_dates, maturity_dates
