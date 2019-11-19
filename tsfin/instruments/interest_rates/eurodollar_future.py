@@ -21,8 +21,8 @@ import numpy as np
 import QuantLib as ql
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
 from tsfin.base import to_ql_rate_index, to_ql_date, to_datetime, to_ql_time_unit, conditional_vectorize
-from tsfin.constants import SETTLEMENT_DAYS, INDEX, MATURITY_DATE, FUTURE_CONTRACT_SIZE, TICK_SIZE, TICK_VALUE, \
-    TERM_NUMBER, TERM_PERIOD, INDEX_TENOR
+from tsfin.constants import SETTLEMENT_DAYS, INDEX, FUTURE_CONTRACT_SIZE, TICK_SIZE, TICK_VALUE, TERM_NUMBER,\
+    TERM_PERIOD, INDEX_TENOR, LAST_DELIVERY
 
 
 class EurodollarFuture(BaseInterestRate):
@@ -36,7 +36,7 @@ class EurodollarFuture(BaseInterestRate):
     def __init__(self, timeseries, calculate_convexity=True):
         super().__init__(timeseries, calculate_convexity=calculate_convexity)
         # Database Attributes
-        self._maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
+        self.last_delivery = to_ql_date(to_datetime(self.ts_attributes[LAST_DELIVERY]))
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         self.contract_size = float(self.ts_attributes[FUTURE_CONTRACT_SIZE])
         self.tick_size = float(self.ts_attributes[TICK_SIZE])
@@ -47,12 +47,14 @@ class EurodollarFuture(BaseInterestRate):
         # QuantLib Objects
         self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
         # QuantLib Attributes
+        self._maturity = self.interest_start_date = self.index.valueDate(self.last_delivery)
         self.calendar = self.index.fixingCalendar()
         self.day_counter = self.index.dayCounter()
         self.business_convention = self.index.businessDayConvention()
         self.fixing_days = self.index.fixingDays()
         self.month_end = self.index.endOfMonth()
-        self.interest_maturity_date = self.index.maturityDate(self._maturity)
+        self.interest_maturity_date = self.index.maturityDate(self.interest_start_date)
+        self.futures_type = ql.Futures.IMM
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(100)
         self.helper_spread = ql.SimpleQuote(0)
@@ -61,8 +63,44 @@ class EurodollarFuture(BaseInterestRate):
     def set_rate_helper(self):
 
         if self._rate_helper is None:
-            self._rate_helper = ql.FuturesRateHelper(ql.QuoteHandle(self.helper_rate), self._maturity, self.index,
-                                                     ql.QuoteHandle(self.helper_convexity))
+            self._rate_helper = ql.FuturesRateHelper(ql.QuoteHandle(self.helper_rate), self.interest_start_date,
+                                                     self.index, ql.QuoteHandle(self.helper_convexity),
+                                                     self.futures_type)
+
+    def is_expired(self, date, min_future_date=None, max_future_date=None, *args, **kwargs):
+        """Check if the deposit rate is expired.
+
+        Parameters
+        ----------
+        date: QuantLib.Date
+            Reference date.
+        min_future_date: QuantLib.Date
+            The minimum maturity date to be used.
+        max_future_date: QuantLib.Date
+            The maximum maturity date to be used.
+        Returns
+        -------
+        bool
+            Whether the instrument is expired at `date`.
+        """
+        min_future_date = min_future_date
+        max_future_date = max_future_date
+        maturity = self.maturity(date=date)
+        date = to_ql_date(date)
+        if date >= maturity:
+            return True
+        if min_future_date is None and max_future_date is None:
+            return False
+        elif min_future_date is None and max_future_date is not None:
+            if maturity > max_future_date:
+                return True
+        elif min_future_date is not None and max_future_date is None:
+            if maturity < min_future_date:
+                return True
+        else:
+            if not min_future_date < maturity < max_future_date:
+                return True
+        return False
 
     @conditional_vectorize('date', 'start_quote', 'quote')
     def value(self, date, start_quote, quote, *args, **kwargs):

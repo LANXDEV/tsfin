@@ -31,7 +31,7 @@ ExtRateHelper = namedtuple('ExtRateHelper', ['ts_name', 'issue_date', 'maturity_
 class YieldCurveTimeSeries:
 
     def __init__(self, ts_collection=None, calendar=None, day_counter=None, keep_only_on_the_run_month=False,
-                 ignore_errors=False, min_future_tenor='1M', max_future_tenor='5Y', **other_rate_helper_args):
+                 ignore_errors=False, min_future_tenor='2W', max_future_tenor='18M', **other_rate_helper_args):
         """Time series of QuantLib YieldTermStructures objects.
 
         The QuantLib YieldTermStructure objects are stored in the dict self.yield_curves and are 'lazy' created and
