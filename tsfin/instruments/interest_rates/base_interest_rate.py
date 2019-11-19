@@ -175,47 +175,35 @@ class BaseInterestRate(Instrument):
         QuantLib.Date
             The maturity based on the reference date and tenor of the deposit rate.
         """
-        date = to_ql_date(date)
         if self._maturity is not None:
             return self._maturity
-        if self.is_deposit_rate and self.index is not None:
-            return self.index.maturityDate(date)
+        date = to_ql_date(date)
+        if self.index is not None:
+            date = self.index.valueDate(date)
+            if self.is_deposit_rate:
+                return self.index.maturityDate(date)
+            else:
+                return self.calendar.advance(date, self._tenor, self.business_convention, self.month_end)
         else:
+            date = self.calendar.advance(date, self.fixing_days, ql.Days, self.business_convention, self.month_end)
             return self.calendar.advance(date, self._tenor, self.business_convention, self.month_end)
 
-    def is_expired(self, date, min_future_date=None, max_future_date=None, *args, **kwargs):
+    def is_expired(self, date, *args, **kwargs):
         """Check if the deposit rate is expired.
 
         Parameters
         ----------
         date: QuantLib.Date
             Reference date.
-        min_future_date: QuantLib.Date
-            The minimum maturity date to be used.
-        max_future_date: QuantLib.Date
-            The maximum maturity date to be used.
         Returns
         -------
         bool
             Whether the instrument is expired at `date`.
         """
-        min_future_date = min_future_date
-        max_future_date = max_future_date
         maturity = self.maturity(date=date)
         date = to_ql_date(date)
         if date >= maturity:
             return True
-        if min_future_date is None and max_future_date is None:
-            return False
-        elif min_future_date is None and max_future_date is not None:
-            if maturity > max_future_date:
-                return True
-        elif min_future_date is not None and max_future_date is None:
-            if maturity < min_future_date:
-                return True
-        else:
-            if not min_future_date < maturity < max_future_date:
-                return True
         return False
 
     @conditional_vectorize('date')
@@ -309,7 +297,6 @@ class BaseInterestRate(Instrument):
             Rate helper for yield curve construction.
         """
         # Returns None if impossible to obtain a rate helper from this time series
-
         if self.is_expired(date, **other_args):
             return None
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)

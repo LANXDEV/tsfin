@@ -52,9 +52,7 @@ class DepositRate(BaseInterestRate):
     def set_rate_helper(self):
 
         if self._rate_helper is None:
-            self._rate_helper = ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate), self._tenor, self.fixing_days,
-                                                     self.calendar, self.business_convention, self.month_end,
-                                                     self.day_counter)
+            self._rate_helper = ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate), self.index)
 
     @conditional_vectorize('date')
     def value(*args, **kwargs):
