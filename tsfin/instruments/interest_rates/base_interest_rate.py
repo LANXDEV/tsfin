@@ -177,7 +177,7 @@ class BaseInterestRate(Instrument):
         """
         if self._maturity is not None:
             return self._maturity
-        date = to_ql_date(date)
+        date = self.calendar.adjust(to_ql_date(date), self.business_convention)
         if self.index is not None:
             date = self.index.valueDate(date)
             if self.is_deposit_rate:
