@@ -31,15 +31,14 @@ class OISRate(BaseInterestRate):
     timeseries: :py:class:`TimeSeries`
         TimeSeries object representing the instrument.
     """
-    def __init__(self, timeseries):
-        super().__init__(timeseries)
+    def __init__(self, timeseries, telescopic_value_dates=True):
+        super().__init__(timeseries, telescopic_value_dates=telescopic_value_dates)
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
         self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
         self.payment_lag = int(self.ts_attributes[PAYMENT_LAG])
-        self.telescopic_value_dates = True
         # QuantLib Objects
         self.term_structure = ql.RelinkableYieldTermStructureHandle()
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor)
+        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
         # QuantLib Attributes
         self.calendar = self.index.fixingCalendar()
         self.day_counter = self.index.dayCounter()
