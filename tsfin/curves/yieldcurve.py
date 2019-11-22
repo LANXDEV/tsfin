@@ -105,7 +105,8 @@ class YieldCurveTimeSeries:
 
         return helpers
 
-    def update_curves(self, dates, piecewise_type="linear_zero", interpolation_type="monotonic_cubic_zero"):
+    def update_curves(self, dates, piecewise_type="linear_zero", interpolation_type="monotonic_cubic_zero",
+                      enable_extrapolation=True):
         """ Update ``self.yield_curves`` with the yield curves of each date in `dates`.
 
         Parameters
@@ -115,6 +116,8 @@ class YieldCurveTimeSeries:
             The piecewise curve interpolation method.
         interpolation_type: str
             The curve nodes interpolation method.
+        enable_extrapolation: bool
+
         """
         dates = to_list(dates)
 
@@ -134,8 +137,8 @@ class YieldCurveTimeSeries:
                                               node_rates=node_rates,
                                               day_counter=self.day_counter,
                                               calendar=self.calendar,
-                                              compounding=ql.Continuous,
-                                              interpolation_type=interpolation_type)
+                                              interpolation_type=interpolation_type,
+                                              enable_extrapolation=enable_extrapolation)
             self.yield_curves[date] = yield_curve
 
     def _update_all_curves(self):
@@ -564,13 +567,19 @@ class YieldCurveTimeSeries:
             piecewise_curve = ql.PiecewiseLogCubicDiscount(date, helpers, day_counter)
         elif piecewise_type == "log_linear_discount":
             piecewise_curve = ql.PiecewiseLogLinearDiscount(date, helpers, day_counter)
+        elif piecewise_type == "spline_cubic_discount":
+            piecewise_curve = ql.PiecewiseSplineCubicDiscount(date, helpers, day_counter)
         else:
             piecewise_curve = ql.PiecewiseLinearZero(date, helpers, day_counter)
-        node_dates, node_rates = zip(*piecewise_curve.nodes())
+
+        node_dates = piecewise_curve.dates()
+        node_rates = [piecewise_curve.forwardRate(date, node_date, day_counter, ql.Continuous, ql.NoFrequency).rate()
+                      for node_date in node_dates]
+
         return node_dates, node_rates
 
     @staticmethod
-    def _interpolation(node_dates, node_rates, day_counter, calendar, compounding, interpolation_type):
+    def _interpolation(node_dates, node_rates, day_counter, calendar, interpolation_type, enable_extrapolation=True):
 
         """
         Parameters
@@ -583,8 +592,6 @@ class YieldCurveTimeSeries:
             The curve day count
         calendar: QuantLib.Calendar
             The curve calendar.
-        compounding: QuantLib.Compounding
-            Compounding convention for the rate.
         interpolation_type: str
             The curve interpolation method
         Returns
@@ -595,31 +602,32 @@ class YieldCurveTimeSeries:
             yield_curve = ql.CubicZeroCurve(node_dates, node_rates,
                                             day_counter,
                                             calendar,
-                                            ql.Cubic(),
-                                            compounding)
+                                            ql.Cubic())
         elif interpolation_type == "log_linear_zero":
             yield_curve = ql.LogLinearZeroCurve(node_dates, node_rates,
                                                 day_counter,
                                                 calendar,
-                                                ql.LogLinear(),
-                                                compounding)
+                                                ql.LogLinear())
         elif interpolation_type == "log_cubic_zero":
             yield_curve = ql.LogCubicZeroCurve(node_dates, node_rates,
                                                day_counter,
                                                calendar,
-                                               ql.DefaultLogCubic(),
-                                               compounding)
+                                               ql.DefaultLogCubic())
+        elif interpolation_type == "spline_cubic_zero":
+            yield_curve = ql.NaturalCubicZeroCurve(node_dates, node_rates,
+                                                   day_counter,
+                                                   calendar,
+                                                   ql.SplineCubic())
         elif interpolation_type == "monotonic_cubic_zero":
             yield_curve = ql.MonotonicCubicZeroCurve(node_dates, node_rates,
                                                      day_counter,
                                                      calendar,
-                                                     ql.MonotonicCubic(),
-                                                     compounding)
+                                                     ql.MonotonicCubic())
         else:
             yield_curve = ql.ZeroCurve(node_dates, node_rates,
                                        day_counter,
                                        calendar,
-                                       ql.Linear(),
-                                       compounding)
-        yield_curve.enableExtrapolation()
+                                       ql.Linear())
+        if enable_extrapolation:
+            yield_curve.enableExtrapolation()
         return yield_curve
