@@ -265,7 +265,7 @@ class BaseInterestRate(Instrument):
         start_date = to_ql_date(start_date)
         date = to_ql_date(date)
         fixing_dates, maturity_dates = self._get_fixing_maturity_dates(start_date, date, fixing_at_start_date)
-        fixings = self.timeseries.get_values(index=[to_datetime(fixing_date) for fixing_date in fixing_dates])
+        fixings = self.quotes.get_values(index=[to_datetime(fixing_date) for fixing_date in fixing_dates])
 
         if spread is not None:
             fixings += spread

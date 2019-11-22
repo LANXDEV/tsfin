@@ -21,19 +21,10 @@ import numpy as np
 import pandas as pd
 import QuantLib as ql
 from tsio.tools import at_index
-from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES
+from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, EX_DIVIDENDS, \
+    PAYABLE_DIVIDENDS, DIVIDEND_YIELD
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize, \
     filter_series
-
-
-UNADJUSTED_PRICE = 'UNADJUSTED_PRICE'
-EX_DIVIDENDS = 'DIVIDEND_SCHEDULE'
-PAYABLE_DIVIDENDS = 'DIVIDEND_PAYABLE'
-DIVIDEND_YIELD = 'EQY_DVD_YLD_12M'
-
-
-def trunc(values, decs=0):
-    return np.trunc(values*10**decs)/(10**decs)
 
 
 class Equity(Instrument):
