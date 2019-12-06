@@ -104,7 +104,7 @@ class CDSRate(BaseInterestRate):
 
     @conditional_vectorize('date')
     def credit_default_swap(self, date, notional, probability_handle, base_yield_curve_handle, upfront_price=1,
-                            last_available=True, *args, **kwargs):
+                            last_available=True, recovery_rate=None, *args, **kwargs):
 
         """
         :param date: pd.Datetime or QuantLib.Date
@@ -119,14 +119,15 @@ class CDSRate(BaseInterestRate):
             The par value of the upfront payment.
         :param last_available: bool, optional
             Whether to use last available quotes if missing data.
+        :param recovery_rate: float, optional
+            The CDS recovery rate
         :return:
         QuantLib CDS Instrument
             The CDS Instrument for calculation purposes.
         """
 
-        recovery_rate = self.recovery_rate
-        if 'recovery_rate' in kwargs.keys():
-            recovery_rate = kwargs['recovery_rate']
+        if recovery_rate is None:
+            recovery_rate = self.recovery_rate
 
         # maybe the user passed a quote multiplied by 100, if so we divide by 100 to be correctly used by the CDS.
         if upfront_price > 1:

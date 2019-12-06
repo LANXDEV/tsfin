@@ -49,7 +49,7 @@ def to_ql_frequency(arg):
 
     Returns
     -------
-    QuantLib.Period
+    QuantLib.Frequency, QuantLib.Period
 
     """
 
@@ -59,6 +59,8 @@ def to_ql_frequency(arg):
         return ql.Semiannual
     elif arg.upper() == "QUARTERLY":
         return ql.Quarterly
+    elif arg.upper() == "EVERY_FOUR_MONTH":
+        return ql.EveryFourthMonth
     elif arg.upper() == "BIMONTHLY":
         return ql.Bimonthly
     elif arg.upper() == "MONTHLY":
@@ -75,6 +77,37 @@ def to_ql_frequency(arg):
         return ql.NoFrequency
     else:
         raise ValueError("Unable to convert {} to a QuantLib frequency".format(arg))
+
+
+def to_ql_weekday(arg):
+    """Converts string with a period representing a tenor to a QuantLib Weekday.
+
+    Parameters
+    ----------
+    arg: str
+
+    Returns
+    -------
+    QuantLib.Weekday
+
+    """
+    arg = str(arg).upper()
+    if arg == 'SUNDAY':
+        return ql.Sunday
+    elif arg == 'MONDAY':
+        return ql.Monday
+    elif arg == 'TUESDAY':
+        return ql.Tuesday
+    elif arg == 'WEDNESDAY':
+        return ql.Wednesday
+    elif arg == 'THURSDAY':
+        return ql.Thursday
+    elif arg == 'FRIDAY':
+        return ql.Friday
+    elif arg == 'SATURDAY':
+        return ql.Saturday
+    else:
+        raise ValueError("Unable to convert {} to a QuantLib weekday".format(arg))
 
 
 def to_ql_calendar(arg):
@@ -454,31 +487,61 @@ def to_ql_option_exercise_type(exercise_type, earliest_date, maturity):
         raise ValueError('Exercise type not supported')
 
 
-def to_ql_option_engine(engine_name=None, process=None, model_name=None, time_steps=None):
+def to_ql_option_engine(engine_name=None, process=None, model=None):
     """
     Returns a QuantLib.PricingEngine for Options
     :param engine_name: str
         The engine name
     :param process: QuantLib.StochasticProcess
         The QuantLib object with the option Stochastic Process.
-    :param model_name: str
-        If the engine is 'BINOMIAL_VANILLA', model_name is the binomial engine used.
-    :param time_steps: float
-        The number of steps used in the binomial engine
+    :param model: QuantLib.CalibratedModel
     :return: QuantLib.PricingEngine
     """
     if engine_name.upper() == 'BINOMIAL_VANILLA':
-        return ql.BinomialVanillaEngine(process, model_name, time_steps)
+        return ql.BinomialVanillaEngine(process, 'LR', 801)
     elif engine_name.upper() == 'ANALYTIC_HESTON':
-        return ql.AnalyticHestonEngine(ql.HestonModel(process))
+        if model is None:
+            model = ql.HestonModel(process)
+        elif model is not None and process is not None:
+            model = model(process)
+        return ql.AnalyticHestonEngine(model)
     elif engine_name.upper() == 'ANALYTIC_EUROPEAN':
         return ql.AnalyticEuropeanEngine(process)
     elif engine_name.upper() == 'ANALYTIC_EUROPEAN_DIVIDEND':
         return ql.AnalyticDividendEuropeanEngine(process)
     elif engine_name.upper() == "FINITE_DIFFERENCES":
         return ql.FdBlackScholesVanillaEngine(process)
+    elif engine_name.upper() == 'HESTON_FINITE_DIFFERENCES':
+        if model is None:
+            model = ql.HestonModel(process)
+        elif model is not None and process is not None:
+            model = model(process)
+        return ql.FdHestonVanillaEngine(model)
+    elif engine_name.upper() == "BARONE_ADESI_WHALEY":
+        return ql.BaroneAdesiWhaleyEngine(process)
+    elif engine_name.upper() == "BJERKSUND_STENSLAND":
+        return ql.BjerksundStenslandEngine(process)
+    elif engine_name.upper() == "ANALYTIC_GJR_GARCH":
+        if model is None:
+            model = ql.GJRGARCHModel(process)
+        elif model is not None and process is not None:
+            model = model(process)
+        return ql.AnalyticGJRGARCHEngine(model)
+    elif engine_name.upper() == 'MC_GJR_GARCH':
+        return ql.MCEuropeanGJRGARCHEngine(process=process, traits='pseudorandom', timeStepsPerYear=20,
+                                           requiredTolerance=0.02)
     else:
         return None
+
+
+def to_ql_equity_model(model_name):
+    model_name = str(model_name).upper()
+    if model_name == "HESTON":
+        return ql.HestonModel
+    elif model_name == "GJR_GARCH":
+        return ql.GJRGARCHModel
+    elif model_name == "BATES":
+        return ql.BatesModel
 
 
 def to_ql_one_asset_option(payoff, exercise):

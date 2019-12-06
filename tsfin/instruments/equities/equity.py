@@ -283,5 +283,4 @@ class Equity(Instrument):
         date = to_datetime(date)
         vol = at_index(df=self.ts_volatility(n_days=n_days), index=date, last_available=last_available,
                        fill_value=fill_value)
-
         return vol*np.sqrt(annual_factor)

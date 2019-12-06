@@ -71,22 +71,17 @@ def option_default_arguments(f):
     def new_f(self, **kwargs):
 
         # QuantLib Process
-        if kwargs.get('process', None) is not None:
-            self.ql_process = kwargs['process']
+        if kwargs.get('base_equity_process', None) is None:
+            kwargs['base_equity_process'] = self.ql_process
 
         # Yield Curve
         if kwargs.get('yield_curve', None) is not None:
             self.yield_curve = kwargs['yield_curve']
 
         # QuantLib Option Engine Arguments
-        engine_name = 'FINITE_DIFFERENCES' if kwargs.get('engine_name', None) is None else \
-            kwargs['engine_name']
-        model_name = 'LR' if kwargs.get('model_name', None) is None else kwargs['model_name']
-        time_steps = 801 if kwargs.get('time_steps', None) is None else kwargs['time_steps']
+        if kwargs.get('engine_name', None) is not None:
+            self.engine_name = kwargs['engine_name']
         # Option build-up
-        option_engine = to_ql_option_engine(engine_name=engine_name, process=self.ql_process.process,
-                                            model_name=model_name, time_steps=time_steps)
-        self.set_pricing_engine(option_engine)
         return f(self, **kwargs)
 
     return new_f
@@ -133,7 +128,10 @@ def option_default_values(f):
     def new_f(self, **kwargs):
 
         # Setup
-        kwargs['date'] = to_ql_date(kwargs['date'])
+        try:
+            kwargs['date'] = to_ql_date(kwargs['date'])
+        except TypeError:
+            kwargs['date'] = to_ql_date(kwargs['date'][0])
         kwargs['base_date'] = to_ql_date(kwargs['base_date'])
         search_date = kwargs['base_date'] if kwargs['date'] > kwargs['base_date'] else kwargs['date']
         ql.Settings.instance().evaluationDate = kwargs['date']
@@ -188,8 +186,18 @@ class EquityOption(Instrument):
         self.option = to_ql_one_asset_option(self.payoff, self.exercise)
         self.yield_curve = None
         self.underlying_instrument = None
+        # engine setup
+        self.engine_name = 'FINITE_DIFFERENCES'
         self.ql_process = None
         self._implied_volatility = dict()
+
+    def change_exercise_type(self, exercise_type):
+
+        exercise_type = str(exercise_type).upper()
+        self.exercise = to_ql_option_exercise_type(exercise_type, self.earliest_date, self._maturity)
+        self.payoff = to_ql_option_payoff(self.ts_attributes[PAYOFF_TYPE], to_ql_option_type(self.option_type),
+                                          self.strike)
+        self.option = to_ql_one_asset_option(self.payoff, self.exercise)
 
     def set_yield_curve(self, yield_curve):
 
@@ -211,15 +219,25 @@ class EquityOption(Instrument):
         """
         self.ql_process = ql_process(calendar=self.calendar, day_counter=self.day_counter)
 
-    def set_pricing_engine(self, ql_engine):
+    def set_pricing_engine(self, ql_engine=None, engine_name=None, process=None):
         """
 
         :param ql_engine: QuantLib.PricingEngine
             The engine used to calculate the option.
+        :param engine_name: str
+            The engine name
+        :param process: QuantLib.StochasticProcess
+            The QuantLib object with the option Stochastic Process.
         :return:
         """
-
-        self.option.setPricingEngine(ql_engine)
+        if ql_engine is not None:
+            self.option.setPricingEngine(ql_engine)
+        elif engine_name is not None and process is not None:
+            option_engine = to_ql_option_engine(engine_name=engine_name, process=process)
+            self.option.setPricingEngine(option_engine)
+        else:
+            option_engine = to_ql_option_engine(engine_name=self.engine_name, process=process)
+            self.option.setPricingEngine(option_engine)
 
     def is_expired(self, date, *args, **kwargs):
         """
@@ -375,9 +393,57 @@ class EquityOption(Instrument):
         return getattr(self.timeseries, IMPLIED_VOL).get_values(index=date, last_available=last_available,
                                                                 fill_value=fill_value)
 
-    def volatility_update(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, volatility,
-                          **kwargs):
+    def _process_values_update(self, base_equity_process, date, base_date, spot_price, dividend_yield, dividend_tax):
+        """
+        This values are all common to the py:class:'BaseEquityProcess"
+        :param date: QuantLib.Date
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param spot_price: float
+            The underlying spot price.
+        :param dividend_yield: float
+            An override of the dividend yield in case you don't wan't to use the timeseries one.
+        :param dividend_tax: float
+            The dividend % tax applied.
+        :return:
+        """
+        taxed_dividend_yield = dividend_yield * (1-float(dividend_tax))
+        dividend_yield = ql.InterestRate(taxed_dividend_yield, self.day_counter, ql.Simple,
+                                         ql.Annual).equivalentRate(ql.Continuous, ql.NoFrequency, 1).rate()
+        if date > base_date:
+            date = base_date
+        base_equity_process.risk_free_handle.linkTo(self.yield_curve.yield_curve(date=date))
+        base_equity_process.dividend_yield.setValue(dividend_yield)
+        base_equity_process.spot_price.setValue(spot_price)
 
+    def _black_implied_vol(self, date, option_price, spot_price, base_equity_process):
+        """
+        :param date: QuantLib.Date
+            The date.
+        :param spot_price: float
+            The underlying spot price.
+        :param option_price: float
+            The option price used to calculate the implied volatility.
+        """
+        self._implied_volatility[date] = ql.SimpleQuote(0.2)
+        process = base_equity_process.process(volatility=self._implied_volatility[date])
+        self.set_pricing_engine(engine_name=self.engine_name, process=process)
+
+        try:
+            implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
+        except RuntimeError:
+            # almost all errors are due to the option price being lower than the intrinsic value.
+            discount_dvd = base_equity_process.dividend_handle.discount(self._maturity)
+            discount_risk_free = base_equity_process.risk_free_handle.discount(self._maturity)
+            fwd_spot_price = spot_price * discount_dvd / discount_risk_free
+            option_price = self.intrinsic(date=date, spot_price=fwd_spot_price) + 0.01
+            implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
+
+        self._implied_volatility[date].setValue(implied_vol)
+
+    def volatility_update(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, volatility,
+                          base_equity_process, **kwargs):
         """
         :param date: QuantLib.Date
             The date.
@@ -393,48 +459,32 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return:
         """
-
-        self.ql_process.dividend_yield.setValue(dividend_yield * (1-float(dividend_tax)))
-        self.ql_process.spot_price.setValue(spot_price)
-        if base_date > date:
-            base_date = date
-        zero_rate = self.yield_curve.forward_rate_date_to_date(date=base_date, to_date1=date, to_date2=self._maturity,
-                                                               compounding=ql.Continuous, frequency=ql.NoFrequency,
-                                                               day_counter=self.day_counter)
-        self.ql_process.risk_free_rate.setValue(zero_rate)
-
+        self._process_values_update(base_equity_process=base_equity_process, date=date, base_date=base_date,
+                                    spot_price=spot_price, dividend_yield=dividend_yield, dividend_tax=dividend_tax)
         if date > base_date:
             date = base_date
         if volatility is not None:
-            self.ql_process.volatility.setValue(volatility)
-            self._implied_volatility[date] = volatility
+            self._implied_volatility[date] = ql.SimpleQuote(volatility)
         else:
-            self.ql_process.volatility.setValue(0.2)
-            self._implied_volatility[date] = None
+            if base_equity_process.process_name in ['BLACK_SCHOLES', 'BLACK_SCHOLES_MERTON']:
+                self._black_implied_vol(date=date, option_price=option_price, spot_price=spot_price,
+                                        base_equity_process=base_equity_process)
+                process = base_equity_process.process(volatility=self._implied_volatility[date])
+            elif base_equity_process.process_name in ['HESTON', 'GJR_GARCH']:
+                process = base_equity_process.process(**kwargs)
+        # making sure it is using the updated model.
 
-        if self._implied_volatility[date] is None:
-            try:
-                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=self.ql_process.process,
-                                                            accuracy=1.0e-4, maxEvaluations=100)
-
-            except RuntimeError:
-                # need a better fix for this, some days it's impossible to find the implied vol so we use the prior
-                # day volatility as a proxy.
-                prior_date = self.calendar.advance(date, -1, ql.Days)
-                mid_price = float(self.ts_mid_price(date=prior_date, last_available=True))
-                ql.Settings.instance().evaluationDate = prior_date
-                implied_vol = self.option.impliedVolatility(targetValue=mid_price, process=self.ql_process.process,
-                                                            accuracy=1.0e-4, maxEvaluations=100)
-                ql.Settings.instance().evaluationDate = date
-            self._implied_volatility[date] = implied_vol
-            self.ql_process.volatility.setValue(implied_vol)
+        self.set_pricing_engine(engine_name=self.engine_name, process=process)
 
     @option_default_arguments
     @conditional_vectorize('date', 'volatility', 'spot_price')
     @option_default_values
-    def price(self, date, base_date, spot_price, volatility, dividend_yield, dividend_tax, **kwargs):
+    def price(self, date, base_date, spot_price, volatility, dividend_yield, dividend_tax, base_equity_process,
+              **kwargs):
         """
         :param date: date-like
             The date.
@@ -448,6 +498,8 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option price at date.
         """
@@ -455,13 +507,15 @@ class EquityOption(Instrument):
             return self.intrinsic(date=self._maturity, spot_price=spot_price)
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                                   dividend_tax=dividend_tax, volatility=volatility,
+                                   base_equity_process=base_equity_process, **kwargs)
         return self.option.NPV()
 
     @option_default_arguments
     @conditional_vectorize('spot_price')
     @option_default_values
-    def price_underlying(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
+    def price_underlying(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility,
+                         base_equity_process, **kwargs):
         """
         :param date: date-like
             The date.
@@ -475,23 +529,27 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option price based on the date and underlying spot price.
         """
         if self.is_expired(date=date):
             return self.intrinsic(date=self._maturity, spot_price=spot_price)
         else:
-            base_spot_price = float(self.underlying_instrument.spot_price(date=date, last_available=True))
-            self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,
-                                   dividend_yield=dividend_yield, dividend_tax=dividend_tax,
-                                   volatility=volatility, **kwargs)
-        self.ql_process.spot_price.setValue(spot_price)
-        return self.option.NPV()
+            if date not in self._implied_volatility.keys():
+                base_spot_price = float(self.underlying_instrument.spot_price(date=date, last_available=True))
+                self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,
+                                       dividend_yield=dividend_yield, dividend_tax=dividend_tax,
+                                       volatility=volatility, base_equity_process=base_equity_process, **kwargs)
+            self.ql_process.spot_price.setValue(spot_price)
+            return self.option.NPV()
 
     @option_default_arguments
     @conditional_vectorize('date', 'volatility', 'spot_price')
     @option_default_values
-    def delta(self, date, base_date, spot_price, volatility, dividend_yield, dividend_tax, **kwargs):
+    def delta(self, date, base_date, spot_price, volatility, dividend_yield, dividend_tax, base_equity_process,
+              **kwargs):
         """
         :param date: date-like
             The date.
@@ -505,6 +563,8 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option delta at date.
         """
@@ -515,13 +575,15 @@ class EquityOption(Instrument):
                 return 0
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                                   dividend_tax=dividend_tax, volatility=volatility,
+                                   base_equity_process=base_equity_process, **kwargs)
             return self.option.delta()
 
     @option_default_arguments
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
-    def delta_underlying(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
+    def delta_underlying(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility,
+                         base_equity_process, **kwargs):
         """
         :param date: date-like
             The date.
@@ -535,6 +597,8 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option delta based on the date and underlying spot price.
         """
@@ -547,14 +611,15 @@ class EquityOption(Instrument):
             base_spot_price = float(self.underlying_instrument.spot_price(date=date, last_available=True))
             self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,
                                    dividend_yield=dividend_yield, dividend_tax=dividend_tax,
-                                   volatility=volatility, **kwargs)
+                                   volatility=volatility, base_equity_process=base_equity_process, **kwargs)
         self.ql_process.spot_price.setValue(spot_price)
         return self.option.delta()
 
     @option_default_arguments
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
-    def gamma(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
+    def gamma(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, base_equity_process,
+              **kwargs):
         """
         :param date: date-like
             The date.
@@ -568,6 +633,8 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option gamma at date.
         """
@@ -575,13 +642,15 @@ class EquityOption(Instrument):
             return 0
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                                   dividend_tax=dividend_tax, volatility=volatility,
+                                   base_equity_process=base_equity_process, **kwargs)
             return self.option.gamma()
 
     @option_default_arguments
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
-    def theta(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
+    def theta(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, base_equity_process,
+              **kwargs):
         """
         :param date: date-like
             The date.
@@ -595,6 +664,8 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option theta at date.
         """
@@ -602,13 +673,15 @@ class EquityOption(Instrument):
             return 0
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                                   dividend_tax=dividend_tax, volatility=volatility,
+                                   base_equity_process=base_equity_process, **kwargs)
             return self.option.theta()
 
     @option_default_arguments
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
-    def vega(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
+    def vega(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, base_equity_process,
+             **kwargs):
         """
         :param date: date-like
             The date.
@@ -622,6 +695,8 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option vega at date.
         """
@@ -629,7 +704,8 @@ class EquityOption(Instrument):
             return 0
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                                   dividend_tax=dividend_tax, volatility=volatility,
+                                   base_equity_process=base_equity_process, **kwargs)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -641,7 +717,7 @@ class EquityOption(Instrument):
     @option_default_arguments
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
-    def rho(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
+    def rho(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, base_equity_process, **kwargs):
         """
         :param date: date-like
             The date.
@@ -655,6 +731,8 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option rho at date.
         """
@@ -662,7 +740,8 @@ class EquityOption(Instrument):
             return 0
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                                   dividend_tax=dividend_tax, volatility=volatility,
+                                   base_equity_process=base_equity_process, **kwargs)
             if self.exercise_type == 'AMERICAN':
                 return None
             else:
@@ -674,30 +753,8 @@ class EquityOption(Instrument):
     @option_default_arguments
     @conditional_vectorize('date', 'spot_price', 'option_price')
     @option_default_values
-    def implied_volatility(self, date, base_date, spot_price, dividend_yield, dividend_tax, **kwargs):
-        """
-        :param date: date-like
-            The date.
-        :param base_date: date-like
-            When date is a future date base_date is the last date on the "present" used to estimate future values.
-        :param spot_price: float
-            Underlying price override value to calculate the option.
-        :param dividend_yield: float
-            The dividend yield of the underlying instrument
-        :param dividend_tax: float
-            The dividend % tax applied.
-        :return: float
-            The option volatility based on the option price and date.
-        """
-        self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                               dividend_tax=dividend_tax, volatility=None, **kwargs)
-
-        return self._implied_volatility[date]
-
-    @option_default_arguments
-    @conditional_vectorize('date', 'spot_price', 'volatility')
-    @option_default_values
-    def optionality(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, **kwargs):
+    def implied_volatility(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility,
+                           base_equity_process, **kwargs):
         """
         :param date: date-like
             The date.
@@ -711,6 +768,36 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
+        :return: float
+            The option volatility based on the option price and date.
+        """
+        self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
+                               dividend_tax=dividend_tax, volatility=volatility,
+                               base_equity_process=base_equity_process, **kwargs)
+        return self._implied_volatility[date].value()
+
+    @option_default_arguments
+    @conditional_vectorize('date', 'spot_price', 'volatility')
+    @option_default_values
+    def optionality(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, base_equity_process,
+                    **kwargs):
+        """
+        :param date: date-like
+            The date.
+        :param base_date: date-like
+            When date is a future date base_date is the last date on the "present" used to estimate future values.
+        :param spot_price: float
+            Underlying price override value to calculate the option.
+        :param dividend_yield: float
+            The dividend yield of the underlying instrument
+        :param dividend_tax: float
+            The dividend % tax applied.
+        :param volatility: float
+            Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option optionality at date.
         """
@@ -718,7 +805,8 @@ class EquityOption(Instrument):
             return 0
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                                   dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                                   dividend_tax=dividend_tax, volatility=volatility,
+                                   base_equity_process=base_equity_process, **kwargs)
             price = self.option.NPV()
             if date > base_date:
                 date = base_date
@@ -741,7 +829,8 @@ class EquityOption(Instrument):
     @option_default_arguments
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
-    def delta_value(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility,  **kwargs):
+    def delta_value(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, base_equity_process,
+                    **kwargs):
         """
         :param date: date-like
             The date.
@@ -755,9 +844,42 @@ class EquityOption(Instrument):
             The dividend % tax applied.
         :param volatility: float
             Volatility override value to calculate the option.
+        :param base_equity_process: py:class:'BaseEquityProcess"
+            The Stochastic process used for calculations.
         :return: float
             The option delta notional value.
         """
         delta = self.delta(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
-                           dividend_tax=dividend_tax, volatility=volatility, **kwargs)
+                           dividend_tax=dividend_tax, volatility=volatility,
+                           base_equity_process=base_equity_process, **kwargs)
         return delta*spot_price*self.contract_size
+
+    def heston_helper(self, date, volatility, base_equity_process, error_type=None):
+        """
+        Heston Calibration Helper
+        :param date: date-like
+            The date.
+        :param volatility: float
+            The option volatility
+        :param base_equity_process: py:class:'BaseEquityProcess'
+            The Stochastic Process used for calibration.
+        :param error_type: str
+            The Calibration Error used in the estimations
+        :return: QuantLib.HestonModelHelper
+        """
+        date = to_ql_date(date)
+        days = self.calendar.businessDaysBetween(date, self.maturity(date), False, True)
+        vol_handle = ql.QuoteHandle(ql.SimpleQuote(volatility))
+        spot_price = base_equity_process.spot_price_handle.value()
+
+        error_type = str(error_type).upper()
+        if error_type == 'IMPLIED_VOL':
+            error = ql.BlackCalibrationHelper.ImpliedVolError
+        elif error_type == 'PRICE_ERROR':
+            error = ql.BlackCalibrationHelper.PriceError
+        else:
+            error = ql.BlackCalibrationHelper.RelativePriceError
+
+        return ql.HestonModelHelper(ql.Period(days, ql.Days), self.calendar, spot_price,
+                                    self.strike, vol_handle, base_equity_process.risk_free_handle,
+                                    base_equity_process.dividend_handle, error)
