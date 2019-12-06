@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 """
-A class for modelling interest rate processes and its different implementations
+A class for generating paths from one or multiple stochastic process.
 """
 import QuantLib as ql
 import numpy as np

@@ -107,7 +107,6 @@ def transform_ts_values(timeseries):
     # bond it defines.
     quote_type = timeseries.get_attribute(QUOTE_TYPE)
     if quote_type == DISCOUNT:
-        # TODO: Make settlement days adjustment to the below and test if it is exact.
         maturity_date = to_ql_date(to_datetime(timeseries.get_attribute(MATURITY_DATE)))
         face_amount = int(timeseries.get_attribute(FACE_AMOUNT))
         day_counter = to_ql_day_counter(timeseries.get_attribute(DAY_COUNTER))
@@ -627,6 +626,11 @@ class _BaseBond(Instrument):
             if self.is_expired(settlement_date):
                 return np.nan
             return quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
+        elif quote_type == DISCOUNT:
+            date = to_ql_date(date)
+            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
+                                                    self.business_convention)
+            return self.face_amount - quote * 100 * self.day_counter.yearFraction(settlement_date, self.maturity_date)
         elif quote_type == YIELD:
             date = to_ql_date(date)
             settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
@@ -686,6 +690,11 @@ class _BaseBond(Instrument):
             return quote + self.accrued_interest(last=last, date=settlement_date, **kwargs)
         elif quote_type == DIRTY_PRICE:
             return quote
+        elif quote_type == DISCOUNT:
+            date = to_ql_date(date)
+            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
+                                                    self.business_convention)
+            return self.face_amount - quote * 100 * self.day_counter.yearFraction(settlement_date, self.maturity_date)
         elif quote_type == YIELD:
             date = to_ql_date(date)
             settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
@@ -729,11 +738,11 @@ class _BaseBond(Instrument):
             The dirty value of the bond as of `date`.
         """
         if last_available:
-            quote = self.price.get_values(index=date, last_available=last_available)
+            quote = self.quotes.get_values(index=date, last_available=last_available)
             return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
-        if date > self.quotes().last_valid_index():
+        if date > self.quotes.ts_values.last_valid_index():
             return np.nan
-        if date < self.quotes().first_valid_index():
+        if date < self.quotes.ts_values.first_valid_index():
             return np.nan
         return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
 
@@ -764,13 +773,13 @@ class _BaseBond(Instrument):
         scalar, None
             Performance of a unit of the bond.
         """
-        first_available_date = self.quotes().first_valid_index()
+        first_available_date = self.quotes.ts_values.first_valid_index()
         if start_date is None:
             start_date = first_available_date
         if start_date < first_available_date:
             start_date = first_available_date
         if start_quote is None:
-            start_quote = self.price.get_values(index=start_date)
+            start_quote = self.quotes.get_values(index=start_date)
         if date < start_date:
             return np.nan
         start_value = self.value(quote=start_quote, date=start_date)

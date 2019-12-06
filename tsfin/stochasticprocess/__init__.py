@@ -1,4 +1,4 @@
-from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackScholes, to_ql_equity_process
+from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackScholes, Heston
 from tsfin.stochasticprocess.interestrateprocess import HullWhiteProcess, G2Process
 from tsfin.stochasticprocess.geometricbrownianmotionprocess import GeometricBrownianMotion
 from tsfin.stochasticprocess.stochasticpathgenerator import PathGenerator

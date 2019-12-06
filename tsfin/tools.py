@@ -20,12 +20,14 @@ import QuantLib as ql
 import numpy as np
 from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
 from tsio import TimeSeries, TimeSeriesCollection
-from tsfin.base import Instrument, to_datetime, to_ql_date
+from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_frequency, to_ql_weekday, to_ql_option_engine, \
+    to_ql_equity_model
 from tsfin.instruments.interest_rates import DepositRate, ZeroRate, OISRate, SwapRate, Swaption, CDSRate, \
     EurodollarFuture
 from tsfin.instruments.equities import Equity, EquityOption
 from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond
 from tsfin.instruments import CurrencyFuture, Currency
+from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackScholes, Heston, GJRGARCH
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, CONTINGENTCONVERTIBLE, EXCHANGE_TRADED_FUND,\
@@ -321,9 +323,125 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
         swaption_helpers.append(helper)
 
     optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
-    end_criteria = ql.EndCriteria(10000, 100, 1e-6, 1e-8, 1e-8)
+    end_criteria = ql.EndCriteria(1000, 100, 1e-6, 1e-8, 1e-8)
     model.calibrate(swaption_helpers, optimization_method, end_criteria)
     return model
+
+
+def to_ql_equity_process(process_name):
+    if process_name.upper() == 'BLACK_SCHOLES_MERTON':
+        return BlackScholesMerton
+    elif process_name.upper() == 'BLACK_SCHOLES':
+        return BlackScholes
+    elif process_name.upper() == 'HESTON':
+        return Heston
+    elif process_name.upper() == 'GJR_GARCH':
+        return GJRGARCH
+
+
+def get_equity_option_model_and_helpers(date, term_structure_ts, spot_price, dividend_yield, dividend_tax,
+                                        option_collection, engine_name, model_name, process_name,
+                                        implied_vol_process='BLACK_SCHOLES_MERTON', error_type=None, **kwargs):
+
+    date = to_ql_date(date)
+    ql.Settings.instance().evaluationDate = date
+    print("Setting model and helpers for date {}".format(date))
+
+    options = generate_instruments(option_collection)
+    calendar = options[0].calendar
+    day_counter = options[0].day_counter
+
+    process = to_ql_equity_process(process_name=process_name)
+    process = process(calendar=calendar, day_counter=day_counter)
+    process.risk_free_handle.linkTo(term_structure_ts.yield_curve(date=date))
+    process.dividend_yield.setValue(float(dividend_yield * (1 - dividend_tax)))
+    process.spot_price.setValue(spot_price)
+
+    ql_model = to_ql_equity_model(model_name=model_name)
+    model = ql_model(process.process(**kwargs))
+    engine = to_ql_option_engine(engine_name=engine_name, model=model)
+
+    heston_helpers = list()
+    for option in options:
+        option.set_yield_curve(yield_curve=term_structure_ts)
+        option.set_ql_process(ql_process=to_ql_equity_process(process_name=implied_vol_process))
+        option.change_exercise_type(exercise_type='EUROPEAN')
+        volatility = option.implied_volatility(date=date, base_date=date, spot_price=spot_price,
+                                               dividend_yield=dividend_yield, dividend_tax=dividend_tax)
+        # print("{0} {1}".format(option.ts_name, volatility))
+        heston_helper = option.heston_helper(date=date, volatility=volatility, base_equity_process=process,
+                                             error_type=error_type)
+        heston_helper.setPricingEngine(engine)
+        heston_helpers.append(heston_helper)
+
+    return model, heston_helpers
+
+
+def calibrate_model(date, model, helpers, initial_conditions=None, use_scipy=False, solver_name=None,
+                    bounds=None):
+
+    date = to_ql_date(date)
+    print('Calibrating model for date {}'.format(date))
+    ql.Settings.instance().evaluationDate = date
+    solver_name = str(solver_name).upper()
+
+    if use_scipy:
+        if solver_name == 'LEVENBERG_MARQUARDT':
+            from scipy.optimize import root
+            if initial_conditions is None:
+                raise print("Please specify the parameters initial values")
+            initial_conditions = np.array(initial_conditions)
+            cost_function = cost_function_generator(model, helpers)
+            sol = root(cost_function, initial_conditions, method='lm')
+        elif solver_name == 'LEAST_SQUARES':
+            from scipy.optimize import least_squares
+            if initial_conditions is None:
+                raise print("Please specify the parameters initial values")
+            initial_conditions = np.array(initial_conditions)
+            cost_function = cost_function_generator(model, helpers)
+            if bounds is None:
+                bounds = (-np.inf, np.inf)
+            sol = least_squares(cost_function, initial_conditions, bounds=bounds)
+        elif solver_name == 'DIFFERENTIAL_EVOLUTION':
+            from scipy.optimize import differential_evolution
+            if bounds is None:
+                raise print("Please specify the parameters bounds")
+            cost_function = cost_function_generator(model, helpers, norm=True)
+            sol = differential_evolution(cost_function, bounds, maxiter=500)
+        elif solver_name == 'BASIN_HOPPING':
+            from scipy.optimize import basinhopping
+            if initial_conditions is None:
+                raise print("Please specify the parameters initial values")
+            initial_conditions = np.array(initial_conditions)
+            min_list, max_list = zip(*bounds)
+            my_bound = MyBounds(xmin=list(min_list), xmax=list(max_list))
+            minimizer_kwargs = {'method': 'L-BFGS-B', 'bounds': bounds}
+            cost_function = cost_function_generator(model, helpers, norm=True)
+            sol = basinhopping(cost_function, initial_conditions, niter=5, minimizer_kwargs=minimizer_kwargs,
+                               stepsize=0.005, accept_test=my_bound, interval=10)
+    else:
+        if solver_name == 'LEVENBERG_MARQUARDT':
+            optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
+        elif solver_name == 'SIMPLEX':
+            optimization_method = ql.Simplex(0.025)
+        end_criteria = ql.EndCriteria(1000, 200, 1e-8, 1e-8, 1e-8)
+        model.calibrate(helpers, optimization_method, end_criteria)
+
+    return model
+
+
+# noinspection PyDefaultArgument
+class MyBounds(object):
+
+    def __init__(self, xmin=[0., 0.01, 0.01, -1, 0], xmax=[1, 15, 1, 1, 1.0]):
+        self.xmax = np.array(xmax)
+        self.xmin = np.array(xmin)
+
+    def __call__(self, **kwargs):
+        x = kwargs["x_new"]
+        tmax = bool(np.all(x <= self.xmax))
+        tmin = bool(np.all(x >= self.xmin))
+        return tmax and tmin
 
 
 def to_np_array(ql_matrix):
@@ -443,3 +561,49 @@ def ql_irr_from_df(df):
     cash_flow, first_amount, first_date = cash_flows_from_df(df)
     rate = ql_irr(cash_flow=cash_flow, first_amount=first_amount, first_date=first_date)
     return rate
+
+
+def nth_weekday_of_month(start_year, n_years, frequency, weekday, nth_day, min_date=None, max_date=None):
+    """
+    Function to get a list of dates following a specific weekday at a specific recurrence inside a month, ex: the 3rd
+    friday of the month, every 3 months.
+    :param start_year: int
+        The base year for the date calculation
+    :param n_years:
+        The amount of years ahead to forecast
+    :param frequency: str
+        The frequency of the monthly occurrence, ex: ANNUAL, SEMIANNUAL, EVERY_FOUR_MONTH, QUARTERLY,
+         BIMONTHLY, MONTHLY"
+    :param weekday: str
+        The weekday of the recurrence, Monday, Tuesday...
+    :param nth_day: int
+        The nth occurrence inside of the month.
+    :param min_date: Date-like, optional
+        The minimum date of the list
+    :return: list of QuantLib.Dates
+    """
+    ql_frequency = to_ql_frequency(frequency)
+    if not 0 < ql_frequency <= 12:
+        raise ValueError("Only supported frequencies are: ANNUAL, SEMIANNUAL, EVERY_FOUR_MONTH,"
+                         " QUARTERLY, BIMONTHLY, MONTHLY")
+    ql_weekday = to_ql_weekday(weekday)
+    nth_day = int(nth_day)
+    dates = list()
+    for j in range(n_years + 1):
+        year = start_year + j
+        for i in range(ql_frequency):
+            month = int((i + 1) * (12 / ql_frequency))
+            dates.append(ql.Date.nthWeekday(nth_day, ql_weekday, month, year))
+
+    if min_date is not None and max_date is None:
+        min_date = to_ql_date(min_date)
+        dates = [date for date in dates if date >= min_date]
+    elif min_date is None and max_date is not None:
+        max_date = to_ql_date(max_date)
+        dates = [date for date in dates if date <= max_date]
+    elif min_date is not None and max_date is not None:
+        min_date = to_ql_date(min_date)
+        max_date = to_ql_date(max_date)
+        dates = [date for date in dates if min_date <= date <= max_date]
+
+    return dates
