@@ -21,7 +21,7 @@ import numpy as np
 from pandas.tseries.offsets import BDay, Week, BMonthEnd, BYearEnd
 from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_frequency, to_ql_weekday, to_ql_option_engine, \
-    to_ql_equity_model
+    to_ql_equity_model, to_ql_swaption_engine, to_ql_short_rate_model
 from tsfin.instruments.interest_rates import DepositRate, ZeroRate, OISRate, SwapRate, Swaption, CDSRate, \
     EurodollarFuture
 from tsfin.instruments.equities import Equity, EquityOption
@@ -31,7 +31,7 @@ from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackSchol
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, CONTINGENTCONVERTIBLE, EXCHANGE_TRADED_FUND,\
-    INSTRUMENT
+    INSTRUMENT, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH
 
 
 def generate_instruments(ts_collection, indexes=None, index_curves=None):
@@ -39,23 +39,19 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
 
     If an element is not an instance of :py:class:`TimeSeries`, does nothing with it.
 
-    Parameters
-    ----------
-    ts_collection: :py:obj:`TimeSeriesCollection`
+    :param ts_collection: :py:obj:`TimeSeriesCollection`
         Collection of time series.
-    indexes: dict, optional
+    :param indexes: dict, optional
         Dictionary with ``{index_name: index_time_series}``, where `index_name` is the name of the 'index' (e.g.:
         libor3m, CDI), in the INDEX attribute of a time series. `index_time_series` is a :py:obj:`TimeSeries`
         representing the index. This is currently needed only for floating rate bonds. Default is None.
-    index_curves: dict, optional
+    :param index_curves: dict, optional
         Dictionary with ``{index_name: index_yield_curve_time_series}``, where `index_name` is the name of the 'index'
         (e.g.: libor3m, CDI), in the INDEX attribute of a time series. `index_yield_curve_time_series` is a
         :py:obj:`YieldCurveTimeSeries` representing the yield curve of the index. This is currently
         needed only for floating rate bonds. Default is None.
 
-    Returns
-    -------
-    :py:obj:`TimeSeriesCollection`
+    :return: :py:obj:`TimeSeriesCollection`
         Time series collection with the created instruments.
     """
     instrument_list = list()
@@ -124,13 +120,9 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
 def ts_values_to_dict(*args):
     """ Produce a date-indexed dictionary of tuples from the values of multiple time series.
 
-    Parameters
-    ----------
-    args: time series names (each time series represents a parameter).
+    :param args: time series names (each time series represents a parameter).
 
-    Returns
-    -------
-    dict
+    :return: dict
         Dictionary of parameter tuples, indexed by dates.
     """
     params_df = pd.concat([getattr(ts, 'ts_values') for ts in args], axis=1)
@@ -143,13 +135,9 @@ def ts_values_to_dict(*args):
 def ts_to_dict(*args):
     """ Produce a date-indexed dictionary of tuples from the values of multiple time series.
 
-    Parameters
-    ----------
-    args: time series names (each time series represents a parameter).
-
-    Returns
-    -------
-    dict
+    :param args: py:obj:TimeSeries.ts_values
+        (each time series represents a parameter).
+    :return dict
         Dictionary of parameter tuples, indexed by dates.
     """
     params_df = pd.concat([ts for ts in args], axis=1)
@@ -160,17 +148,15 @@ def ts_to_dict(*args):
 
 
 def filter_series(df, initial_date=None, final_date=None):
-    """
-    Filter inplace a pandas.Series to keep its index between an initial and a final date.
+    """ Filter inplace a pandas.Series to keep its index between an initial and a final date.
 
-    Parameters
-    ----------
-    df: :py:obj:`pandas.Series`
+    :param df: :py:obj:`pandas.Series`
         Series to be filtered.
-    initial_date: date-like
+    :param initial_date: date-like
         Initial date.
-    final_date: date-like
+    :param final_date: date-like
         Final date.
+    :return
     """
     if initial_date is None and final_date is not None:
         final_date = to_datetime(final_date)
@@ -192,18 +178,13 @@ def filter_series(df, initial_date=None, final_date=None):
 def returns(ts, calc_type='D', force=False):
     """ Calculate returns time series of returns for various time windows.
 
-    Parameters
-    ----------
-    ts: :py:obj:`TimeSeries`, :py:obj:`pandas.Series`, :py:obj:`pandas.DataFrame`
+    :param ts: :py:obj:`TimeSeries`, :py:obj:`pandas.Series`, :py:obj:`pandas.DataFrame`
         Time series whose returns will be calculated.
-    calc_type: {'D', 'W', 'M', '6M', 'Y', '3Y', 'WTD', 'MTD', 'YTD', 'SI'}, optional
+    :param calc_type: {'D', 'W', 'M', '6M', 'Y', '3Y', 'WTD', 'MTD', 'YTD', 'SI'}, optional
         The time window for return calculation. Default is 'D' (daily returns).
-    force: bool, optional
+    :param force: bool, optional
         Backward-fill missing data. Default is False.
-
-    Returns
-    -------
-    :py:obj:`pandas.Series`, :py:obj:`pandas.DataFrame`
+    :return :py:obj:`pandas.Series`, :py:obj:`pandas.DataFrame`
         Series or DataFrame of returns.
     """
     if isinstance(ts, TimeSeries):
@@ -271,48 +252,35 @@ def returns(ts, calc_type='D', force=False):
         return df / df.loc[first_index] - 1
 
 
-def ql_swaption_engine(model_class, term_structure):
+def calibrate_swaption_model(date, model_name, term_structure_ts, swaption_vol_ts_collection, solver_name=None,
+                             use_scipy=False, mean_reversion_value=0.03, **kwargs):
 
-    if model_class == 'BLACK_KARASINSKI':
-        model = ql.BlackKarasinski(term_structure)
-        engine = ql.TreeSwaptionEngine(model, 100)
-        return model, engine
-    elif model_class == 'HULL_WHITE':
-        model = ql.HullWhite(term_structure)
-        engine = ql.JamshidianSwaptionEngine(model)
-        return model, engine
-    elif model_class == 'G2':
-        model = ql.G2(term_structure)
-        engine = ql.G2SwaptionEngine(model, 10, 400)
-        return model, engine
+    """ Calibrate a QuantLib Swaption model.
 
-
-def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_ts_collection):
-    """ Calibrate a Hull-White QuantLib model.
-
-    Parameters
-    ----------
-    date: QuantLib.Date
+    :param date: QuantLib.Date
         Calibration date.
-    model_class: QuantLib.Model
-        Model for calibration.
-    term_structure_ts: :py:obj:`YieldCurveTimeSeries`
+    :param model_name: str
+        The model name for calibration
+    :param term_structure_ts: :py:obj:`YieldCurveTimeSeries`
         Yield curve time series of the curve.
-    swaption_vol_ts_collection: :py:obj:`TimeSeriesCollection`
+    :param swaption_vol_ts_collection: :py:obj:`TimeSeriesCollection`
         Collection of swaption volatility (Black, log-normal) quotes.
-
-    Returns
-    -------
-    QuantLib.Model
+    :param solver_name: str
+        The solver to be used, see :py:func:calibrate_ql_model for options
+    :param use_scipy: bool
+        Whether to use the QuantLib solvers or Scipy solvers, see :py:func:calibrate_ql_model for options
+    :param mean_reversion_value: float
+        Mean reversion value, used when the mean reversion is fixed.
+    :return: QuantLib.CalibratedModel
         Calibrated model.
     """
-    # This has only been tested for model_class = HullWhite
     date = to_ql_date(date)
-    print("Calibrating {0} short rate model for date = {1}".format(model_class, date))
+    model_name = str(model_name).upper()
     term_structure = term_structure_ts.yield_curve_handle(date=date)
 
     ql.Settings.instance().evaluationDate = date
-    model, engine = ql_swaption_engine(model_class=model_class, term_structure=term_structure)
+    model = to_ql_short_rate_model(model_name=model_name)(term_structure, mean_reversion_value)
+    engine = to_ql_swaption_engine(model_name=model_name, model=model)
 
     swaption_helpers = list()
     swaption_vol = generate_instruments(swaption_vol_ts_collection)
@@ -322,36 +290,72 @@ def calibrate_swaption_model(date, model_class, term_structure_ts, swaption_vol_
         helper.setPricingEngine(engine)
         swaption_helpers.append(helper)
 
-    optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
-    end_criteria = ql.EndCriteria(1000, 100, 1e-6, 1e-8, 1e-8)
-    model.calibrate(swaption_helpers, optimization_method, end_criteria)
-    return model
+    return calibrate_ql_model(date=date, model_name=model_name, model=model, helpers=swaption_helpers,
+                              solver_name=solver_name, use_scipy=use_scipy, max_iteration=10000,
+                              max_stationary_state_iteration=100, **kwargs)
 
 
-def to_ql_equity_process(process_name):
-    if process_name.upper() == 'BLACK_SCHOLES_MERTON':
+def get_base_equity_process(process_name):
+    """ Return the :py:class:BaseEquityProcess for different equity models.
+
+    (GJR GARCH is experimental)
+    :param process_name: str
+        The equity process name: BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH
+    :return: :py:class:BaseEquityProcess
+    """
+    if process_name.upper() == BLACK_SCHOLES_MERTON:
         return BlackScholesMerton
-    elif process_name.upper() == 'BLACK_SCHOLES':
+    elif process_name.upper() == BLACK_SCHOLES:
         return BlackScholes
-    elif process_name.upper() == 'HESTON':
+    elif process_name.upper() == HESTON:
         return Heston
-    elif process_name.upper() == 'GJR_GARCH':
+    elif process_name.upper() == GJR_GARCH:
         return GJRGARCH
 
 
 def get_equity_option_model_and_helpers(date, term_structure_ts, spot_price, dividend_yield, dividend_tax,
                                         option_collection, engine_name, model_name, process_name,
-                                        implied_vol_process='BLACK_SCHOLES_MERTON', error_type=None, **kwargs):
+                                        implied_vol_process='BLACK_SCHOLES_MERTON', error_type=None,
+                                        exercise_type='EUROPEAN', **kwargs):
+    """ Returns the equity model and calibration helper from a given Equity Process
+
+    :param date: Date-like
+        The reference date of the calibration
+    :param term_structure_ts: :py:class:YieldCurveTimeSeries
+        The yield curve used in the calibration
+    :param spot_price: float
+        The reference spot price used for calibration
+    :param dividend_yield: float
+        The dividend yield of the underlying stock process
+    :param dividend_tax: float
+        The dividend tax
+    :param option_collection: :py:object:TimeSeriesCollection
+        The option TimeSeries used for calibration
+    :param engine_name: str
+        The engine name representing a QuantLib.PricingEngine
+    :param model_name: str
+        The mode name representing a QuantLib.CalibratedModel
+    :param process_name: str
+        The process name representing a :py:class:BaseEquityProcess
+    :param implied_vol_process: str
+        The process name used for calculating the initial implied vol
+    :param error_type: str
+        The name representing the QuantLib.BlackCalibrationHelper used for minimizing the function
+    :param exercise_type: str
+        The option exercise type: AMERICAN or EUROPEAN
+    :param kwargs:
+        User for passing the constant values to their underlying process
+    :return: QuantLib.CalibratedModel, QuantLib.HestonModelHelper
+    """
 
     date = to_ql_date(date)
     ql.Settings.instance().evaluationDate = date
-    print("Setting model and helpers for date {}".format(date))
 
     options = generate_instruments(option_collection)
     calendar = options[0].calendar
     day_counter = options[0].day_counter
 
-    process = to_ql_equity_process(process_name=process_name)
+    process = get_base_equity_process(process_name=process_name)
     process = process(calendar=calendar, day_counter=day_counter)
     process.risk_free_handle.linkTo(term_structure_ts.yield_curve(date=date))
     process.dividend_yield.setValue(float(dividend_yield * (1 - dividend_tax)))
@@ -364,11 +368,10 @@ def get_equity_option_model_and_helpers(date, term_structure_ts, spot_price, div
     heston_helpers = list()
     for option in options:
         option.set_yield_curve(yield_curve=term_structure_ts)
-        option.set_ql_process(ql_process=to_ql_equity_process(process_name=implied_vol_process))
-        option.change_exercise_type(exercise_type='EUROPEAN')
+        option.set_ql_process(ql_process=get_base_equity_process(process_name=implied_vol_process))
+        option.change_exercise_type(exercise_type=exercise_type)
         volatility = option.implied_volatility(date=date, base_date=date, spot_price=spot_price,
                                                dividend_yield=dividend_yield, dividend_tax=dividend_tax)
-        # print("{0} {1}".format(option.ts_name, volatility))
         heston_helper = option.heston_helper(date=date, volatility=volatility, base_equity_process=process,
                                              error_type=error_type)
         heston_helper.setPricingEngine(engine)
@@ -377,11 +380,64 @@ def get_equity_option_model_and_helpers(date, term_structure_ts, spot_price, div
     return model, heston_helpers
 
 
-def calibrate_model(date, model, helpers, initial_conditions=None, use_scipy=False, solver_name=None,
-                    bounds=None):
+def cost_function_generator(model, helpers, norm=False):
+    """ Creates a cost function to be used in by scipy solvers.
+
+    :param model: QuantLib.CalibratedModel
+    :param helpers: QuantLib.CalibrationHelperBase
+    :param norm: bool
+    :return: cost function
+    """
+    def cost_function(params):
+        params_ = ql.Array(list(params))
+        model.setParams(params_)
+        error = [h.calibrationError() for h in helpers]
+        if norm:
+            return np.sqrt(np.sum(np.abs(error)))
+        else:
+            return error
+    return cost_function
+
+
+def calibrate_ql_model(date, model_name, model, helpers, initial_conditions=None, use_scipy=False, solver_name=None,
+                       bounds=None, max_iteration=1000, max_stationary_state_iteration=200, ql_constraint=None,
+                       ql_weights=None, fix_parameters=None):
+
+    """ Returns the QuantLib model calibrated.
+
+    :param date:  Date-like
+        The reference date of the calibration
+    :param model_name: str
+        The model name
+    :param model: QuantLib.CalibratedModel
+        The QuantLib model to be calibrated
+    :param helpers: QuantLib.BlackCalibrationHelper
+        The QuantLib helpers used in the calibration
+    :param initial_conditions: list
+        For some scipy optimizers it's necessary to pass the initial values for the roots.
+    :param use_scipy: bool
+         Whether to use the QuantLib solvers or Scipy solvers
+    :param solver_name: str
+        The name of the optimization function
+    :param bounds: list
+        For some scipy optimizers it's necessary to pass the bounds for the roots
+    :param max_iteration: int
+        For some optimizers it defines the max iterations
+    :param max_stationary_state_iteration: int
+        For some optimizers it defines the max iterations in stationary state
+    :param ql_constraint: QuantLib.Constraint
+        The QuantLib object used for defining constraints for the models, only works with QuantLib optimizers.
+    :param ql_weights: list
+        List of weights to be applied to the model parameters, only works with QuantLib optimizers.
+    :param fix_parameters: list of bool
+        A list of booleans indicating if the parameter should be fixed or not, has to be the same length as the number
+        of parameters in the model. True for fixed parameter, False otherwise
+    :return: QuantLib.CalibratedModel
+        Returns the given QuantLib model calibrated.
+    """
 
     date = to_ql_date(date)
-    print('Calibrating model for date {}'.format(date))
+    print('Calibrating {0} model for {1}'.format(model_name, date))
     ql.Settings.instance().evaluationDate = date
     solver_name = str(solver_name).upper()
 
@@ -407,32 +463,50 @@ def calibrate_model(date, model, helpers, initial_conditions=None, use_scipy=Fal
             if bounds is None:
                 raise print("Please specify the parameters bounds")
             cost_function = cost_function_generator(model, helpers, norm=True)
-            sol = differential_evolution(cost_function, bounds, maxiter=500)
+            sol = differential_evolution(cost_function, bounds, maxiter=max_iteration)
         elif solver_name == 'BASIN_HOPPING':
             from scipy.optimize import basinhopping
             if initial_conditions is None:
                 raise print("Please specify the parameters initial values")
             initial_conditions = np.array(initial_conditions)
+            if bounds is None:
+                raise print("Please specify the parameters bounds")
             min_list, max_list = zip(*bounds)
             my_bound = MyBounds(xmin=list(min_list), xmax=list(max_list))
             minimizer_kwargs = {'method': 'L-BFGS-B', 'bounds': bounds}
             cost_function = cost_function_generator(model, helpers, norm=True)
-            sol = basinhopping(cost_function, initial_conditions, niter=5, minimizer_kwargs=minimizer_kwargs,
-                               stepsize=0.005, accept_test=my_bound, interval=10)
+            sol = basinhopping(cost_function, initial_conditions, niter=25, minimizer_kwargs=minimizer_kwargs,
+                               stepsize=0.005, accept_test=my_bound, interval=5)
     else:
+        end_criteria = ql.EndCriteria(maxIteration=max_iteration,
+                                      maxStationaryStateIterations=max_stationary_state_iteration,
+                                      rootEpsilon=1.0e-8,
+                                      functionEpsilon=1.0e-8,
+                                      gradientNormEpsilon=1.0e-8)
         if solver_name == 'LEVENBERG_MARQUARDT':
             optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
         elif solver_name == 'SIMPLEX':
             optimization_method = ql.Simplex(0.025)
-        end_criteria = ql.EndCriteria(1000, 200, 1e-8, 1e-8, 1e-8)
-        model.calibrate(helpers, optimization_method, end_criteria)
-
+        else:
+            optimization_method = ql.LevenbergMarquardt(1.0e-8, 1.0e-8, 1.0e-8)
+        if ql_constraint is None:
+            ql_constraint = ql.NoConstraint()
+        if ql_weights is None:
+            ql_weights = []
+        if fix_parameters is None:
+            n_params = len(model.params())
+            fix_parameters = list()
+            for i in range(n_params):
+                fix_parameters.append(False)
+        model.calibrate(helpers, optimization_method, end_criteria, ql_constraint, ql_weights, fix_parameters)
     return model
 
 
 # noinspection PyDefaultArgument
 class MyBounds(object):
-
+    """
+    Class for defining the bounds to be used in the Basin Hopping optimizer.
+    """
     def __init__(self, xmin=[0., 0.01, 0.01, -1, 0], xmax=[1, 15, 1, 1, 1.0]):
         self.xmax = np.array(xmax)
         self.xmin = np.array(xmin)
@@ -445,7 +519,7 @@ class MyBounds(object):
 
 
 def to_np_array(ql_matrix):
-    """
+    """ Transform a QuantLib Matrix/Array into a Numpy array
 
     :param ql_matrix: QuantLib.Matrix, QuantLib.Array
     :return: numpy array
@@ -477,28 +551,9 @@ def generate_discounts_array(paths, grid_dt):
     return discounts
 
 
-def cost_function_generator(model, helpers, norm=False):
-    """
-    function for creating a cost function to be used in by scipy solvers.
-    :param model: QuantLib.Model
-    :param helpers: QuantLib.CalibrationHelperBase
-    :param norm: bool
-    :return: cost function
-    """
-    def cost_function(params):
-        params_ = ql.Array(list(params))
-        model.setParams(params_)
-        error = [h.calibrationError() for h in helpers]
-        if norm:
-            return np.sqrt(np.sum(np.abs(error)))
-        else:
-            return error
-    return cost_function
-
-
 def str_to_bool(arg):
-    """
-    Function to convert String True or False to boll
+    """Function to convert String True or False to bool
+
     :param arg: str
     :return: bool
     """
@@ -510,9 +565,9 @@ def str_to_bool(arg):
 
 
 def cash_flows_from_df(df):
-    """
-    return the cash flows for IRR calculation
-    :param df: Pandas.DataFrame
+    """return the cash flows for IRR calculation
+
+    :param df: pandas.DataFrame
         DataFrame with the cash flows
     :return: list, int, date
     """
@@ -533,8 +588,8 @@ def cash_flows_from_df(df):
 
 
 def ql_irr(cash_flow, first_amount, first_date):
-    """
-    Calculate the IRR from a given cash flow
+    """ Calculate the IRR from a given cash flow
+
     :param cash_flow: list
         List of QuantLib.SimpleCashFlow (s)
     :param first_amount: Int
@@ -552,8 +607,8 @@ def ql_irr(cash_flow, first_amount, first_date):
 
 
 def ql_irr_from_df(df):
-    """
-    Consolidated function to calculate the IRR from a Pandas.DataFrame
+    """ Consolidated function to calculate the IRR from a Pandas.DataFrame
+
     :param df: Pandas.DataFrame
     :return: float
         The IRR
@@ -564,9 +619,9 @@ def ql_irr_from_df(df):
 
 
 def nth_weekday_of_month(start_year, n_years, frequency, weekday, nth_day, min_date=None, max_date=None):
-    """
-    Function to get a list of dates following a specific weekday at a specific recurrence inside a month, ex: the 3rd
-    friday of the month, every 3 months.
+    """ Function to get a list of dates following a specific weekday at a specific recurrence inside a month
+
+     example: the 3rd friday of the month, every 3 months.
     :param start_year: int
         The base year for the date calculation
     :param n_years:
@@ -579,6 +634,8 @@ def nth_weekday_of_month(start_year, n_years, frequency, weekday, nth_day, min_d
     :param nth_day: int
         The nth occurrence inside of the month.
     :param min_date: Date-like, optional
+        The minimum date of the list
+    :param max_date: Date-like, optional
         The minimum date of the list
     :return: list of QuantLib.Dates
     """

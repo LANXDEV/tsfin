@@ -385,27 +385,23 @@ def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_con
                         yield_curve_handle)
 
 
-def to_ql_short_rate_model(name, *args):
-    """Converts a string with the short rate model name to the corresponding QuantLib object.
+def to_ql_short_rate_model(model_name):
+    """ Return a QuantLib object representing a Short Rate Model
 
-    Parameters
-    ----------
-    name: str
-    args: needed arguments for each of the short rate models
-
-    Returns
-    -------
-    QuantLib.HullWhite
-    QuantLib.BlackKarasinski
-    QuantLib.G2
+    :param model_name: str
+        The model name ('BLACK_KARASINSKI', 'HULL_WHITE', 'G2')
+    :return: QuantLib.ShortRateModel
     """
 
-    if name.upper() == 'HULL_WHITE':
-        return ql.HullWhite(*args)
-    elif name.upper() == 'BLACK_KARASINSKI':
-        return ql.BlackKarasinski(*args)
-    elif name.upper() == 'G2':
-        return ql.G2(*args)
+    model_name = str(model_name).upper()
+    if model_name == 'HULL_WHITE':
+        return ql.HullWhite
+    elif model_name == 'BLACK_KARASINSKI':
+        return ql.BlackKarasinski
+    elif model_name == 'G2':
+        return ql.G2
+    else:
+        return None
 
 
 def ql_tenor_to_maturity_date(base_date, tenor):
@@ -450,6 +446,17 @@ def to_ql_time_unit(arg):
         raise ValueError("Unable to convert {} to a QuantLib Time Unit".format(arg))
 
 
+def to_ql_swaption_engine(model_name, model):
+
+    model_name = str(model_name).upper()
+    if model_name == 'BLACK_KARASINSKI':
+        return ql.TreeSwaptionEngine(model, 100)
+    elif model_name == 'HULL_WHITE':
+        return ql.JamshidianSwaptionEngine(model)
+    elif model_name == 'G2':
+        return ql.G2SwaptionEngine(model, 10, 400)
+
+
 def to_ql_option_type(arg):
     """Converts a string with the option type to the corresponding QuantLib object.
 
@@ -469,8 +476,8 @@ def to_ql_option_type(arg):
 
 
 def to_ql_option_exercise_type(exercise_type, earliest_date, maturity):
-    """
-    Returns the QuantLib object representing the exercise type.
+    """ Returns the QuantLib object representing the exercise type.
+
     :param exercise_type: str
         The exercise name
     :param earliest_date: QuantLib.Date
@@ -488,8 +495,8 @@ def to_ql_option_exercise_type(exercise_type, earliest_date, maturity):
 
 
 def to_ql_option_engine(engine_name=None, process=None, model=None):
-    """
-    Returns a QuantLib.PricingEngine for Options
+    """ Returns a QuantLib.PricingEngine for Options
+
     :param engine_name: str
         The engine name
     :param process: QuantLib.StochasticProcess
@@ -535,6 +542,12 @@ def to_ql_option_engine(engine_name=None, process=None, model=None):
 
 
 def to_ql_equity_model(model_name):
+    """ Return the QuantLib object representing an equity model
+
+    :param model_name: str
+        The model name. ('HESTON', 'GJR_GARCH', 'BATES')
+    :return: QuantLib.CalibratedModel
+    """
     model_name = str(model_name).upper()
     if model_name == "HESTON":
         return ql.HestonModel
@@ -545,8 +558,8 @@ def to_ql_equity_model(model_name):
 
 
 def to_ql_one_asset_option(payoff, exercise):
-    """
-    Returns the QuantLib object representing an option.
+    """ Returns the QuantLib object representing an option.
+
     :param payoff: QuantLib.StrikedTypePayoff
         The QuantLib object representing the payoff
     :param exercise: QuantLib.Exercise
@@ -557,8 +570,8 @@ def to_ql_one_asset_option(payoff, exercise):
 
 
 def to_ql_option_payoff(payoff_type, ql_option_type, strike):
-    """
-    Returns the QuantLib object representing an option payoff.
+    """ Returns the QuantLib object representing an option payoff.
+
     :param payoff_type: str:
         The option payoff type name
     :param ql_option_type: QuantLib.Option.Call, QuantLib.Option.Put

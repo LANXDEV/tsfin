@@ -21,7 +21,8 @@ import QuantLib as ql
 import numpy as np
 from functools import wraps
 from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, \
-    UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE, EARLIEST_DATE, PAYOFF_TYPE
+    UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE, EARLIEST_DATE, PAYOFF_TYPE, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, \
+    HESTON, GJR_GARCH
 from tsfin.base import Instrument, to_ql_date, conditional_vectorize, to_ql_calendar, to_ql_day_counter, to_datetime, \
     to_list, to_ql_option_type, to_ql_one_asset_option, to_ql_option_payoff, to_ql_option_engine, \
     to_ql_option_exercise_type
@@ -211,13 +212,13 @@ class EquityOption(Instrument):
         """
         self.underlying_instrument = underlying_instrument
 
-    def set_ql_process(self, ql_process):
+    def set_ql_process(self, ql_process, **kwargs):
         """
         :param ql_process: :py:class:'BaseEquityProcess'
             A class used to handle the Stochastic Models for Equities from QuantLib.
         :return:
         """
-        self.ql_process = ql_process(calendar=self.calendar, day_counter=self.day_counter)
+        self.ql_process = ql_process(calendar=self.calendar, day_counter=self.day_counter, **kwargs)
 
     def set_pricing_engine(self, ql_engine=None, engine_name=None, process=None):
         """
@@ -443,7 +444,7 @@ class EquityOption(Instrument):
         self._implied_volatility[date].setValue(implied_vol)
 
     def volatility_update(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, volatility,
-                          base_equity_process, **kwargs):
+                          base_equity_process, get_constants_from_ts=False, **kwargs):
         """
         :param date: QuantLib.Date
             The date.
@@ -461,6 +462,9 @@ class EquityOption(Instrument):
             Volatility override value to calculate the option.
         :param base_equity_process: py:class:'BaseEquityProcess"
             The Stochastic process used for calculations.
+        :param get_constants_from_ts: bool
+            For Stochastic process that depend of constants use this bool to specify if you are passing the values
+            explicitly or the values are to be retrieved from timeseries.
         :return:
         """
         self._process_values_update(base_equity_process=base_equity_process, date=date, base_date=base_date,
@@ -470,14 +474,26 @@ class EquityOption(Instrument):
         if volatility is not None:
             self._implied_volatility[date] = ql.SimpleQuote(volatility)
         else:
-            if base_equity_process.process_name in ['BLACK_SCHOLES', 'BLACK_SCHOLES_MERTON']:
+            process_name = base_equity_process.process_name
+            if process_name in [BLACK_SCHOLES, BLACK_SCHOLES_MERTON]:
                 self._black_implied_vol(date=date, option_price=option_price, spot_price=spot_price,
                                         base_equity_process=base_equity_process)
                 process = base_equity_process.process(volatility=self._implied_volatility[date])
-            elif base_equity_process.process_name in ['HESTON', 'GJR_GARCH']:
-                process = base_equity_process.process(**kwargs)
+            elif process_name in [HESTON, GJR_GARCH]:
+                if get_constants_from_ts:
+                    if process_name == HESTON:
+                        variance, kappa, theta, sigma, rho = base_equity_process.get_constant_values(date=date)
+                        process = base_equity_process.process(variance=variance, kappa=kappa, theta=theta, sigma=sigma,
+                                                              rho=rho)
+                    elif process_name == GJR_GARCH:
+                        omega, alpha, beta, gamma, lambda_value = base_equity_process.get_constant_values(date=date)
+                        v_zero = base_equity_process.v_zero(omega=omega, alpha=alpha, beta=beta, gamma=gamma,
+                                                            lambda_value=lambda_value)
+                        process = base_equity_process.process(omega=omega, alpha=alpha, beta=beta, gamma=gamma,
+                                                              lambda_value=lambda_value, v_zero=v_zero)
+                else:
+                    process = base_equity_process.process(**kwargs)
         # making sure it is using the updated model.
-
         self.set_pricing_engine(engine_name=self.engine_name, process=process)
 
     @option_default_arguments
@@ -754,7 +770,7 @@ class EquityOption(Instrument):
     @conditional_vectorize('date', 'spot_price', 'option_price')
     @option_default_values
     def implied_volatility(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility,
-                           base_equity_process, **kwargs):
+                           base_equity_process, option_price, **kwargs):
         """
         :param date: date-like
             The date.
@@ -770,12 +786,14 @@ class EquityOption(Instrument):
             Volatility override value to calculate the option.
         :param base_equity_process: py:class:'BaseEquityProcess"
             The Stochastic process used for calculations.
+        :param option_price: float
+            The option price to be used for implied vol calculation
         :return: float
             The option volatility based on the option price and date.
         """
         self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                dividend_tax=dividend_tax, volatility=volatility,
-                               base_equity_process=base_equity_process, **kwargs)
+                               base_equity_process=base_equity_process, option_price=option_price, **kwargs)
         return self._implied_volatility[date].value()
 
     @option_default_arguments
@@ -831,7 +849,8 @@ class EquityOption(Instrument):
     @option_default_values
     def delta_value(self, date, base_date, spot_price, dividend_yield, dividend_tax, volatility, base_equity_process,
                     **kwargs):
-        """
+        """ Return the option delta notional value
+
         :param date: date-like
             The date.
         :param base_date: date-like
@@ -855,8 +874,8 @@ class EquityOption(Instrument):
         return delta*spot_price*self.contract_size
 
     def heston_helper(self, date, volatility, base_equity_process, error_type=None):
-        """
-        Heston Calibration Helper
+        """ Heston Calibration Helper
+
         :param date: date-like
             The date.
         :param volatility: float
@@ -877,6 +896,8 @@ class EquityOption(Instrument):
             error = ql.BlackCalibrationHelper.ImpliedVolError
         elif error_type == 'PRICE_ERROR':
             error = ql.BlackCalibrationHelper.PriceError
+        elif error_type == 'RELATIVE_PRICE_ERROR':
+            error = ql.BlackCalibrationHelper.RelativePriceError
         else:
             error = ql.BlackCalibrationHelper.RelativePriceError
 

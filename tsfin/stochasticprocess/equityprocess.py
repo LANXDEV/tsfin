@@ -148,7 +148,7 @@ class GJRGARCH(BaseEquityProcess):
         return omega, alpha, beta, gamma, lambda_value
 
     @staticmethod
-    def _v_zero(omega, alpha, beta, gamma, lambda_value):
+    def v_zero(omega, alpha, beta, gamma, lambda_value):
         normal_cdf_lambda = ql.CumulativeNormalDistribution()(lambda_value)
         n = np.exp(-lambda_value * lambda_value / 2) / np.sqrt(2 * np.pi)
         q2 = 1 + lambda_value * lambda_value
