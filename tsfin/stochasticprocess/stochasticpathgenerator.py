@@ -114,6 +114,7 @@ class PathGenerator:
         :return: np.array
             The numpy array with the generated paths.
         """
+
         process_size = self.process.size()
         n_grid_steps = self.time_grid.get_steps() * process_size
         gaussian_sequence_generator = self._gaussian_random_sequence_generator(dimensionality=n_grid_steps,
@@ -145,9 +146,10 @@ class PathGenerator:
         return generator
 
     @staticmethod
-    def _gaussian_multi_path_generator(process, process_size, n, time_grid, gaussian_sequence_generator):
+    def _gaussian_multi_path_generator(process, process_size, n, time_grid, gaussian_sequence_generator,
+                                       brownian_bridge=False):
         path_generator = ql.GaussianMultiPathGenerator(process, time_grid.get_times(), gaussian_sequence_generator,
-                                                       False)
+                                                       brownian_bridge)
         paths = np.zeros(shape=(2 * n, process_size, time_grid.get_size()))
         # loop through number of paths
         k = 0
@@ -168,8 +170,8 @@ class PathGenerator:
         return paths
 
     @staticmethod
-    def _gaussian_path_generator(process, n, time_grid, gaussian_sequence_generator):
-        path_generator = ql.GaussianPathGenerator(process, time_grid, gaussian_sequence_generator, False)
+    def _gaussian_path_generator(process, n, time_grid, gaussian_sequence_generator, brownian_bridge=False):
+        path_generator = ql.GaussianPathGenerator(process, time_grid, gaussian_sequence_generator, brownian_bridge)
         paths = np.zeros(shape=(2 * n, time_grid.get_size()))
         k = 0
         for i in range(n):

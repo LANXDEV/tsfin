@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 """
-DepositRate class, to represent deposit rates.
+Base class for interest rates classes
 """
 import numpy as np
 import QuantLib as ql
@@ -28,11 +28,9 @@ DEFAULT_ISSUE_DATE = ql.Date(1, 1, 2000)
 
 
 class BaseInterestRate(Instrument):
-    """Class to model deposit rates.
+    """ Base class to model interest rates.
 
-    Parameters
-    ----------
-    timeseries: :py:obj:`TimeSeries`
+    :param timeseries: :py:obj:`TimeSeries`
         TimeSeries representing the deposit rate.
     """
     def __init__(self, timeseries, is_deposit_rate=False, calculate_convexity=False, telescopic_value_dates=False):
@@ -74,22 +72,41 @@ class BaseInterestRate(Instrument):
         self._rate_helper = None
 
     def set_rate_helper(self):
+        """ Defines the rate helper of the Class, to be overridden in the child Class
 
+        :return:
+        """
         if self._rate_helper is None:
             self._rate_helper = None
 
     def link_to_term_structure(self, date, yield_curve):
+        """ link a yield curve to self.term_structure
 
-        """
         :param date: QuantLib.Date
             The yield curve base date
         :param yield_curve: :py:obj:`YieldCurveTimeSeries"
+            The yield curve to be used by the class
         :return:
         """
         date = to_ql_date(date)
         self.term_structure.linkTo(yield_curve.yield_curve(date=date))
 
     def set_rate(self, date, rate, spread=None, sigma=None, mean=None, **kwargs):
+        """  Set Simple Quote rates to be used by the helper_rate, helper_spread or helper_convexity
+
+        :param date: QuantLib.Date
+            The reference date
+        :param rate: float
+            The interest rate
+        :param spread: float, optional
+            The spread rate to be used if any is given
+        :param sigma: float
+            The volatility value to be used in the convexity adjustment
+        :param mean: float
+            The mean reversion value to be used in the convexity adjustment
+        :param kwargs:
+        :return:
+        """
 
         if self.is_deposit_rate:
             time = self.day_counter.yearFraction(date, self.maturity(date))
@@ -102,6 +119,19 @@ class BaseInterestRate(Instrument):
             self.convexity_bias(date=date, future_price=rate, sigma=sigma, mean=mean)
 
     def _convexity(self, future_price, date, sigma, mean):
+        """ Helper function to calculate the convexity bias
+
+        :param future_price: float
+            The future price
+        :param date: QuantLib.Date
+            The reference date
+        :param sigma: float
+            The volatility of the rate
+        :param mean: float
+            The mean reversion value
+        :return: float
+            The convexity bias value
+        """
 
         if future_price <= 0:
             return 0
@@ -150,14 +180,9 @@ class BaseInterestRate(Instrument):
     def tenor(self, date, *args, **kwargs):
         """Get tenor of the deposit rate.
 
-        Parameters
-        ----------
-        date: QuantLib.Date
+        :param date: QuantLib.Date
             Reference date.
-
-        Returns
-        -------
-        QuantLib.Period
+        :return QuantLib.Period
             The tenor (period) to maturity of the deposit rate.
         """
         return self._tenor
@@ -165,14 +190,9 @@ class BaseInterestRate(Instrument):
     def maturity(self, date, *args, **kwargs):
         """Get maturity based on a date and tenor of the deposit rate.
 
-        Parameters
-        ----------
-        date: QuantLib.Date
+        :param date: QuantLib.Date
             Reference date.
-
-        Returns
-        -------
-        QuantLib.Date
+        :return QuantLib.Date
             The maturity based on the reference date and tenor of the deposit rate.
         """
         if self._maturity is not None:
@@ -191,13 +211,9 @@ class BaseInterestRate(Instrument):
     def is_expired(self, date, *args, **kwargs):
         """Check if the deposit rate is expired.
 
-        Parameters
-        ----------
-        date: QuantLib.Date
+        :param date: QuantLib.Date
             Reference date.
-        Returns
-        -------
-        bool
+        :return bool
             Whether the instrument is expired at `date`.
         """
         maturity = self.maturity(date=date)
@@ -208,11 +224,23 @@ class BaseInterestRate(Instrument):
 
     @conditional_vectorize('date')
     def value(*args, **kwargs):
-        """Returns zero.
+        """Returns zero
+        Implemented in the child class
         """
         return 0
 
     def _get_fixing_maturity_dates(self, start_date, end_date, fixing_at_start_date=False):
+        """ Get a list fixing dates and a list maturity dates between two dates.
+
+        :param start_date: QuantLib.Date
+            The start date of the period
+        :param end_date: QuantLib.Date
+            The end date of the period
+        :param fixing_at_start_date: bool
+            If True the first fixing will be the start date instead of a date in relation to the start date
+        :return: list of QuantLib.Date, list QuantLib.Date
+            The list of fixing dates, the list of maturity dates
+        """
         start_date = self.calendar.adjust(start_date, self.business_convention)
         end_date = self.calendar.adjust(end_date, self.business_convention)
         fixing_dates = list()
@@ -239,20 +267,15 @@ class BaseInterestRate(Instrument):
         If the period between start_date and date is larger the the deposit rate's tenor, considers the investment
         is rolled at the prevailing rate at each maturity.
 
-        Parameters
-        ----------
-        start_date: QuantLib.Date
+        :param start_date: QuantLib.Date
             Start date of the investment period.
-        date: QuantLib.Date, c-vectorized
+        :param date: QuantLib.Date, c-vectorized
             End date of the investment period.
-        spread: float
+        :param spread: float
             rate to be added to the return calculation.
-        fixing_at_start_date: bool
+        :param fixing_at_start_date: bool
             Whether to use the start date as the first fixing date or not.
-
-        Returns
-        -------
-        scalar
+        :return scalar
             Performance of the investment.
         """
         first_available_date = self.quotes.ts_values.first_valid_index()
@@ -278,22 +301,17 @@ class BaseInterestRate(Instrument):
     def rate_helper(self, date, last_available=True, spread=None, sigma=None, mean=None, **other_args):
         """Helper for yield curve construction.
 
-        Parameters
-        ----------
-        date: QuantLib.Date
+        :param date: QuantLib.Date
             Reference date.
-        last_available: bool, optional
+        :param last_available: bool, optional
             Whether to use last available quotes if missing data.
-        spread: float
+        :param spread: float
             Rate Spread
-        sigma: :py:obj:`TimeSeries`
+        :param sigma: :py:obj:`TimeSeries`
             The timeseries of the sigma, used for convexity calculation
-        mean: :py:obj:`TimeSeries`
+        :param mean: :py:obj:`TimeSeries`
             The timeseries of the mean, used for convexity calculation
-
-        Returns
-        -------
-        QuantLib.RateHelper
+        :return QuantLib.RateHelper
             Rate helper for yield curve construction.
         """
         # Returns None if impossible to obtain a rate helper from this time series
@@ -308,8 +326,21 @@ class BaseInterestRate(Instrument):
         return self._rate_helper
 
     def spread_rate(self, date, last_available=True, **kwargs):
+        """ Returns the QuantLib.InterestRate representing the spread at date
 
+        This will return the rate with the specific characteristics of the rate as Day Counter, Compounding and
+        Frequency. This way when we ask for a rate to be used as spread we can be sure that the rate being used
+        is correctly adjusted to the base rate characteristics
+        :param date: QuantLib.Date
+            Reference date.
+        :param last_available: bool, optional
+            Whether to use last available quotes if missing data.
+        :param kwargs:
+        :return:QuantLib.InterestRate
+            The QuantLib object with the rate and characteristics
+        """
         date = to_ql_date(date)
+        # Returns None if impossible to obtain a rate helper from this time series
         if self.is_expired(date):
             return None
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)

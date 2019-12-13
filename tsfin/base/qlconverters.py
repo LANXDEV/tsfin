@@ -24,14 +24,9 @@ import QuantLib as ql
 def to_ql_date(arg):
     """Converts a string, datetime.datetime or numpy.datetime64 instance to ql.Date instance.
 
-    Parameters
-    ----------
-    arg: date-like
-
-    Returns
-    -------
-    QuantLib.Date
-
+    :param arg: date-like
+        The date  to be converted to a QuantLib date
+    :return QuantLib.Date
     """
     if isinstance(arg, ql.Date):
         return arg
@@ -43,13 +38,9 @@ def to_ql_date(arg):
 def to_ql_frequency(arg):
     """Converts string with a period representing a tenor to a QuantLib period.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Frequency, QuantLib.Period
+    :param arg: str
+        The frequency name
+    :return QuantLib.Frequency, QuantLib.Period
 
     """
 
@@ -82,13 +73,9 @@ def to_ql_frequency(arg):
 def to_ql_weekday(arg):
     """Converts string with a period representing a tenor to a QuantLib Weekday.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Weekday
+    :param arg: str
+        The weekday name
+    :return QuantLib.Weekday
 
     """
     arg = str(arg).upper()
@@ -113,14 +100,9 @@ def to_ql_weekday(arg):
 def to_ql_calendar(arg):
     """Converts string with a calendar name to a calendar instance of QuantLib.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Calendar
-
+    :param arg: str
+        The Calendar 2 letter code, exceptions being TARGET, NYSE and NULL
+    :return QuantLib.Calendar
     """
 
     if arg.upper() == "US":
@@ -159,14 +141,9 @@ def to_ql_calendar(arg):
 def to_ql_currency(arg):
     """Converts string with a calendar name to a calendar instance of QuantLib.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Currency
-
+    :param arg: str
+        The currency 3 letter identifier
+    :return QuantLib.Currency
     """
 
     if arg.upper() == "USD":
@@ -196,13 +173,9 @@ def to_ql_currency(arg):
 def to_ql_business_convention(arg):
     """Converts a string with business convention name to the corresponding QuantLib object.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.BusinessConvention
+    :param arg: str
+        The business convention name
+    :return QuantLib.BusinessConvention
 
     """
 
@@ -223,13 +196,9 @@ def to_ql_business_convention(arg):
 def to_ql_day_counter(arg):
     """Converts a string with day_counter name to the corresponding QuantLib object.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.DayCounter
+    :param arg: str
+        The day count name
+    :return QuantLib.DayCounter
 
     """
     if arg.upper() == "THIRTY360E":
@@ -255,13 +224,9 @@ def to_ql_day_counter(arg):
 def to_ql_date_generation(arg):
     """Converts a string with date_generation name to the corresponding QuantLib object.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.DateGeneration
+    :param arg: str
+        The Date generation rule name
+    :return QuantLib.DateGeneration
 
     """
     if arg.upper() == "FORWARD":
@@ -281,13 +246,9 @@ def to_ql_date_generation(arg):
 def to_ql_compounding(arg):
     """Converts a string with compounding convention name to the corresponding QuantLib object.
 
-    # Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Compounding
+    :param arg: str
+        The compounding type
+    :return QuantLib.Compounding
 
     """
     if arg.upper() == "COMPOUNDED":
@@ -303,13 +264,10 @@ def to_ql_compounding(arg):
 def to_ql_duration(arg):
     """Converts a string with duration name to the corresponding QuantLib object.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Duration
+    :param arg: str
+        The duration name
+    :return QuantLib.Duration
+        The QuantLib object representing a duration calculation
     """
 
     if arg.upper() == 'MODIFIED':
@@ -323,19 +281,13 @@ def to_ql_duration(arg):
 def to_ql_rate_index(index, tenor=None, yield_curve_handle=ql.YieldTermStructureHandle()):
     """Return the QuantLib.Index with the specified tenor and yield_curve_handle.
 
-    Parameters
-    ----------
-    index: str
+    :param index: str
         Index name
-    tenor: QuantLib.Period
+    :param tenor: QuantLib.Period
         The QuantLib object representing the tenor of the index.
-    yield_curve_handle: QuantLib.YieldTermStructureHandle
+    :param yield_curve_handle: QuantLib.YieldTermStructureHandle
         The QuantLib Yield Term Structure to be used in the projections.
-
-    Returns
-    -------
-    QuantLib.Libor
-    QuantLib.OvernightIndex
+    :return QuantLib.IborIndex, QuantLib.OvernightIndex
     """
 
     if index.upper() == "USDLIBOR":
@@ -355,30 +307,25 @@ def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_con
                      yield_curve_handle):
     """Generic constructor of a QuantLib.Index. Mostly useful when you have to create custom calendars.
 
-    Parameters
-    ----------
-    index: str
+    :param index: str
         Index name
-    tenor: QuantLib.Period
+    :param tenor: QuantLib.Period
         The QuantLib object representing the tenor of the index.
-    fixing_days: float
+    :param fixing_days: float
         The number of days used in the fixing.
-    currency: QuantLib.Currency
+    :param currency: QuantLib.Currency
         The QuantLib object representing the target currency.
-    end_of_month: bool
+    :param end_of_month: bool
         End of month parameter of the index schedule.
-    calendar: QuantLib.Calendar
+    :param calendar: QuantLib.Calendar
         Calendar of the parent bond.
-    business_convention: QuantLib.BusinessConvention
+    :param business_convention: QuantLib.BusinessConvention
         The business convention rule.
-    day_counter: QuantLib.DayCounter
+    :param day_counter: QuantLib.DayCounter
         DayCounter of the index.
-    yield_curve_handle: QuantLib.YieldTermStructureHandle
+    :param yield_curve_handle: QuantLib.YieldTermStructureHandle
         The QuantLib Yield Term Structure to be used in the projections.
-
-    Returns
-    -------
-    QuantLib.IborIndex
+    :return QuantLib.IborIndex
 
     """
     return ql.IborIndex(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
@@ -407,16 +354,11 @@ def to_ql_short_rate_model(model_name):
 def ql_tenor_to_maturity_date(base_date, tenor):
     """Return the maturity date base on a initial date and a specified date.
 
-    Parameters
-    ----------
-    base_date: QuantLib.Date
+    :param base_date: QuantLib.Date
         The base date for calculation.
-    tenor: str
+    :param tenor: str
         The string representing the tenor
-
-    Returns
-    -------
-    QuantLib.Date
+    :return QuantLib.Date
     """
     maturity_date = to_ql_date(base_date) + ql.PeriodParser.parse(tenor)
     return maturity_date
@@ -425,13 +367,10 @@ def ql_tenor_to_maturity_date(base_date, tenor):
 def to_ql_time_unit(arg):
     """Converts a string with a time unit name to the corresponding QuantLib object.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.TimeUnit
+    :param arg: str
+        A one letter string representing the time unit.
+    :return QuantLib.TimeUnit
+        The QuantLib object presenting the time unit
 
     """
     if arg.upper() == 'Y':
@@ -447,6 +386,15 @@ def to_ql_time_unit(arg):
 
 
 def to_ql_swaption_engine(model_name, model):
+    """ Return the QuantLib swaption engine
+
+    :param model_name: str
+        The Swaption model name
+    :param model: QuantLib.CalibratedModel
+        The QuantLib.CalibratedModel already setup and dully linked to a curve to be passed to the engime
+    :return: QuantLib.PricingEngine
+        An object with the Swaption QuantLib Engine
+    """
 
     model_name = str(model_name).upper()
     if model_name == 'BLACK_KARASINSKI':
@@ -460,14 +408,10 @@ def to_ql_swaption_engine(model_name, model):
 def to_ql_option_type(arg):
     """Converts a string with the option type to the corresponding QuantLib object.
 
-    Parameters
-    ----------
-    arg: str
-
-    Returns
-    -------
-    QuantLib.Option
-
+    :param arg: str
+        The option type name, 'CALL'or 'PUT'
+    :return QuantLib.Option.Call or QuantLib.Option.Put
+        The QuantLib object that representing a Call or a Put
     """
     if arg.upper() == 'CALL':
         return ql.Option.Call

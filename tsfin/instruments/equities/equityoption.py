@@ -412,9 +412,11 @@ class EquityOption(Instrument):
         taxed_dividend_yield = dividend_yield * (1-float(dividend_tax))
         dividend_yield = ql.InterestRate(taxed_dividend_yield, self.day_counter, ql.Simple,
                                          ql.Annual).equivalentRate(ql.Continuous, ql.NoFrequency, 1).rate()
-        if date > base_date:
-            date = base_date
-        base_equity_process.risk_free_handle.linkTo(self.yield_curve.yield_curve(date=date))
+        if date <= base_date:
+            yield_curve = self.yield_curve.yield_curve(date=date)
+        else:
+            yield_curve = self.yield_curve.implied_term_structure(date=base_date, future_date=date)
+        base_equity_process.risk_free_handle.linkTo(yield_curve)
         base_equity_process.dividend_yield.setValue(dividend_yield)
         base_equity_process.spot_price.setValue(spot_price)
 
