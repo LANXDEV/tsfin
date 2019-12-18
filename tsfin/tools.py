@@ -639,12 +639,16 @@ def nth_weekday_of_month(start_year, n_years, frequency, weekday, nth_day, min_d
         The minimum date of the list
     :return: list of QuantLib.Dates
     """
+    frequency = str(frequency).upper()
     ql_frequency = to_ql_frequency(frequency)
     if not 0 < ql_frequency <= 12:
         raise ValueError("Only supported frequencies are: ANNUAL, SEMIANNUAL, EVERY_FOUR_MONTH,"
                          " QUARTERLY, BIMONTHLY, MONTHLY")
+
+    weekday = str(weekday).upper()
     ql_weekday = to_ql_weekday(weekday)
     nth_day = int(nth_day)
+
     dates = list()
     for j in range(n_years + 1):
         year = start_year + j

@@ -315,8 +315,7 @@ class _BaseBond(Instrument):
                                      self.business_convention, self.coupon_frequency,
                                      self.date_generation, self.month_end,
                                      self.settlement_days, self.face_amount, self.coupons,
-                                     self.day_counter, self.issue_date
-                                     )
+                                     self.day_counter, self.issue_date)
 
     def _insert_bond_component(self, date, bond_component):
         """Insert a bond component in the bond_components dictionary.
@@ -357,6 +356,21 @@ class _BaseBond(Instrument):
             return self.redemption
         last_call_date = find_le(list(self.bond_components.keys()), redemption_date)
         return self.call_schedule.ts_values.loc[to_datetime(last_call_date)]
+
+    def security(self, maturity=None, *args, **kwargs):
+        """
+        Parameters
+        ----------
+        maturity: QuantLib.Date
+            The maturity date or call date to retrieve from self.bond_components
+        Returns
+        -------
+        The python object representing a Bond
+        """
+
+        if maturity is None:
+            maturity = self.maturity_date
+        return self.bond_components[maturity]
 
     def is_expired(self, date, *args, **kwargs):
         """
@@ -1542,8 +1556,8 @@ class _BaseBond(Instrument):
         settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         if self.is_expired(settlement_date):
             return np.nan
-        return ql.BondFunctions_convexity(self.bond_components[worst_date], ytw, self.day_counter,
-                                          self.yield_quote_compounding, self.yield_quote_frequency, settlement_date)
+        return ql.BondFunctions_convexity(self.bond_components[worst_date], ytw, day_counter, compounding, frequency,
+                                          settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
@@ -1589,8 +1603,7 @@ class _BaseBond(Instrument):
         if self.is_expired(settlement_date):
             return np.nan
         bond = self._create_call_component(to_date=worst_date)
-        return ql.BondFunctions_convexity(bond, ytw, self.day_counter, self.yield_quote_compounding,
-                                          self.yield_quote_frequency, settlement_date)
+        return ql.BondFunctions_convexity(bond, ytw, day_counter, compounding, frequency, settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
@@ -1634,6 +1647,8 @@ class _BaseBond(Instrument):
         if self.is_expired(settlement_date):
             return np.nan
         yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            return np.nan
         ql.Settings.instance().evaluationDate = date
         if self.quote_type == CLEAN_PRICE:
             pass
