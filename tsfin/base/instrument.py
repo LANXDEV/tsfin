@@ -69,6 +69,7 @@ def default_arguments(f):
             if 'quote' not in kwargs.keys():
                 kwargs['quote'] = at_index(quotes.ts_values, index=kwargs['date'])
         elif 'quote' not in kwargs.keys():
+            kwargs['date'] = to_datetime(kwargs['date'])
             kwargs['quote'] = at_index(quotes.ts_values, index=kwargs['date'])
         return f(self, **kwargs)
     new_f._decorated_by_default_arguments_ = True
@@ -102,6 +103,33 @@ class Instrument:
         except AttributeError:
             raise AttributeError("The {0} {1} has no attribute '{2}'.".format(type(self).__name__,
                                                                               self.timeseries.ts_name, attr))
+
+    def security(self, *args, **kwargs):
+        """
+        Parameters
+        ----------
+
+        Returns
+        -------
+        The python object representing a QuantLib Object. To be defined in the child classes
+        """
+        return None
+
+    @conditional_vectorize('date')
+    def net_present_value(self, date, *args, **kwargs):
+        """
+        Parameters
+        ----------
+        date: date-like
+
+        Returns
+        -------
+        The asset net present value
+        """
+        date = to_ql_date(date)
+        ql.Settings.instance().evaluationDate = date
+        instrument = self.security(date=date, *args, **kwargs)
+        return instrument.NPV()
 
     def is_expired(self, date, *args, **kwargs):
         """
@@ -226,12 +254,41 @@ class Instrument:
         """
         quotes = self.quotes
         if last_available:
-            return quotes.get_value(date=date, last_available=last_available)
+            return quotes.get_values(index=date, last_available=last_available)
         if date > quotes.ts_values.last_valid_index():
             return np.nan
         if date < quotes.ts_values.first_valid_index():
             return np.nan
         return quote
+
+    @default_arguments
+    @conditional_vectorize('date', 'quote')
+    def risk_value(self, last, date, quote, last_available=False, *args, **kwargs):
+        """Try to deduce the risk value (Notional, delta etc) for a unit of the time series (as a financial instrument).
+
+        Warnings
+        --------
+        The result may be wrong. Use this method only for emergency/temporary cases. It is safer to instantiate a
+        'real' financial instrument class and call its ``risk_value`` method instead of using this.
+        Default is to return the value of the instrument
+
+        Parameters
+        ----------
+        last: bool, optional
+            Whether to use last available date and quote.
+        date: date-like, optional
+            The date.
+        quote: scalar, optional
+            The quote.
+        last_available: bool, optional
+            Whether to use last available data in case dates are missing in ``quotes``.
+
+        Returns
+        -------
+        scalar, None
+            The unit dirty value of the instrument.
+        """
+        return self.value(last=last, date=date, quote=quote, last_available=last_available, *args, **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')

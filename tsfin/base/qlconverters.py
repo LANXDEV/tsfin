@@ -526,3 +526,37 @@ def to_ql_option_payoff(payoff_type, ql_option_type, strike):
     """
     if str(payoff_type).upper() == 'PLAIN_VANILLA':
         return ql.PlainVanillaPayoff(ql_option_type, strike)
+
+
+def to_ql_protection_side(side):
+    """ Return the QuantLib object representing the protection side of a CDS deal
+
+    :param side: str
+        The Credit Default deal side, 'BUY' or 'SELL'
+    :return: QuantLib.Protection
+    """
+    side = str(side).upper()
+    if side == "BUY":
+        return ql.Protection.Buyer
+    elif side == "SELL":
+        return ql.Protection.Seller
+    else:
+        return None
+
+
+def to_ql_cds_engine(engine_name):
+    """ Return the QuantLib CDS engine
+
+    :param engine_name: str
+        The engine name 'MID_POINT', 'ISDA', 'INTEGRAL'
+    :return: QuantLib.PricingEngine
+    """
+    engine_name = str(engine_name).upper()
+    if engine_name == "MID_POINT":
+        return ql.MidPointCdsEngine
+    elif engine_name == "ISDA":
+        return ql.IsdaCdsEngine
+    elif engine_name == "INTEGRAL":
+        return ql.IntegralCdsEngine
+    else:
+        return None

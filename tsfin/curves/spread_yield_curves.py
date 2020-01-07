@@ -25,10 +25,11 @@ from tsfin.base import to_ql_date, conditional_vectorize, to_list
 
 class InterpolatedSpreadYieldCurveTimeSeries:
 
-    def __init__(self, yield_curve_time_series, spreads_ts_collection, day_counter, compounding=ql.Compounded,
-                 frequency=ql.Annual, **kwargs):
+    def __init__(self, yield_curve_time_series, spreads_ts_collection=None, spreads=None, day_counter=None,
+                 compounding=ql.Compounded, frequency=ql.Annual, **kwargs):
         self.yield_curve_time_series = yield_curve_time_series
         self.spreads_ts_collection = spreads_ts_collection
+        self.spreads = spreads
         self.day_counter = day_counter
         self.compounding = compounding
         self.frequency = frequency
@@ -46,19 +47,23 @@ class InterpolatedSpreadYieldCurveTimeSeries:
             if day_counter is None:
                 day_counter = self.day_counter
 
-            # ql.Settings.instance().evaluationDate = date
+            ql.Settings.instance().evaluationDate = date
             spread_dict = dict()
-            for ts in self.spreads_ts_collection:
-                maturity = ts.maturity(date=date)
-                rate = ts.spread_rate(date=date).equivalentRate(day_counter, compounding, frequency,
-                                                                date, maturity).rate()
-                spread_dict[maturity] = rate
+            if self.spreads_ts_collection is not None:
+                for ts in self.spreads_ts_collection:
+                    maturity = ts.maturity(date=date)
+                    rate = ts.spread_rate(date=date).equivalentRate(day_counter, compounding, frequency,
+                                                                    date, maturity).rate()
+                    spread_dict[maturity] = ql.SimpleQuote(rate)
+            elif self.spreads is not None:
+                # passing the dict with dates and simple quotes directly.
+                spread_dict = self.spreads
 
             date_list = list()
             spread_list = list()
             for maturity in sorted(spread_dict.keys()):
                 date_list.append(maturity)
-                spread_list.append(ql.QuoteHandle(ql.SimpleQuote(spread_dict[maturity])))
+                spread_list.append(ql.QuoteHandle(spread_dict[maturity]))
 
             curve_handle = ql.YieldTermStructureHandle(self.yield_curve_time_series.yield_curve(date=date))
             spread_curve = ql.SpreadedLinearZeroInterpolatedTermStructure(curve_handle, spread_list, date_list,

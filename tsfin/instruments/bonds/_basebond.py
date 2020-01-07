@@ -357,19 +357,26 @@ class _BaseBond(Instrument):
         last_call_date = find_le(list(self.bond_components.keys()), redemption_date)
         return self.call_schedule.ts_values.loc[to_datetime(last_call_date)]
 
-    def security(self, maturity=None, *args, **kwargs):
+    def security(self, date, maturity=None, yield_curve_time_series=None, *args, **kwargs):
         """
         Parameters
         ----------
+        date: Date-Like
+            The evaluation date
         maturity: QuantLib.Date
             The maturity date or call date to retrieve from self.bond_components
+        yield_curve_time_series: :py:class:`YieldCurveTimeSeries`
+            The yield curve used for discounting the bond to retrieve the NPV
         Returns
         -------
         The python object representing a Bond
         """
 
+        date = to_ql_date(date)
         if maturity is None:
             maturity = self.maturity_date
+        yield_curve = yield_curve_time_series.yield_curve(date=date)
+        self.bond_components[maturity].setPricingEngine(ql.DiscountingBondEngine(yield_curve))
         return self.bond_components[maturity]
 
     def is_expired(self, date, *args, **kwargs):
@@ -729,7 +736,7 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def value(self, last, quote, date, last_available=False, **kwargs):
+    def value(self, last, quote, date, last_available=False, clean_price=False, **kwargs):
         """
         Parameters
         ----------
@@ -745,20 +752,59 @@ class _BaseBond(Instrument):
         last_available: bool, optional
             Whether to use last available data.
             Default: False.
+        clean_price: bool, optional
+            Use only the bond clean price to calculate the position value.
 
         Returns
         -------
         scalar
             The dirty value of the bond as of `date`.
         """
+        date = to_datetime(date)
         if last_available:
             quote = self.quotes.get_values(index=date, last_available=last_available)
-            return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+            if clean_price:
+                return self.clean_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+            else:
+                return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
         if date > self.quotes.ts_values.last_valid_index():
             return np.nan
         if date < self.quotes.ts_values.first_valid_index():
             return np.nan
-        return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+
+        if clean_price:
+            return self.clean_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+        else:
+            return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+
+    @default_arguments
+    @conditional_vectorize('quote', 'date')
+    def risk_value(self, last, quote, date, last_available=False, clean_price=False, **kwargs):
+        """
+        Parameters
+        ----------
+        last: bool, optional
+            Whether to use last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional, (c-vectorized)
+            The bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional, (c-vectorized)
+            The date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        last_available: bool, optional
+            Whether to use last available data.
+            Default: False.
+        clean_price: bool, optional
+            Use only the bond clean price to calculate the position value.
+
+        Returns
+        -------
+        scalar
+            The dirty value of the bond as of `date`.
+        """
+        return self.value(last=last, quote=quote, date=date, last_available=last_available, clean_price=clean_price,
+                          **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
@@ -1646,9 +1692,12 @@ class _BaseBond(Instrument):
                                                 self.business_convention)
         if self.is_expired(settlement_date):
             return np.nan
-        yield_curve = yield_curve_timeseries.yield_curve(date=date)
         if yield_curve_timeseries.calendar.isHoliday(date):
-            return np.nan
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+
         ql.Settings.instance().evaluationDate = date
         if self.quote_type == CLEAN_PRICE:
             pass
@@ -1718,7 +1767,7 @@ class _BaseBond(Instrument):
         """
         Parameters
         ----------
-        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
+        yield_curve_timeseries: :py:class:`YieldCurveTimeSeries`
             The yield curve object against which the z-spreads will be calculated.
         last: bool, optional
             Whether to last data.

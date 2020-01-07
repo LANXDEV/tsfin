@@ -18,8 +18,9 @@
 Currency class, to represent Currency Spot.
 """
 import QuantLib as ql
+import numpy as np
 from tsfin.constants import CALENDAR, CURRENCY, BASE_CURRENCY, COUNTRY, BASE_CALENDAR
-from tsfin.base import Instrument, to_ql_calendar
+from tsfin.base import Instrument, to_ql_calendar, conditional_vectorize, to_upper_list
 
 
 class Currency(Instrument):
@@ -40,3 +41,20 @@ class Currency(Instrument):
         self.base_calendar = to_ql_calendar(self.ts_attributes[BASE_CALENDAR])
         self.country = self.ts_attributes[COUNTRY]
 
+    @conditional_vectorize('date')
+    def value(self, date, currency=None, last_available=False, *args, **kwargs):
+
+        currency = self.currency if currency is None else to_upper_list(currency)
+        if len(currency) != 3:
+            return np.nan
+        if currency == self.currency:
+            return self.quotes.get_values(index=date, last_available=last_available)
+        elif currency == self.base_currency:
+            return 1/self.quotes.get_values(index=date, last_available=last_available)
+        else:
+            return np.nan
+
+    @conditional_vectorize('date')
+    def risk_value(self, date, currency=None, last_available=False, *args, **kwargs):
+
+        return self.value(date=date, currency=currency, last_available=last_available, *args, **kwargs)
