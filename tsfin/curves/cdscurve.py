@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 """
-YieldCurveTimeSeries, a class to handle a time series of yield curves.
+CDSCurveTimeSeries, a class to handle a time series of cds curves.
 """
 
 from collections import namedtuple, Counter
@@ -98,8 +98,7 @@ class CDSCurveTimeSeries:
                 if existing_helper is None:
                     month_end_helpers[month_year] = helper
                 else:
-                    month_end_helpers[month_year] = max((helper, existing_helper),
-                                                        key=attrgetter('issue_date'))
+                    month_end_helpers[month_year] = max((helper, existing_helper), key=attrgetter('issue_date'))
             helpers = {ndhelper.maturity_date: ndhelper for ndhelper in month_end_helpers.values()}
 
         return helpers
@@ -293,6 +292,16 @@ class CDSCurveTimeSeries:
         ql_period = ql.PeriodParser.parse(str(tenor).upper())
         to_date = self.calendar.advance(date, ql_period)
         return self.hazard_curve(date).hazardRate(to_date)
+
+    @conditional_vectorize('date')
+    def base_yield_curve_handle(self, date):
+        """ Handle for the base yield curve at a given date.
+
+        :param date: QuantLib.Date
+        :return: QuantLib.YieldTermStructureHandle
+        """
+        date = to_ql_date(date)
+        return self.base_yield_curve_handle.yield_curve_handle(date=date)
 
     @staticmethod
     def _date_to_month_year(dt_object):

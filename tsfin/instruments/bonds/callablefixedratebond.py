@@ -154,7 +154,12 @@ class CallableFixedRateBond(_BaseBond):
 
         bond = self.bond
         date = to_ql_date(date)
-        yield_curve_relinkable_handle = yield_curve_timeseries.yield_curve_relinkable_handle(date=date)
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        yield_curve_relinkable_handle = ql.RelinkableYieldTermStructureHandle(yield_curve)
         ql.Settings.instance().evaluationDate = date
         ql_model = to_ql_short_rate_model(model_name=model)
         if isinstance(model_params, dict):
@@ -223,7 +228,12 @@ class CallableFixedRateBond(_BaseBond):
 
         bond = self.bond
         date = to_ql_date(date)
-        yield_curve_handle = yield_curve_timeseries.yield_curve_handle(date=date)
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        yield_curve_handle = ql.YieldTermStructureHandle(yield_curve)
         oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
                        quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
                        settlement_days=settlement_days, **kwargs)
@@ -286,7 +296,12 @@ class CallableFixedRateBond(_BaseBond):
 
         bond = self.bond
         date = to_ql_date(date)
-        yield_curve_handle = yield_curve_timeseries.yield_curve_handle(date=date)
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        yield_curve_handle = ql.YieldTermStructureHandle(yield_curve)
         oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
                        quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
                        settlement_days=settlement_days, **kwargs)
@@ -348,7 +363,12 @@ class CallableFixedRateBond(_BaseBond):
 
         bond = self.bond
         date = to_ql_date(date)
-        yield_curve_handle = yield_curve_timeseries.yield_curve_handle(date=date)
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        yield_curve_handle = ql.YieldTermStructureHandle(yield_curve)
         oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
                        quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
                        settlement_days=settlement_days, **kwargs)

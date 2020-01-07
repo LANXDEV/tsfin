@@ -31,7 +31,7 @@ from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackSchol
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, CONTINGENTCONVERTIBLE, EXCHANGE_TRADED_FUND,\
-    INSTRUMENT, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH
+    INSTRUMENT, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH, CURRENCY
 
 
 def generate_instruments(ts_collection, indexes=None, index_curves=None):
@@ -104,7 +104,8 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
             instrument = Equity(ts)
         elif ts_type in [FUND, INSTRUMENT]:
             instrument = Instrument(ts)
-
+        elif ts_type == CURRENCY:
+            instrument = Currency(ts)
         elif ts_type in [CDS, CDX]:
             instrument = CDSRate(ts)
         elif ts_type == EURODOLLAR_FUTURE:
@@ -367,8 +368,8 @@ def get_equity_option_model_and_helpers(date, term_structure_ts, spot_price, div
 
     heston_helpers = list()
     for option in options:
-        option.set_yield_curve(yield_curve=term_structure_ts)
-        option.set_ql_process(ql_process=get_base_equity_process(process_name=implied_vol_process))
+        option.set_yield_curve(risk_free_yield_curve_ts=term_structure_ts)
+        option.set_ql_process(base_equity_process=get_base_equity_process(process_name=implied_vol_process))
         option.change_exercise_type(exercise_type=exercise_type)
         volatility = option.implied_volatility(date=date, base_date=date, spot_price=spot_price,
                                                dividend_yield=dividend_yield, dividend_tax=dividend_tax)
