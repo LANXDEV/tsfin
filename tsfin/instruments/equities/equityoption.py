@@ -22,7 +22,7 @@ import numpy as np
 from functools import wraps
 from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, \
-    UNDERLYING_INSTRUMENT, OPTION_CONTRACT_SIZE, EARLIEST_DATE, PAYOFF_TYPE, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, \
+    UNDERLYING_INSTRUMENT, CONTRACT_SIZE, EARLIEST_DATE, PAYOFF_TYPE, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, \
     HESTON, GJR_GARCH
 from tsfin.base import Instrument, to_ql_date, conditional_vectorize, to_ql_calendar, to_ql_day_counter, to_datetime, \
     to_list, to_ql_option_type, to_ql_one_asset_option, to_ql_option_payoff, to_ql_option_engine, \
@@ -154,7 +154,7 @@ class EquityOption(Instrument):
         super().__init__(timeseries)
         self.option_type = self.ts_attributes[OPTION_TYPE]
         self.strike = float(self.ts_attributes[STRIKE_PRICE])
-        self.contract_size = float(self.ts_attributes[OPTION_CONTRACT_SIZE])
+        self.contract_size = float(self.ts_attributes[CONTRACT_SIZE])
         self._maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
