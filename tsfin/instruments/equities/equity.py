@@ -157,7 +157,7 @@ class Equity(Instrument):
         """
         ts_dividends = self._payable_dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust,
                                                        *args, **kwargs)
-        return list((ts_date, ts_value) for ts_date, ts_value in ts_dividends.iteritems())
+        return list((to_ql_date(ts_date), ts_value) for ts_date, ts_value in ts_dividends.iteritems())
 
     @conditional_vectorize('start_date', 'date')
     def cash_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):

@@ -21,8 +21,8 @@ import numpy as np
 import QuantLib as ql
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
 from tsfin.base import to_ql_rate_index, to_ql_date, to_datetime, to_ql_time_unit, conditional_vectorize
-from tsfin.constants import SETTLEMENT_DAYS, INDEX, FUTURE_CONTRACT_SIZE, TICK_SIZE, TICK_VALUE, TERM_NUMBER,\
-    TERM_PERIOD, INDEX_TENOR, LAST_DELIVERY
+from tsfin.constants import SETTLEMENT_DAYS, INDEX, CONTRACT_SIZE, TICK_SIZE, TICK_VALUE, TERM_NUMBER, TERM_PERIOD,\
+    INDEX_TENOR, LAST_DELIVERY
 
 
 class EurodollarFuture(BaseInterestRate):
@@ -38,7 +38,7 @@ class EurodollarFuture(BaseInterestRate):
         # Database Attributes
         self.last_delivery = to_ql_date(to_datetime(self.ts_attributes[LAST_DELIVERY]))
         self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
-        self.contract_size = float(self.ts_attributes[FUTURE_CONTRACT_SIZE])
+        self.contract_size = float(self.ts_attributes[CONTRACT_SIZE])
         self.tick_size = float(self.ts_attributes[TICK_SIZE])
         self.tick_value = float(self.ts_attributes[TICK_VALUE])
         self.term_number = int(self.ts_attributes[TERM_NUMBER])

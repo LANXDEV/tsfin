@@ -254,7 +254,7 @@ def returns(ts, calc_type='D', force=False):
 
 
 def calibrate_swaption_model(date, model_name, term_structure_ts, swaption_vol_ts_collection, solver_name=None,
-                             use_scipy=False, mean_reversion_value=0.03, **kwargs):
+                             use_scipy=False, fix_mean=False, mean_reversion_value=0.03, **kwargs):
 
     """ Calibrate a QuantLib Swaption model.
 
@@ -270,6 +270,8 @@ def calibrate_swaption_model(date, model_name, term_structure_ts, swaption_vol_t
         The solver to be used, see :py:func:calibrate_ql_model for options
     :param use_scipy: bool
         Whether to use the QuantLib solvers or Scipy solvers, see :py:func:calibrate_ql_model for options
+    :param fix_mean: bool
+        If you want to fix or not the mean reversion of the model
     :param mean_reversion_value: float
         Mean reversion value, used when the mean reversion is fixed.
     :return: QuantLib.CalibratedModel
@@ -280,7 +282,10 @@ def calibrate_swaption_model(date, model_name, term_structure_ts, swaption_vol_t
     term_structure = term_structure_ts.yield_curve_handle(date=date)
 
     ql.Settings.instance().evaluationDate = date
-    model = to_ql_short_rate_model(model_name=model_name)(term_structure, mean_reversion_value)
+    if fix_mean:
+        model = to_ql_short_rate_model(model_name=model_name)(term_structure, mean_reversion_value)
+    else:
+        model = to_ql_short_rate_model(model_name=model_name)(term_structure)
     engine = to_ql_swaption_engine(model_name=model_name, model=model)
 
     swaption_helpers = list()
