@@ -81,6 +81,8 @@ def option_default_values(f):
     def new_f(self, **kwargs):
 
         # Dates
+        if kwargs.get("bypass_option_default_values", False):
+            return f(self, **kwargs)
         try:
             kwargs['date'] = to_ql_date(kwargs['date'])
         except TypeError:
@@ -174,6 +176,7 @@ class EquityOption(Instrument):
         self.engine_name = 'FINITE_DIFFERENCES'
         self.base_equity_process = None
         self._implied_volatility = dict()
+        self._implied_volatility_prices = dict()
 
     def change_exercise_type(self, exercise_type):
 
@@ -219,7 +222,7 @@ class EquityOption(Instrument):
         :param ql_engine: QuantLib.PricingEngine
             The engine used to calculate the option.
         :param engine_name: str
-            The engine name
+            The QuantLib pricing engine name
         :param process: QuantLib.StochasticProcess
             The QuantLib object with the option Stochastic Process.
         :return:
@@ -334,8 +337,9 @@ class EquityOption(Instrument):
             return float(quote)*size
         else:
             price = self.price(date=date, base_date=base_date, dividend_tax=dividend_tax,
-                               last_available=last_available, volatility=volatility, **kwargs)
-            return price * size
+                               last_available=last_available, volatility=volatility,
+                               bypass_option_default_values=True, **kwargs)
+        return price * size
 
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
@@ -362,7 +366,8 @@ class EquityOption(Instrument):
         """
         delta = self.delta(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                            dividend_tax=dividend_tax, volatility=volatility,
-                           base_equity_process=base_equity_process, **kwargs)
+                           base_equity_process=base_equity_process,
+                           bypass_option_default_values=True, **kwargs)
         return delta*spot_price*self.contract_size
 
     @conditional_vectorize('date', 'quote')
@@ -465,7 +470,7 @@ class EquityOption(Instrument):
         base_equity_process.dividend_yield.setValue(dividend_yield)
         base_equity_process.spot_price.setValue(spot_price)
 
-    def _black_implied_vol(self, date, option_price, spot_price, base_equity_process):
+    def _black_implied_vol(self, date, option_price, spot_price, base_equity_process, engine_name):
         """
         :param date: QuantLib.Date
             The date.
@@ -473,10 +478,20 @@ class EquityOption(Instrument):
             The underlying spot price.
         :param option_price: float
             The option price used to calculate the implied volatility.
+        :param engine_name: str
+            The QuantLib pricing engine name
         """
+
+        if date in self._implied_volatility.keys():
+            if option_price == self._implied_volatility_prices[date]:
+                # if the function reaches this step it means it has already calculated the volatility once for the
+                # given option price.
+                return
+
         self._implied_volatility[date] = ql.SimpleQuote(0.2)
+        self._implied_volatility_prices[date] = option_price
         process = base_equity_process.process(volatility=self._implied_volatility[date])
-        self.set_pricing_engine(engine_name=self.engine_name, process=process)
+        self.set_pricing_engine(engine_name=engine_name, process=process)
 
         try:
             implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
@@ -491,7 +506,8 @@ class EquityOption(Instrument):
         self._implied_volatility[date].setValue(implied_vol)
 
     def volatility_update(self, date, base_date, spot_price, option_price, dividend_yield, dividend_tax, volatility,
-                          base_equity_process, risk_free_yield_curve_ts, get_constants_from_ts=False, **kwargs):
+                          base_equity_process, risk_free_yield_curve_ts, engine_name, get_constants_from_ts=False,
+                          **kwargs):
         """
         :param date: QuantLib.Date
             The date.
@@ -511,6 +527,8 @@ class EquityOption(Instrument):
             The Stochastic process used for calculations.
         :param risk_free_yield_curve_ts: py:class:'YieldCurveTimeSeries'
             The risk free yield curve
+        :param engine_name: str
+            The QuantLib pricing engine name
         :param get_constants_from_ts: bool
             For Stochastic process that depend of constants use this bool to specify if you are passing the values
             explicitly or the values are to be retrieved from timeseries.
@@ -523,11 +541,12 @@ class EquityOption(Instrument):
             date = base_date
         if volatility is not None:
             self._implied_volatility[date] = ql.SimpleQuote(volatility)
+            process = base_equity_process.process(volatility=self._implied_volatility[date])
         else:
             process_name = base_equity_process.process_name
             if process_name in [BLACK_SCHOLES, BLACK_SCHOLES_MERTON]:
                 self._black_implied_vol(date=date, option_price=option_price, spot_price=spot_price,
-                                        base_equity_process=base_equity_process)
+                                        base_equity_process=base_equity_process, engine_name=engine_name)
                 process = base_equity_process.process(volatility=self._implied_volatility[date])
             elif process_name in [HESTON, GJR_GARCH]:
                 if get_constants_from_ts:
@@ -543,8 +562,8 @@ class EquityOption(Instrument):
                                                               lambda_value=lambda_value, v_zero=v_zero)
                 else:
                     process = base_equity_process.process(**kwargs)
-        # making sure it is using the updated model.
-        self.set_pricing_engine(engine_name=self.engine_name, process=process)
+        # making sure the pricing engine is updated.
+        self.set_pricing_engine(engine_name=engine_name, process=process)
 
     @conditional_vectorize('date', 'volatility', 'spot_price')
     @option_default_values
@@ -643,7 +662,17 @@ class EquityOption(Instrument):
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility,
                                    base_equity_process=base_equity_process, **kwargs)
-            return self.option.delta()
+            try:
+                return self.option.delta()
+            except RuntimeError:
+                # in case QuantLib pricing engine doesn't have the delta calculation just calculate it numerically.
+                h = 0.01
+                self.base_equity_process.spot_price.setValue(spot_price + h)
+                price_plus = self.option.NPV()
+                self.base_equity_process.spot_price.setValue(spot_price - h)
+                price_minus = self.option.NPV()
+                self.base_equity_process.spot_price.setValue(spot_price)
+                return (price_plus - price_minus) / (2*h)
 
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
@@ -681,7 +710,17 @@ class EquityOption(Instrument):
                                        dividend_yield=dividend_yield, dividend_tax=dividend_tax,
                                        volatility=volatility, base_equity_process=base_equity_process, **kwargs)
             self.base_equity_process.spot_price.setValue(spot_price)
-            return self.option.delta()
+            try:
+                return self.option.delta()
+            except RuntimeError:
+                # in case QuantLib pricing engine doesn't have the delta calculation just calculate it numerically.
+                h = 0.01
+                self.base_equity_process.spot_price.setValue(spot_price + h)
+                price_plus = self.option.NPV()
+                self.base_equity_process.spot_price.setValue(spot_price - h)
+                price_minus = self.option.NPV()
+                self.base_equity_process.spot_price.setValue(spot_price)
+                return (price_plus - price_minus) / (2*h)
 
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
@@ -711,7 +750,18 @@ class EquityOption(Instrument):
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility,
                                    base_equity_process=base_equity_process, **kwargs)
-            return self.option.gamma()
+            try:
+                return self.option.gamma()
+            except RuntimeError:
+                # in case QuantLib pricing engine doesn't have the delta calculation just calculate it numerically.
+                h = 0.01
+                self.base_equity_process.spot_price.setValue(spot_price + h)
+                price_plus = self.option.NPV()
+                self.base_equity_process.spot_price.setValue(spot_price - h)
+                price_minus = self.option.NPV()
+                self.base_equity_process.spot_price.setValue(spot_price)
+                price = self.option.NPV()
+                return (price_plus - 2*price - price_minus) / (h*h)
 
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
@@ -741,7 +791,15 @@ class EquityOption(Instrument):
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility,
                                    base_equity_process=base_equity_process, **kwargs)
-            return self.option.theta()
+            try:
+                return self.option.theta()
+            except RuntimeError:
+                price = self.option.NPV()
+                new_date = date + ql.Period(1, ql.Days)
+                ql.Settings.instance().evaluationDate = new_date
+                h = self.day_counter.yearFraction(date, new_date)
+                price_plus = self.option.NPV()
+                return (price_plus - price) / h
 
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
@@ -771,13 +829,16 @@ class EquityOption(Instrument):
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility,
                                    base_equity_process=base_equity_process, **kwargs)
-            if self.exercise_type == 'AMERICAN':
-                return np.nan
-            else:
-                try:
-                    return self.option.vega()
-                except RuntimeError:
-                    return np.nan
+            try:
+                return self.option.vega()
+            except RuntimeError:
+                volatility = self._implied_volatility[date].value()
+                price = self.option.NPV()
+                h = 0.0001
+                self._implied_volatility[date].setValue(volatility + h)
+                price_plus = self.option.NPV()
+                self._implied_volatility[date].setValue(volatility)
+                return (price_plus - price) / h
 
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
@@ -806,13 +867,19 @@ class EquityOption(Instrument):
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility,
                                    base_equity_process=base_equity_process, **kwargs)
-            if self.exercise_type == 'AMERICAN':
-                return np.nan
-            else:
-                try:
-                    return self.option.rho()
-                except RuntimeError:
-                    return np.nan
+            try:
+                return self.option.rho()
+            except RuntimeError:
+                price = self.option.NPV()
+                h = 0.0001
+                yield_curve = self.risk_free_yield_curve_ts.yield_curve(date=date)
+                zero_spread_curve = self.risk_free_yield_curve_ts.spreaded_curve(date=date, spread=h,
+                                                                                 compounding=ql.Continuous,
+                                                                                 frequency=ql.NoFrequency)
+                base_equity_process.risk_free_handle.linkTo(zero_spread_curve)
+                price_plus = self.option.NPV()
+                base_equity_process.risk_free_handle.linkTo(yield_curve)
+                return (price_plus - price) / h
 
     @conditional_vectorize('date', 'spot_price', 'option_price')
     @option_default_values
@@ -917,7 +984,7 @@ class EquityOption(Instrument):
         """
         delta = self.delta(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                            dividend_tax=dividend_tax, volatility=volatility,
-                           base_equity_process=base_equity_process, **kwargs)
+                           base_equity_process=base_equity_process, bypass_option_default_values=True, **kwargs)
         return delta*spot_price*self.contract_size
 
     def heston_helper(self, date, volatility, base_equity_process, error_type=None):

@@ -57,15 +57,21 @@ class Equity(Instrument):
         else:
             return getattr(self.timeseries, UNADJUSTED_PRICE)
 
-    def ts_returns(self, dividend_adjusted=True):
+    def ts_returns(self, dividend_adjusted=True, calendar=None):
         """ Daily returns from trading days.
 
+        :param dividend_adjusted: bool
+            If true it will use the adjusted price for calculation.
+        :param calendar: QuantLib.Calendar
+            Alternative calendar to be used to filter dates, defaults to self.calendar
         :return pandas.Series
         """
         price = self.ts_prices(dividend_adjusted=dividend_adjusted)
         start_date = to_ql_date(price.first_valid_index())
         end_date = to_ql_date(price.last_valid_index())
-        holiday_list = to_datetime(ql_holiday_list(start_date, end_date, self.calendar))
+        if calendar is None:
+            calendar = self.calendar
+        holiday_list = to_datetime(ql_holiday_list(start_date, end_date, calendar))
         price.drop(pd.Index(np.where(price.index.isin(holiday_list))[0]), inplace=True, errors='ignore')
         daily_returns = price / price.shift(1) - 1
         return daily_returns
