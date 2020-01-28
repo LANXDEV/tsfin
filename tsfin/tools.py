@@ -606,9 +606,16 @@ def ql_irr(cash_flow, first_amount, first_date):
     """
 
     ql.Settings.instance().evaluationDate = to_ql_date(first_date)
-    custom_bond = ql.Bond(0, ql.NullCalendar(), 100, ql.Date(), ql.Date(), cash_flow)
-    fixed_rate = custom_bond.bondYield(float(first_amount), ql.Actual365Fixed(), ql.Compounded, ql.Annual)
-
+    try:
+        fixed_rate = ql.CashFlows.yieldRate(cash_flow, float(first_amount), ql.Actual365Fixed(), ql.Compounded,
+                                            ql.Annual, False, ql.Date(), ql.Date(), 1.0e-6, 1000, 0.05)
+    except RuntimeError:
+        try:
+            fixed_rate = ql.CashFlows.yieldRate(cash_flow, float(first_amount), ql.Actual365Fixed(), ql.Compounded,
+                                                ql.Annual, False, ql.Date(), ql.Date(), 1.0e-6, 1000, -0.1)
+        except RuntimeError:
+            fixed_rate = ql.CashFlows.yieldRate(cash_flow, float(first_amount), ql.Actual365Fixed(), ql.Compounded,
+                                                ql.Annual, False, ql.Date(), ql.Date(), 1.0e-6, 1000, -0.5)
     return fixed_rate
 
 
