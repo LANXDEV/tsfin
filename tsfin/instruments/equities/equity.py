@@ -22,7 +22,7 @@ import pandas as pd
 import QuantLib as ql
 from tsio.tools import at_index
 from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, EX_DIVIDENDS, \
-    PAYABLE_DIVIDENDS, DIVIDEND_YIELD
+    PAYABLE_DIVIDENDS, DIVIDEND_YIELD, DIVIDENDS
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize, \
     filter_series
 
@@ -132,6 +132,23 @@ class Equity(Instrument):
         ts_dividends = ts_dividends[ts_dividends != 0]
         return ts_dividends
 
+    def _dividends_to_date(self, start_date, date, *args, **kwargs):
+        """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
+
+        :param start_date: Date-like
+            Start date of the range
+        :param date: Date-like
+            Final date of the range
+        :return: pandas.Series
+        """
+        start_date = to_datetime(start_date)
+        date = to_datetime(date)
+        ts_dividends = getattr(self.timeseries, DIVIDENDS).ts_values
+        if start_date >= date:
+            start_date = date
+        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
+        return ts_dividends
+
     def security(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
         """ Return the QuantLib Object representing a Stock
 
@@ -159,11 +176,13 @@ class Equity(Instrument):
             Final date of the range
         :param tax_adjust: float
             The tax value to adjust the dividends received
-        :return list of tuples with (date, value)
+        :return list of tuples with (date, date, value)
+            Return the ex-date, pay-date and dividend value
         """
-        ts_dividends = self._payable_dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust,
-                                                       *args, **kwargs)
-        return list((to_ql_date(ts_date), ts_value) for ts_date, ts_value in ts_dividends.iteritems())
+        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust,
+                                               *args, **kwargs)
+        return list((to_ql_date(ts_date), to_ql_date(to_datetime(ts_value[0])), ts_value[1]*(1-float(tax_adjust)))
+                    for ts_date, ts_value in ts_dividends.iteritems())
 
     @conditional_vectorize('start_date', 'date')
     def cash_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):

@@ -570,13 +570,13 @@ class _BaseBond(Instrument):
         Returns
         -------
         scalar
-           List of Tuples with the amount paid between the period.
+           List of Tuples with ex-date, pay-date and the amount paid between the period.
 
 
         """
         start_date = to_ql_date(start_date)
         date = to_ql_date(date)
-        return list((cf.date(), cf.amount() / self.face_amount) for cf in self.bond.cashflows()
+        return list((cf.date(), cf.date(), cf.amount() / self.face_amount) for cf in self.bond.cashflows()
                     if start_date <= cf.date() <= date)
 
     @default_arguments

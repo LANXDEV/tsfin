@@ -302,13 +302,13 @@ class EquityOption(Instrument):
         :param spot_price: float
             The underlying spot price
         :param kwargs:
-        :return: list of tuples (date, value)
+        :return: list of tuples (date, date, value)
         """
         start_date = to_ql_date(start_date)
         date = to_ql_date(date)
         if start_date <= self._maturity <= date:
             intrinsic = self.intrinsic(self._maturity, spot_price)
-            return [(self._maturity, intrinsic*self.contract_size)]
+            return [(self._maturity, self._maturity, intrinsic*self.contract_size)]
         else:
             return []
 
