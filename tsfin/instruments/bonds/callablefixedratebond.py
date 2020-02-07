@@ -73,6 +73,7 @@ class CallableFixedRateBond(_BaseBond):
         QuantLib.RateHelper
         """
         for call_date, call_price in self.call_schedule.ts_values.iteritems():
+            call_date = to_ql_date(call_date)
             self._clean_price[call_date] = ql.SimpleQuote(100)
             self._bond_rate_helper[call_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
                 self._clean_price[call_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
@@ -90,9 +91,10 @@ class CallableFixedRateBond(_BaseBond):
         QuantLib.RateHelper
         """
         for call_date, call_price in self.call_schedule.ts_values.iteritems():
+            call_date = to_ql_date(call_date)
             self._clean_price[call_date] = ql.SimpleQuote(100)
             self._zero_coupon_rate_helper[call_date] = ql.FixedRateBondHelper(ql.QuoteHandle(
-                self._clean_price[call_date]), self.settlement_days, self.face_amount, self.schedule, self.coupons,
+                self._clean_price[call_date]), self.settlement_days, self.face_amount, self.schedule, [0],
                 self.day_counter, self.business_convention, self.redemption, self.issue_date)
         self._clean_price[self.maturity_date] = ql.SimpleQuote(100)
         self._zero_coupon_rate_helper[self.maturity_date] = ql.FixedRateBondHelper(ql.QuoteHandle(

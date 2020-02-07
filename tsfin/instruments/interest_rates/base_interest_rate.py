@@ -34,7 +34,7 @@ class BaseInterestRate(Instrument):
         TimeSeries representing the deposit rate.
     """
     def __init__(self, timeseries, is_deposit_rate=False, calculate_convexity=False, telescopic_value_dates=False):
-        super().__init__(timeseries)
+        super().__init__(timeseries=timeseries)
         # Class Flags
         self.is_deposit_rate = is_deposit_rate
         self.calculate_convexity = calculate_convexity
