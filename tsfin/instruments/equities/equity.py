@@ -23,8 +23,7 @@ import QuantLib as ql
 from tsio.tools import at_index
 from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, EX_DIVIDENDS, \
     PAYABLE_DIVIDENDS, DIVIDEND_YIELD, DIVIDENDS
-from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize, \
-    filter_series
+from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize
 
 
 class Equity(Instrument):
@@ -38,7 +37,7 @@ class Equity(Instrument):
     """
 
     def __init__(self, timeseries):
-        super().__init__(timeseries)
+        super().__init__(timeseries=timeseries)
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         try:
             self.underlying_name = self.ts_attributes[UNDERLYING_INSTRUMENT]
@@ -103,13 +102,12 @@ class Equity(Instrument):
         """
         start_date = to_datetime(start_date)
         date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, EX_DIVIDENDS).ts_values
+        ts_dividends = getattr(self.timeseries, EX_DIVIDENDS).copy()
         if start_date >= date:
             start_date = date
-        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
-        ts_dividends *= (1 - float(tax_adjust))
-        ts_dividends = ts_dividends[ts_dividends != 0]
-        return ts_dividends
+        ts_dividends.ts_values *= (1 - float(tax_adjust))
+        ts_dividends.ts_values = ts_dividends[ts_dividends.ts_values != 0]
+        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)].ts_values
 
     def _payable_dividends_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
         """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
@@ -124,15 +122,14 @@ class Equity(Instrument):
         """
         start_date = to_datetime(start_date)
         date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, PAYABLE_DIVIDENDS).ts_values
+        ts_dividends = getattr(self.timeseries, PAYABLE_DIVIDENDS).copy()
         if start_date >= date:
             start_date = date
-        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
-        ts_dividends *= (1 - float(tax_adjust))
-        ts_dividends = ts_dividends[ts_dividends != 0]
-        return ts_dividends
+        ts_dividends.ts_values *= (1 - float(tax_adjust))
+        ts_dividends.ts_values = ts_dividends[ts_dividends.ts_values != 0]
+        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)].ts_values
 
-    def _dividends_to_date(self, start_date, date, *args, **kwargs):
+    def _dividends_to_date(self, start_date, date, tax_adjust=0,  *args, **kwargs):
         """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
 
         :param start_date: Date-like
@@ -143,11 +140,12 @@ class Equity(Instrument):
         """
         start_date = to_datetime(start_date)
         date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, DIVIDENDS).ts_values
+        ts_dividends = getattr(self.timeseries, DIVIDENDS).copy()
         if start_date >= date:
             start_date = date
-        filter_series(df=ts_dividends, initial_date=start_date, final_date=date)
-        return ts_dividends
+        ts_dividends.ts_values *= (1 - float(tax_adjust))
+        ts_dividends.ts_values = ts_dividends[ts_dividends.ts_values != 0]
+        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)].ts_values
 
     def security(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
         """ Return the QuantLib Object representing a Stock

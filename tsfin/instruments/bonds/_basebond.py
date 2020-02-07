@@ -232,7 +232,7 @@ class _BaseBond(Instrument):
     See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
     """
     def __init__(self, timeseries, *args, **kwargs):
-        super().__init__(timeseries)
+        super().__init__(timeseries=timeseries)
         # If quotes are in discount format, just convert them to clean prices.
         transform_ts_values(self)
         # The bond_components attribute holds a {maturity: FixedRateBond} dict, with a FixedRateBond for each
@@ -395,8 +395,6 @@ class _BaseBond(Instrument):
         if date >= self.expire_date:
             return True
         elif date >= self.maturity_date:
-            return True
-        elif self.calendar.isHoliday(date):
             return True
         return False
 
