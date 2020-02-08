@@ -65,7 +65,7 @@ class Equity(Instrument):
             Alternative calendar to be used to filter dates, defaults to self.calendar
         :return pandas.Series
         """
-        price = self.ts_prices(dividend_adjusted=dividend_adjusted)
+        price = self.ts_prices(dividend_adjusted=dividend_adjusted).ts_values.copy()
         start_date = to_ql_date(price.first_valid_index())
         end_date = to_ql_date(price.last_valid_index())
         if calendar is None:
@@ -89,40 +89,6 @@ class Equity(Instrument):
         vol.name = "({})(VOLATILITY)".format(self.ts_name)
         return vol
 
-    def _ex_dividends_to_date(self, start_date, date, *args, **kwargs):
-        """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
-
-        :param start_date: Date-like
-            Start date of the range
-        :param date: Date-like
-            Final date of the range
-        :return pandas.Series
-        """
-        start_date = to_datetime(start_date)
-        date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, EX_DIVIDENDS).ts_values.copy()
-        if start_date >= date:
-            start_date = date
-        ts_dividends = ts_dividends[ts_dividends != 0]
-        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
-
-    def _payable_dividends_to_date(self, start_date, date, *args, **kwargs):
-        """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
-
-        :param start_date: Date-like
-            Start date of the range
-        :param date: Date-like
-            Final date of the range
-        :return: pandas.Series
-        """
-        start_date = to_datetime(start_date)
-        date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, PAYABLE_DIVIDENDS).ts_values.copy()
-        if start_date >= date:
-            start_date = date
-        ts_dividends = ts_dividends[ts_dividends != 0]
-        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
-
     def _dividends_to_date(self, start_date, date, *args, **kwargs):
         """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
 
@@ -138,7 +104,10 @@ class Equity(Instrument):
         if start_date >= date:
             start_date = date
         ts_dividends = ts_dividends[ts_dividends != 0]
-        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
+        if date == start_date:
+            return ts_dividends[(ts_dividends.index == date)]
+        else:
+            return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
 
     def security(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
         """ Return the QuantLib Object representing a Stock
@@ -186,7 +155,7 @@ class Equity(Instrument):
             The tax value to adjust the dividends received
         :return float
         """
-        ts_dividends = self._ex_dividends_to_date(start_date=start_date, date=date, *args, **kwargs)
+        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, *args, **kwargs)
         return sum(ts_dividends)*(1-float(tax_adjust))
 
     @conditional_vectorize('date')
