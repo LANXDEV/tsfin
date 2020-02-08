@@ -89,47 +89,24 @@ class Equity(Instrument):
         vol.name = "({})(VOLATILITY)".format(self.ts_name)
         return vol
 
-    def _ex_dividends_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
+    def _ex_dividends_to_date(self, start_date, date, *args, **kwargs):
         """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
 
         :param start_date: Date-like
             Start date of the range
         :param date: Date-like
             Final date of the range
-        :param tax_adjust: float
-            The tax value to adjust the dividends received
         :return pandas.Series
         """
         start_date = to_datetime(start_date)
         date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, EX_DIVIDENDS).copy()
+        ts_dividends = getattr(self.timeseries, EX_DIVIDENDS).ts_values.copy()
         if start_date >= date:
             start_date = date
-        ts_dividends.ts_values *= (1 - float(tax_adjust))
-        ts_dividends.ts_values = ts_dividends[ts_dividends.ts_values != 0]
-        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)].ts_values
+        ts_dividends = ts_dividends[ts_dividends != 0]
+        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
 
-    def _payable_dividends_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
-        """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
-
-        :param start_date: Date-like
-            Start date of the range
-        :param date: Date-like
-            Final date of the range
-        :param tax_adjust: float
-            The tax value to adjust the dividends received
-        :return: pandas.Series
-        """
-        start_date = to_datetime(start_date)
-        date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, PAYABLE_DIVIDENDS).copy()
-        if start_date >= date:
-            start_date = date
-        ts_dividends.ts_values *= (1 - float(tax_adjust))
-        ts_dividends.ts_values = ts_dividends[ts_dividends.ts_values != 0]
-        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)].ts_values
-
-    def _dividends_to_date(self, start_date, date, tax_adjust=0,  *args, **kwargs):
+    def _payable_dividends_to_date(self, start_date, date, *args, **kwargs):
         """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
 
         :param start_date: Date-like
@@ -140,12 +117,28 @@ class Equity(Instrument):
         """
         start_date = to_datetime(start_date)
         date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, DIVIDENDS).copy()
+        ts_dividends = getattr(self.timeseries, PAYABLE_DIVIDENDS).ts_values.copy()
         if start_date >= date:
             start_date = date
-        ts_dividends.ts_values *= (1 - float(tax_adjust))
-        ts_dividends.ts_values = ts_dividends[ts_dividends.ts_values != 0]
-        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)].ts_values
+        ts_dividends = ts_dividends[ts_dividends != 0]
+        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
+
+    def _dividends_to_date(self, start_date, date, *args, **kwargs):
+        """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
+
+        :param start_date: Date-like
+            Start date of the range
+        :param date: Date-like
+            Final date of the range
+        :return: pandas.Series
+        """
+        start_date = to_datetime(start_date)
+        date = to_datetime(date)
+        ts_dividends = getattr(self.timeseries, DIVIDENDS).ts_values.copy()
+        if start_date >= date:
+            start_date = date
+        ts_dividends = ts_dividends[ts_dividends != 0]
+        return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
 
     def security(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
         """ Return the QuantLib Object representing a Stock
@@ -177,10 +170,9 @@ class Equity(Instrument):
         :return list of tuples with (date, date, value)
             Return the ex-date, pay-date and dividend value
         """
-        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust,
-                                               *args, **kwargs)
-        return list((to_ql_date(ts_date), to_ql_date(to_datetime(ts_value[0])), ts_value[1]*(1-float(tax_adjust)))
-                    for ts_date, ts_value in ts_dividends.iteritems())
+        ts_dividends = self._dividends_to_date(start_date=start_date, date=date, *args, **kwargs)
+        return list((to_ql_date(date), to_ql_date(to_datetime(value[0])), value[1]*(1-float(tax_adjust)))
+                    for date, value in ts_dividends.iteritems())
 
     @conditional_vectorize('start_date', 'date')
     def cash_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
@@ -194,9 +186,8 @@ class Equity(Instrument):
             The tax value to adjust the dividends received
         :return float
         """
-        ts_dividends = self._ex_dividends_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust, *args,
-                                                  **kwargs)
-        return sum(ts_dividends)
+        ts_dividends = self._ex_dividends_to_date(start_date=start_date, date=date, *args, **kwargs)
+        return sum(ts_dividends)*(1-float(tax_adjust))
 
     @conditional_vectorize('date')
     def value(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
