@@ -156,7 +156,10 @@ class Equity(Instrument):
         :return float
         """
         ts_dividends = self._dividends_to_date(start_date=start_date, date=date, *args, **kwargs)
-        return sum(ts_dividends)*(1-float(tax_adjust))
+        dividends = 0
+        for date, value in ts_dividends.iteritems():
+            dividends += value[1]
+        return dividends*(1-float(tax_adjust))
 
     @conditional_vectorize('date')
     def value(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
