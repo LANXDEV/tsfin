@@ -18,12 +18,9 @@
 Equity class, to represent Equities and Exchange Traded Funds.
 """
 import numpy as np
-import pandas as pd
 import QuantLib as ql
-from tsio.tools import at_index
-from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, EX_DIVIDENDS, \
-    PAYABLE_DIVIDENDS, DIVIDEND_YIELD, DIVIDENDS
-from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, ql_holiday_list, conditional_vectorize
+from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, DIVIDEND_YIELD, DIVIDENDS
+from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, conditional_vectorize
 
 
 class Equity(Instrument):
@@ -44,7 +41,7 @@ class Equity(Instrument):
         except KeyError:
             self.underlying_name = self.ts_attributes[TICKER]
 
-    def ts_prices(self, dividend_adjusted=False):
+    def spot_prices(self, dividend_adjusted=False):
         """ Return a the dividend adjusted or unadjusted price series.
 
         :param dividend_adjusted: bool
@@ -55,39 +52,6 @@ class Equity(Instrument):
             return getattr(self.timeseries, QUOTES)
         else:
             return getattr(self.timeseries, UNADJUSTED_PRICE)
-
-    def ts_returns(self, dividend_adjusted=True, calendar=None):
-        """ Daily returns from trading days.
-
-        :param dividend_adjusted: bool
-            If true it will use the adjusted price for calculation.
-        :param calendar: QuantLib.Calendar
-            Alternative calendar to be used to filter dates, defaults to self.calendar
-        :return pandas.Series
-        """
-        price = self.ts_prices(dividend_adjusted=dividend_adjusted).ts_values.copy()
-        start_date = to_ql_date(price.first_valid_index())
-        end_date = to_ql_date(price.last_valid_index())
-        if calendar is None:
-            calendar = self.calendar
-        holiday_list = to_datetime(ql_holiday_list(start_date, end_date, calendar))
-        price.drop(pd.Index(np.where(price.index.isin(holiday_list))[0]), inplace=True, errors='ignore')
-        daily_returns = price / price.shift(1) - 1
-        return daily_returns
-
-    def ts_volatility(self, n_days=252):
-        """ Daily rolling volatility.
-
-        :param n_days: int
-            The rolling window, will default to 252 if no value is passed.
-        :return pandas.Series
-        """
-
-        daily_returns = self.ts_returns()
-        vol = daily_returns.rolling(window=n_days, min_periods=1).std()
-        vol.dropna(axis='index', inplace=True)
-        vol.name = "({})(VOLATILITY)".format(self.ts_name)
-        return vol
 
     def _dividends_to_date(self, start_date, date, *args, **kwargs):
         """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
@@ -100,7 +64,7 @@ class Equity(Instrument):
         """
         start_date = to_datetime(start_date)
         date = to_datetime(date)
-        ts_dividends = getattr(self.timeseries, DIVIDENDS).ts_values.copy()
+        ts_dividends = getattr(self.timeseries, DIVIDENDS).ts_values
         if start_date >= date:
             start_date = date
         ts_dividends = ts_dividends[ts_dividends != 0]
@@ -122,8 +86,7 @@ class Equity(Instrument):
         :param kwargs:
         :return: QuantLib.Stock
         """
-        price_ts = self.ts_prices(dividend_adjusted=dividend_adjusted)
-        price = price_ts.get_values(index=date, last_available=last_available)
+        price = self.spot_prices(dividend_adjusted=dividend_adjusted)(index=date, last_available=last_available)
         return ql.Stock(ql.QuoteHandle(ql.SimpleQuote(price)))
 
     @conditional_vectorize('start_date', 'date')
@@ -174,13 +137,13 @@ class Equity(Instrument):
         :return scalar, None
             The unit dirty value of the instrument.
         """
-        quotes = self.ts_prices(dividend_adjusted=dividend_adjusted)
+        quotes = self.spot_prices(dividend_adjusted=dividend_adjusted)
         date = to_datetime(date)
         if date > quotes.ts_values.last_valid_index():
             return np.nan
         if date < quotes.ts_values.first_valid_index():
             return np.nan
-        return quotes.get_values(index=date, last_available=last_available)
+        return quotes(index=date, last_available=last_available)
 
     @conditional_vectorize('date')
     def risk_value(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
@@ -218,7 +181,7 @@ class Equity(Instrument):
             If true it will use the adjusted price for calculation.
         :return scalar, None
         """
-        quotes = self.ts_prices(dividend_adjusted=dividend_adjusted)
+        quotes = self.spot_prices(dividend_adjusted=dividend_adjusted)
 
         first_available_date = quotes.ts_values.first_valid_index()
         if start_date is None:
@@ -226,21 +189,19 @@ class Equity(Instrument):
         if start_date < first_available_date:
             start_date = first_available_date
         if start_quote is None:
-            start_quote = self.spot_price(date=start_date, dividend_adjusted=dividend_adjusted)
+            start_quote = quotes(index=start_date, dividend_adjusted=dividend_adjusted)
         if quote is None:
-            quote = self.spot_price(date=date, dividend_adjusted=dividend_adjusted)
+            quote = quotes(index=date, dividend_adjusted=dividend_adjusted)
         if date < start_date:
             return np.nan
 
-        start_value = start_quote
-        value = quote
         if dividend_adjusted:
             dividends = 0
         else:
             start_date = self.calendar.advance(to_ql_date(start_date), ql.Period(1, ql.Days), ql.Following)
             dividends = self.cash_to_date(start_date=start_date, date=date, tax_adjust=tax_adjust)
 
-        return (value + dividends) / start_value - 1
+        return (quote + dividends) / start_quote - 1
 
     @conditional_vectorize('date')
     def spot_price(self, date, last_available=True, fill_value=np.nan, dividend_adjusted=False):
@@ -257,33 +218,8 @@ class Equity(Instrument):
         :return pandas.Series
         """
         date = to_datetime(date)
-        prices = self.ts_prices(dividend_adjusted=dividend_adjusted)
-        return prices.get_values(index=date, last_available=last_available, fill_value=fill_value)
-
-    @conditional_vectorize('date')
-    def dividend_values(self, date, last_available=True, fill_value=np.nan, ex_date=True):
-        """ Daily dividend values at date.
-
-        :param date: Date-like
-            Date or dates to be return the dividend values.
-        :param last_available: bool, optional
-            Whether to use last available data in case dates are missing.
-        :param fill_value: scalar
-            Default value in case `date` can't be found.
-        :param ex_date: bool
-            Whether to use the dividend ex-dates or payable dates
-        :return pandas.Series
-        """
-        date = to_datetime(date)
-        try:
-            if ex_date:
-                return getattr(self.timeseries, EX_DIVIDENDS).get_values(index=date, last_available=last_available,
-                                                                         fill_value=fill_value)
-            else:
-                return getattr(self.timeseries, PAYABLE_DIVIDENDS).get_values(index=date, last_available=last_available,
-                                                                              fill_value=fill_value)
-        except KeyError:
-            return 0
+        prices = self.spot_prices(dividend_adjusted=dividend_adjusted)
+        return prices(index=date, last_available=last_available, fill_value=fill_value)
 
     @conditional_vectorize('date')
     def dividend_yield(self, date, last_available=True, fill_value=np.nan):
@@ -299,28 +235,29 @@ class Equity(Instrument):
         """
         date = to_datetime(date)
         try:
-            return getattr(self.timeseries, DIVIDEND_YIELD).get_values(index=date, last_available=last_available,
-                                                                       fill_value=fill_value)
+            dividend_yield = getattr(self.timeseries, DIVIDEND_YIELD)
+            return dividend_yield(index=date, last_available=last_available, fill_value=fill_value)
         except KeyError:
             return 0
 
     @conditional_vectorize('date')
-    def volatility(self, date, last_available=True, fill_value=np.nan, n_days=None, annual_factor=252):
+    def volatility(self, date, n_days=252, annual_factor=252, log_returns=False):
         """ The converted volatility value series at date.
 
         :param date: Date-like
             Date or dates to be return the dividend values.
-        :param last_available: bool, optional
-            Whether to use last available data in case dates are missing.
-        :param fill_value: scalar
-            Default value in case `date` can't be found.
         :param n_days: int
             Rolling window for the volatility calculation.
         :param annual_factor: int, default 252
             The number of days used for period transformation, default is 252, or 1 year.
+        :param log_returns: bool
+            If True it will use the log returns of prices
         :return pandas.Series
         """
         date = to_datetime(date)
-        vol = at_index(df=self.ts_volatility(n_days=n_days), index=date, last_available=last_available,
-                       fill_value=fill_value)
-        return vol*np.sqrt(annual_factor)
+        prices = self.price()
+        if log_returns:
+            returns = np.log(prices[prices.index <= date].tail(n_days)).diff()
+        else:
+            returns = prices[prices.index <= date].tail(n_days).pct_change()
+        return np.std(returns)*np.sqrt(annual_factor)
