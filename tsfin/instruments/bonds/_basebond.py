@@ -999,6 +999,65 @@ class _BaseBond(Instrument):
                     for key, bond in self.bond_components.items() if key > settlement_date))
 
     @default_arguments
+    @conditional_vectorize('quote', 'date', 'rolling_call_date')
+    def ytw_to_custom_worst_date(self, last, quote, date, rolling_call_date, day_counter, compounding, frequency,
+                                 settlement_days, **kwargs):
+        """
+        Parameters
+        ----------
+        last: bool, optional
+            Whether to use last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional, (c-vectorized)
+            The bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional, (c-vectorized)
+            The date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        rolling_call_date: QuantLib.Date (c-vectorized)
+            The date of the custom worst call, overrides any worst date before this date
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            The compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            The compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
+            Default: see :py:func:`default_arguments`.
+
+        Returns
+        -------
+        tuple (scalar, QuantLib.Date)
+            The bond's yield to worst and worst date, considering that, anytime after the first date in the call
+            schedule, the issuer can call the bond with a 30 days notice.
+        """
+        date = to_ql_date(date)
+        if date < list(self.bond_components.keys())[0]:
+            # If date is before the first call dates, rolling calls are NOT possible.
+            return self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
+                                           compounding=compounding, frequency=frequency,
+                                           settlement_days=settlement_days, **kwargs)
+        else:
+            # Then rolling calls are possible.
+            rolling_call_date = to_ql_date(rolling_call_date)
+            rolling_call_component = self._create_call_component(to_date=rolling_call_date)
+            self._insert_bond_component(rolling_call_date, rolling_call_component)
+            components = list(self.bond_components.keys())
+            for component_date in components:
+                if component_date < rolling_call_date:
+                    self.bond_components.pop(component_date)
+            yield_value, worst_date = self.ytw_and_worst_date(last=last, quote=quote, date=date,
+                                                              day_counter=day_counter, compounding=compounding,
+                                                              frequency=frequency, settlement_days=settlement_days,
+                                                              **kwargs)
+            self._restore_bond_components()
+            return yield_value, worst_date
+
+    @default_arguments
     @conditional_vectorize('quote', 'date')
     def ytw_and_worst_date_rolling_call(self, last, quote, date, day_counter, compounding, frequency, settlement_days,
                                         **kwargs):
@@ -1044,6 +1103,10 @@ class _BaseBond(Instrument):
             rolling_call_date = self.calendar.advance(date, 1, ql.Months, self.business_convention)
             rolling_call_component = self._create_call_component(to_date=rolling_call_date)
             self._insert_bond_component(rolling_call_date, rolling_call_component)
+            components = list(self.bond_components.keys())
+            for component_date in components:
+                if component_date < rolling_call_date:
+                    self.bond_components.pop(component_date)
             yield_value, worst_date = self.ytw_and_worst_date(last=last, quote=quote, date=date,
                                                               day_counter=day_counter, compounding=compounding,
                                                               frequency=frequency, settlement_days=settlement_days,

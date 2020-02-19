@@ -34,7 +34,7 @@ class Currency(Instrument):
     """
 
     def __init__(self, timeseries):
-        super().__init__(timeseries)
+        super().__init__(timeseries=timeseries)
         self.currency = self.ts_attributes[CURRENCY]
         self.base_currency = self.ts_attributes[BASE_CURRENCY]
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
