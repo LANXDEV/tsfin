@@ -23,15 +23,10 @@ from functools import wraps
 from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, \
     UNDERLYING_INSTRUMENT, CONTRACT_SIZE, EARLIEST_DATE, PAYOFF_TYPE, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, \
-    HESTON, GJR_GARCH
+    HESTON, GJR_GARCH, MID_PRICE, IMPLIED_VOL, UNADJUSTED_PRICE, DIVIDEND_YIELD
 from tsfin.base import Instrument, to_ql_date, conditional_vectorize, to_ql_calendar, to_ql_day_counter, to_datetime, \
     to_list, to_ql_option_type, to_ql_one_asset_option, to_ql_option_payoff, to_ql_option_engine, \
     to_ql_option_exercise_type
-from tsfin.instruments.equities import Equity
-
-
-MID_PRICE = 'PX_MID'
-IMPLIED_VOL = 'IVOL_MID'
 
 
 def option_default_values(f):
@@ -117,23 +112,23 @@ def option_default_values(f):
             kwargs['engine_name'] = self.engine_name
         # Date setup
         search_date = kwargs['base_date'] if kwargs['date'] > kwargs['base_date'] else kwargs['date']
-        ql.Settings.instance().evaluationDate = kwargs['date']
         if kwargs.get('last_available', None) is None:
             kwargs['last_available'] = True
         last = kwargs['last_available']
         # Underlying Timeseries Values
+        underlying = kwargs['underlying_instrument']
         if kwargs.get('spot_price', None) is None:
-            spot_price = kwargs['underlying_instrument'].spot_price(date=search_date, last_available=last)
-            kwargs['spot_price'] = float(spot_price)
+            spot_prices = getattr(underlying, UNADJUSTED_PRICE)
+            kwargs['spot_price'] = spot_prices(index=search_date, last_available=last)
         if kwargs.get('dividend_yield', None) is None:
-            dividend_yield = kwargs['underlying_instrument'].dividend_yield(date=search_date, last_available=last)
-            kwargs['dividend_yield'] = float(dividend_yield)
+            dividend_yield = getattr(underlying, DIVIDEND_YIELD)
+            kwargs['dividend_yield'] = dividend_yield(index=search_date, last_available=last)
         if kwargs.get('dividend_tax', None) is None:
             kwargs['dividend_tax'] = 0
         # Option Timeseries Values
         if kwargs.get('option_price', None) is None:
-            option_price = self.ts_mid_price(date=search_date, last_available=last)
-            kwargs['option_price'] = float(option_price)
+            mid_prices = getattr(self.timeseries, MID_PRICE)
+            kwargs['option_price'] = mid_prices(index=search_date, last_available=last)
         if kwargs.get('quote', None) is None:
             kwargs['quote'] = kwargs['option_price']
         kwargs['volatility'] = kwargs.get('volatility', None)
@@ -153,7 +148,7 @@ class EquityOption(Instrument):
     """
 
     def __init__(self, timeseries):
-        super().__init__(timeseries)
+        super().__init__(timeseries=timeseries)
         self.option_type = self.ts_attributes[OPTION_TYPE]
         self.strike = float(self.ts_attributes[STRIKE_PRICE])
         self.contract_size = float(self.ts_attributes[CONTRACT_SIZE])
@@ -196,7 +191,7 @@ class EquityOption(Instrument):
             A class for modeling Equity, ETF.
         :return:
         """
-        if isinstance(underlying_instrument, Equity):
+        if isinstance(underlying_instrument, TimeSeries):
             if underlying_instrument.ts_name == self.underlying_name:
                 self.underlying_instrument = underlying_instrument
         elif isinstance(underlying_instrument, TimeSeriesCollection):
@@ -204,9 +199,6 @@ class EquityOption(Instrument):
                 self.underlying_instrument = underlying_instrument.get(self.underlying_name)
             except KeyError:
                 print("No Instrument with ts name {}".format(self.underlying_name))
-        elif isinstance(underlying_instrument, TimeSeries):
-            if underlying_instrument.ts_name == self.underlying_name:
-                self.underlying_instrument = Equity(underlying_instrument)
 
     def set_ql_process(self, base_equity_process, **kwargs):
         """
@@ -588,6 +580,7 @@ class EquityOption(Instrument):
         :return: float
             The option price at date.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             return self.intrinsic(date=self._maturity, spot_price=spot_price)
         else:
@@ -620,11 +613,13 @@ class EquityOption(Instrument):
         :return: float
             The option price based on the date and underlying spot price.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             return self.intrinsic(date=self._maturity, spot_price=spot_price)
         else:
             if date not in self._implied_volatility.keys():
-                base_spot_price = float(underlying_instrument.spot_price(date=date, last_available=True))
+                spot_prices = getattr(underlying_instrument, UNADJUSTED_PRICE)
+                base_spot_price = spot_prices(index=date, last_available=True)
                 self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,
                                        dividend_yield=dividend_yield, dividend_tax=dividend_tax,
                                        volatility=volatility, base_equity_process=base_equity_process, **kwargs)
@@ -653,6 +648,7 @@ class EquityOption(Instrument):
         :return: float
             The option delta at date.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             if self.intrinsic(date=date, spot_price=spot_price) > 0:
                 return 1
@@ -698,6 +694,7 @@ class EquityOption(Instrument):
         :return: float
             The option delta based on the date and underlying spot price.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             if self.intrinsic(date=date, spot_price=spot_price) > 0:
                 return 1
@@ -705,7 +702,8 @@ class EquityOption(Instrument):
                 return 0
         else:
             if date not in self._implied_volatility.keys():
-                base_spot_price = float(underlying_instrument.spot_price(date=date, last_available=True))
+                spot_prices = getattr(underlying_instrument, UNADJUSTED_PRICE)
+                base_spot_price = spot_prices(index=date, last_available=True)
                 self.volatility_update(date=date, base_date=base_date, spot_price=base_spot_price,
                                        dividend_yield=dividend_yield, dividend_tax=dividend_tax,
                                        volatility=volatility, base_equity_process=base_equity_process, **kwargs)
@@ -744,6 +742,7 @@ class EquityOption(Instrument):
         :return: float
             The option gamma at date.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             return 0
         else:
@@ -785,6 +784,7 @@ class EquityOption(Instrument):
         :return: float
             The option theta at date.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             return 0
         else:
@@ -823,6 +823,7 @@ class EquityOption(Instrument):
         :return: float
             The option vega at date.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             return 0
         else:
@@ -861,6 +862,7 @@ class EquityOption(Instrument):
         :return: float
             The option rho at date.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             return 0
         else:
@@ -905,6 +907,7 @@ class EquityOption(Instrument):
         :return: float
             The option volatility based on the option price and date.
         """
+        ql.Settings.instance().evaluationDate = date
         self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                dividend_tax=dividend_tax, volatility=volatility,
                                base_equity_process=base_equity_process, option_price=option_price, **kwargs)
@@ -932,6 +935,7 @@ class EquityOption(Instrument):
         :return: float
             The option optionality at date.
         """
+        ql.Settings.instance().evaluationDate = date
         if self.is_expired(date=date):
             return 0
         else:
@@ -956,8 +960,8 @@ class EquityOption(Instrument):
             The option underlying spot price.
         """
         date = to_ql_date(date)
-        spot_price = underlying_instrument.spot_price(date=date)
-        return spot_price
+        spot_prices = getattr(underlying_instrument, UNADJUSTED_PRICE)
+        return spot_prices(index=date, last_available=True)
 
     @conditional_vectorize('date', 'spot_price', 'volatility')
     @option_default_values
