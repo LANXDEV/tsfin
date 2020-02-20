@@ -189,9 +189,9 @@ class Equity(Instrument):
         if start_date < first_available_date:
             start_date = first_available_date
         if start_quote is None:
-            start_quote = quotes(index=start_date, dividend_adjusted=dividend_adjusted)
+            start_quote = quotes(index=start_date)
         if quote is None:
-            quote = quotes(index=date, dividend_adjusted=dividend_adjusted)
+            quote = quotes(index=date)
         if date < start_date:
             return np.nan
 
