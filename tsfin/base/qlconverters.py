@@ -560,3 +560,101 @@ def to_ql_cds_engine(engine_name):
         return ql.IntegralCdsEngine
     else:
         return None
+
+
+def to_ql_fitting_method(fitting_method, constraint_at_zero=True):
+    """
+    Parameters
+    ----------
+    fitting_method: str
+       the fitting method
+    constraint_at_zero: bool
+    Returns
+    -------
+        QuantLib.FittingMethod
+    """
+    fitting_method = str(fitting_method).lower()
+    if fitting_method == "exponential_splines":
+        return ql.ExponentialSplinesFitting(constraint_at_zero)
+    elif fitting_method == "nelson_siegel":
+        return ql.NelsonSiegelFitting()
+    elif fitting_method == "svensson":
+        return ql.SvenssonFitting()
+    elif fitting_method == 'second_degree_polynomial':
+        return ql.SimplePolynomialFitting(2, constraint_at_zero)
+    elif fitting_method == 'third_degree_polynomial':
+        return ql.SimplePolynomialFitting(3, constraint_at_zero)
+
+
+def to_ql_piecewise_curve(helpers, calendar, day_counter, curve_type, constraint_at_zero=True):
+    """
+    Parameters
+    ----------
+    helpers: list of QuantLib.RateHelper
+        The Rate Helpers of the instruments used in the piecewise interpolation.
+    calendar: QuantLib.Calendar
+        Calendar for the yield curves.
+    day_counter: QuantLib.DayCounter
+        The curve day count
+    curve_type: str
+        The curve interpolation type.
+    constraint_at_zero: bool
+    Returns
+    -------
+        QuantLib.PiecewiseCurve
+    """
+    curve_type = str(curve_type).lower()
+    if curve_type == "linear_zero":
+        return ql.PiecewiseLinearZero(0, calendar, helpers, day_counter)
+    elif curve_type == "cubic_zero":
+        return ql.PiecewiseCubicZero(0, calendar, helpers, day_counter)
+    elif curve_type == "log_cubic_discount":
+        return ql.PiecewiseLogCubicDiscount(0, calendar, helpers, day_counter)
+    elif curve_type == "log_linear_discount":
+        return ql.PiecewiseLogLinearDiscount(0, calendar, helpers, day_counter)
+    elif curve_type == "spline_cubic_discount":
+        return ql.PiecewiseSplineCubicDiscount(0, calendar, helpers, day_counter)
+    elif curve_type == 'kruger_zero':
+        return ql.PiecewiseKrugerZero(0, calendar, helpers, day_counter)
+    elif curve_type == 'convex_monotone_zero':
+        return ql.PiecewiseConvexMonotoneZero(0, calendar, helpers, day_counter)
+    elif curve_type in ["exponential_splines", "nelson_siegel", "svensson", "second_degree_polynomial",
+                        "third_degree_polynomial"]:
+        fitting_method = to_ql_fitting_method(fitting_method=curve_type, constraint_at_zero=constraint_at_zero)
+        return ql.FittedBondDiscountCurve(0, calendar, helpers, day_counter, fitting_method)
+    else:
+        return ql.PiecewiseLinearZero(0, calendar, helpers, day_counter)
+
+
+def to_ql_interpolated_curve(node_dates, node_rates, day_counter, calendar, interpolation_type):
+
+    """
+    Parameters
+    ----------
+    node_dates: list
+        The list of dates
+    node_rates: list
+        The list of rates
+    day_counter: QuantLib.DayCounter
+        The curve day count
+    calendar: QuantLib.Calendar
+        The curve calendar.
+    interpolation_type: str
+        The curve interpolation method
+    Returns
+    -------
+        QuantLib.YieldTermStructure
+    """
+    interpolation_type = str(interpolation_type).lower()
+    if interpolation_type == "cubic_zero":
+        return ql.CubicZeroCurve(node_dates, node_rates, day_counter, calendar)
+    elif interpolation_type == "log_linear_zero":
+        return ql.LogLinearZeroCurve(node_dates, node_rates, day_counter, calendar)
+    elif interpolation_type == "log_cubic_zero":
+        return ql.LogCubicZeroCurve(node_dates, node_rates, day_counter, calendar)
+    elif interpolation_type == "spline_cubic_zero":
+        return ql.NaturalCubicZeroCurve(node_dates, node_rates, day_counter, calendar)
+    elif interpolation_type == "monotonic_cubic_zero":
+        return ql.MonotonicCubicZeroCurve(node_dates, node_rates, day_counter, calendar)
+    else:
+        return ql.ZeroCurve(node_dates, node_rates, day_counter, calendar)

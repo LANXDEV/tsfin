@@ -67,39 +67,39 @@ class EurodollarFuture(BaseInterestRate):
                                                      self.index, ql.QuoteHandle(self.helper_convexity),
                                                      self.futures_type)
 
-    def is_expired(self, date, min_future_date=None, max_future_date=None, *args, **kwargs):
+    def is_expired(self, date, min_future_tenor=None, max_future_tenor=None, *args, **kwargs):
         """Check if the deposit rate is expired.
 
         Parameters
         ----------
         date: QuantLib.Date
             Reference date.
-        min_future_date: QuantLib.Date
+        min_future_tenor: str
             The minimum maturity date to be used.
-        max_future_date: QuantLib.Date
+        max_future_tenor: str
             The maximum maturity date to be used.
         Returns
         -------
         bool
             Whether the instrument is expired at `date`.
         """
-        min_future_date = min_future_date
-        max_future_date = max_future_date
-        maturity = self.maturity(date=date)
+
         date = to_ql_date(date)
+        maturity = self.maturity(date=date)
+
+        if min_future_tenor is not None:
+            min_future_date = self.calendar.advance(date, ql.PeriodParser.parse(min_future_tenor))
+        else:
+            min_future_date = date
+        if max_future_tenor is not None:
+            max_future_date = self.calendar.advance(date, ql.PeriodParser.parse(max_future_tenor))
+        else:
+            max_future_date = self.calendar.advance(maturity, 1, ql.Days)
+
         if date >= maturity:
             return True
-        if min_future_date is None and max_future_date is None:
-            return False
-        elif min_future_date is None and max_future_date is not None:
-            if maturity > max_future_date:
-                return True
-        elif min_future_date is not None and max_future_date is None:
-            if maturity < min_future_date:
-                return True
-        else:
-            if not min_future_date < maturity < max_future_date:
-                return True
+        if not min_future_date < maturity < max_future_date:
+            return True
         return False
 
     @conditional_vectorize('date', 'start_quote', 'quote')

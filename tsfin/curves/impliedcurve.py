@@ -27,6 +27,7 @@ class ImpliedYieldCurveTimeSeries:
     def __init__(self, yield_curve_time_series, base_date):
         self.yield_curve_time_series = yield_curve_time_series
         self.day_counter = self.yield_curve_time_series.day_counter
+        self.calendar = self.yield_curve_time_series.calendar
         self.base_date = to_ql_date(base_date)
 
     def yield_curve(self, date):
@@ -44,8 +45,8 @@ class ImpliedYieldCurveTimeSeries:
             The implied yield curve at `date`.
         """
 
-        ql_date = to_ql_date(date)
-        return ql.ImpliedTermStructure(self.yield_curve_time_series.yield_curve_handle(self.base_date), ql_date)
+        date = to_ql_date(date)
+        return ql.ImpliedTermStructure(self.yield_curve_time_series.yield_curve_handle(self.base_date), date)
 
     def yield_curve_handle(self, date):
         """ Handle for a yield curve at a given date.

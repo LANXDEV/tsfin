@@ -100,9 +100,9 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
             instrument = OISRate(ts)
         elif ts_type == EQUITY_OPTION:
             instrument = EquityOption(ts)
-        elif ts_type in [EQUITY, EXCHANGE_TRADED_FUND]:
+        elif ts_type in [EQUITY, EXCHANGE_TRADED_FUND, FUND]:
             instrument = Equity(ts)
-        elif ts_type in [FUND, INSTRUMENT]:
+        elif ts_type in [INSTRUMENT]:
             instrument = Instrument(ts)
         elif ts_type == CURRENCY:
             instrument = Currency(ts)
@@ -481,8 +481,13 @@ def calibrate_ql_model(date, model_name, model, helpers, initial_conditions=None
             my_bound = MyBounds(xmin=list(min_list), xmax=list(max_list))
             minimizer_kwargs = {'method': 'L-BFGS-B', 'bounds': bounds}
             cost_function = cost_function_generator(model, helpers, norm=True)
-            sol = basinhopping(cost_function, initial_conditions, niter=25, minimizer_kwargs=minimizer_kwargs,
-                               stepsize=0.005, accept_test=my_bound, interval=5)
+            my_step = MyTakeStep(step_size=0.005)
+            sol = basinhopping(cost_function, initial_conditions, niter=100, minimizer_kwargs=minimizer_kwargs,
+                               take_step=my_step, accept_test=my_bound, niter_success=20)
+            print("result array {0} \nmin failures {1} \nniter {2} \nfun {3}".format(sol.x,
+                                                                                     sol.minimization_failures,
+                                                                                     sol.nit,
+                                                                                     sol.fun))
     else:
         end_criteria = ql.EndCriteria(maxIteration=max_iteration,
                                       maxStationaryStateIterations=max_stationary_state_iteration,
@@ -522,6 +527,18 @@ class MyBounds(object):
         tmax = bool(np.all(x <= self.xmax))
         tmin = bool(np.all(x >= self.xmin))
         return tmax and tmin
+
+
+class MyTakeStep(object):
+
+    def __init__(self, step_size=0.5):
+        self.step_size = step_size
+
+    def __call__(self, x):
+        s = self.step_size
+        x[0] += np.random.uniform(-2.*s, 2.*s)
+        x[1:] += np.random.uniform(-s, s, x[1:].shape)
+        return x
 
 
 def to_np_array(ql_matrix):

@@ -58,3 +58,13 @@ class Currency(Instrument):
     def risk_value(self, date, currency=None, last_available=False, *args, **kwargs):
 
         return self.value(date=date, currency=currency, last_available=last_available, *args, **kwargs)
+
+    def security(self, date, currency=None, last_available=False, *args, **kwargs):
+
+        currency = self.currency if currency is None else to_upper_list(currency)
+        if currency == self.base_currency:
+            price = 1/self.quotes.get_values(index=date, last_available=last_available)
+        else:
+            price = self.quotes.get_values(index=date, last_available=last_available)
+
+        return ql.Stock(ql.QuoteHandle(ql.SimpleQuote(price)))

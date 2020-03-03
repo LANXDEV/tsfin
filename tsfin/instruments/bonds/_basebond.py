@@ -375,8 +375,9 @@ class _BaseBond(Instrument):
         date = to_ql_date(date)
         if maturity is None:
             maturity = self.maturity_date
-        yield_curve = yield_curve_time_series.yield_curve(date=date)
-        self.bond_components[maturity].setPricingEngine(ql.DiscountingBondEngine(yield_curve))
+        yield_curve = yield_curve_time_series.yield_curve_handle(date=date)
+        for call_date in self.bond_components.keys():
+            self.bond_components[call_date].setPricingEngine(ql.DiscountingBondEngine(yield_curve))
         return self.bond_components[maturity]
 
     def is_expired(self, date, *args, **kwargs):
