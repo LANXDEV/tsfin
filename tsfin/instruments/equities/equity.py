@@ -51,7 +51,10 @@ class Equity(Instrument):
         if dividend_adjusted:
             return getattr(self.timeseries, QUOTES)
         else:
-            return getattr(self.timeseries, UNADJUSTED_PRICE)
+            try:
+                return getattr(self.timeseries, UNADJUSTED_PRICE)
+            except AttributeError:
+                return getattr(self.timeseries, QUOTES)
 
     def _dividends_to_date(self, start_date, date, *args, **kwargs):
         """ Cash amount paid by a unit of the instrument between `start_date` and `date`.
@@ -139,11 +142,13 @@ class Equity(Instrument):
         """
         quotes = self.spot_prices(dividend_adjusted=dividend_adjusted)
         date = to_datetime(date)
+        if last_available:
+            return quotes(index=date, last_available=last_available)
         if date > quotes.ts_values.last_valid_index():
             return np.nan
         if date < quotes.ts_values.first_valid_index():
             return np.nan
-        return quotes(index=date, last_available=last_available)
+        return quotes(index=date)
 
     @conditional_vectorize('date')
     def risk_value(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
