@@ -106,6 +106,34 @@ class CallableFixedRateBond(_BaseBond):
             self._clean_price[self.maturity_date]), self.settlement_days, self.face_amount, self.schedule, [0],
             self.day_counter, self.business_convention, self.redemption, self.issue_date)
 
+    def security(self, date, maturity=None, yield_curve_time_series=None, *args, **kwargs):
+        """
+        Parameters
+        ----------
+        date: Date-Like
+            The evaluation date
+        maturity: QuantLib.Date
+            The maturity date or call date to retrieve from self.bond_components
+        yield_curve_time_series: :py:class:`YieldCurveTimeSeries`
+            The yield curve used for discounting the bond to retrieve the NPV
+        Returns
+        -------
+        The python object representing a Bond
+        """
+
+        date = to_ql_date(date)
+        bond_components = self.bond_components.copy()
+        bond_components[self.maturity_date] = ql.FixedRateBond(self.settlement_days, self.face_amount, self.schedule,
+                                                               self.coupons, self.day_counter, self.business_convention,
+                                                               self.redemption, self.issue_date)
+        if maturity is None:
+            maturity = self.maturity_date
+        else:
+            maturity = to_ql_date(maturity)
+        yield_curve = yield_curve_time_series.yield_curve_handle(date=date)
+        bond_components[maturity].setPricingEngine(ql.DiscountingBondEngine(yield_curve))
+        return bond_components[maturity]
+
     @default_arguments
     @conditional_vectorize('quote', 'date')
     def oas(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding, frequency,

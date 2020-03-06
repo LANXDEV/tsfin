@@ -171,7 +171,8 @@ class PathGenerator:
 
     @staticmethod
     def _gaussian_path_generator(process, n, time_grid, gaussian_sequence_generator, brownian_bridge=False):
-        path_generator = ql.GaussianPathGenerator(process, time_grid, gaussian_sequence_generator, brownian_bridge)
+        path_generator = ql.GaussianPathGenerator(process, time_grid.get_time_grid(), gaussian_sequence_generator,
+                                                  brownian_bridge)
         paths = np.zeros(shape=(2 * n, time_grid.get_size()))
         k = 0
         for i in range(n):
