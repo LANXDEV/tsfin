@@ -116,6 +116,8 @@ def to_ql_calendar(arg):
                                 ql.UnitedStates(ql.UnitedStates.Settlement))
     elif arg.upper() in ["GB", "UK"]:
         return ql.UnitedKingdom()
+    elif arg.upper() == 'LS':
+        return ql.UnitedKingdom(ql.UnitedKingdom.Exchange)
     elif arg.upper() == "BZ":
         return ql.Brazil()
     elif arg.upper() in ["TE", 'TARGET']:
