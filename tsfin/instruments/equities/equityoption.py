@@ -252,7 +252,9 @@ class EquityOption(Instrument):
         """
 
         if self.is_expired(date=date):
-            return None
+            intrinsic = self.intrinsic(self._maturity, spot_price)
+            return ql.Stock(ql.QuoteHandle(ql.SimpleQuote(intrinsic)))
+
         else:
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility,
@@ -281,6 +283,28 @@ class EquityOption(Instrument):
             Date representing the _maturity or expiry of the instrument. Returns None if there is no _maturity.
         """
         return self._maturity
+
+    @conditional_vectorize('date')
+    @option_default_values
+    def cash_flow_to_date(self, start_date, date, spot_price, **kwargs):
+        """ return the cash between the start_date and date if any.
+
+        :param start_date: Date-Like
+            The start date of the cash flow
+        :param date: Date-Like
+            The final date of the cash flow
+        :param spot_price: float
+            The underlying spot price
+        :param kwargs:
+        :return: list of tuples (date, date, value)
+        """
+        start_date = to_ql_date(start_date)
+        date = to_ql_date(date)
+        if start_date <= self._maturity <= date:
+            intrinsic = self.intrinsic(self._maturity, spot_price)
+            return intrinsic
+        else:
+            return []
 
     @conditional_vectorize('date')
     @option_default_values

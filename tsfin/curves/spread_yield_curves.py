@@ -121,6 +121,22 @@ class InterpolatedSpreadYieldCurveTimeSeries:
         return ql.RelinkableYieldTermStructureHandle(self.yield_curve(date))
 
     @conditional_vectorize('future_date')
+    def implied_term_structure(self, date, future_date):
+        """ A relinkable handle for a yield curve at a given date.
+
+        Parameters
+        ----------
+        date: Date of the yield curve.
+        future_date: Date of the Implied Yield Curve
+        Returns
+        -------
+        QuantLib.ImpliedTermStructure
+            The implied term structure at the future date from date
+        """
+        future_date = to_ql_date(future_date)
+        return ql.ImpliedTermStructure(self.yield_curve_handle(date), future_date)
+
+    @conditional_vectorize('future_date')
     def implied_term_structure_handle(self, date, future_date):
         """ A relinkable handle for a yield curve at a given date.
 
@@ -304,6 +320,22 @@ class SingleSpreadYieldCurveTimeSeries:
             A relinkable handle to the yield term structure object.
         """
         return ql.RelinkableYieldTermStructureHandle(self.yield_curve(date))
+
+    @conditional_vectorize('future_date')
+    def implied_term_structure(self, date, future_date):
+        """ A relinkable handle for a yield curve at a given date.
+
+        Parameters
+        ----------
+        date: Date of the yield curve.
+        future_date: Date of the Implied Yield Curve
+        Returns
+        -------
+        QuantLib.ImpliedTermStructure
+            The implied term structure at the future date from date
+        """
+        future_date = to_ql_date(future_date)
+        return ql.ImpliedTermStructure(self.yield_curve_handle(date), future_date)
 
     @conditional_vectorize('future_date')
     def implied_term_structure_handle(self, date, future_date):
