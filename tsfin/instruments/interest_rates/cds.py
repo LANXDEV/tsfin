@@ -49,11 +49,14 @@ def cds_default_values(f):
             kwargs['date_generation'] = getattr(self, 'date_generation')
         if kwargs.get('frequency', None) is None:
             kwargs['frequency'] = getattr(self, 'coupon_frequency')
+        if kwargs.get('calendar', None) is None:
+            kwargs['calendar'] = getattr(self, 'calendar')
         if kwargs.get('business_convention', None) is None:
             kwargs['business_convention'] = getattr(self, 'business_convention')
+        if kwargs.get('first_accrual_date', None) is None:
+            kwargs['first_accrual_date'] = getattr(self, 'first_accrual_date')
         if kwargs.get('start_date', None) is None:
-            first_accrual_date = getattr(self, 'first_accrual_date')
-            kwargs['start_date'] = first_accrual_date if first_accrual_date is not None else date
+            kwargs['start_date'] = kwargs['first_accrual_date'] if kwargs['first_accrual_date'] is not None else date
         last_available = kwargs.get('last_available', True)
         if kwargs.get('spread_rate', None) is None:
             kwargs['spread_rate'] = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
@@ -105,9 +108,9 @@ class CDSRate(BaseInterestRate):
                                                    self.day_counter, self.recovery_rate, self.term_structure)
 
     @cds_default_values
-    def security(self, date, cds_curve_time_series, spread_rate, recovery_rate, first_accrual_date,
-                 side, notional, maturity, upfront_price, frequency, calendar, business_convention,
-                 date_generation, day_counter, engine_name='MID_POINT', last_available=True, *args, **kwargs):
+    def security(self, date, cds_curve_time_series, spread_rate, recovery_rate, first_accrual_date, side, notional,
+                 maturity, frequency, calendar, business_convention, date_generation, day_counter, upfront_price=None,
+                 engine_name='MID_POINT', last_available=True, *args, **kwargs):
 
         cds = self.credit_default_swap(first_accrual_date=first_accrual_date, side=side, notional=notional,
                                        spread_rate=spread_rate, maturity=maturity, upfront_price=upfront_price,
@@ -157,10 +160,12 @@ class CDSRate(BaseInterestRate):
             return None
         self.helper_rate.setValue(rate)
         self.link_to_term_structure(date=date, yield_curve=base_yield_curve)
+        self.set_rate_helper()
         return self._rate_helper
 
-    def credit_default_swap(self, first_accrual_date, side, notional, spread_rate, maturity, upfront_price, frequency,
-                            calendar, business_convention, date_generation, day_counter, *args, **kwargs):
+    def credit_default_swap(self, first_accrual_date, side, notional, spread_rate, maturity, frequency,
+                            calendar, business_convention, date_generation, day_counter, upfront_price=None,
+                            *args, **kwargs):
 
         """
         :param first_accrual_date: pd.Datetime or QuantLib.Date
@@ -189,12 +194,16 @@ class CDSRate(BaseInterestRate):
         """
 
         # maybe the user passed a quote multiplied by 100, if so we divide by 100 to be correctly used by the CDS.
-        if upfront_price > 1:
-            upfront_price = upfront_price/100
-        upfront = 1 - upfront_price
         schedule = ql.Schedule(first_accrual_date, maturity, frequency, calendar, business_convention, ql.Unadjusted,
                                date_generation, self.month_end)
-        return ql.CreditDefaultSwap(side, notional, upfront, spread_rate, schedule, business_convention, day_counter)
+        if upfront_price is None:
+            return ql.CreditDefaultSwap(side, notional, spread_rate, schedule, business_convention, day_counter)
+        else:
+            if upfront_price > 1:
+                upfront_price = upfront_price/100
+            upfront = 1 - upfront_price
+            return ql.CreditDefaultSwap(side, notional, upfront, spread_rate, schedule, business_convention,
+                                        day_counter)
 
     @conditional_vectorize('date', 'spread_rate')
     @cds_default_values

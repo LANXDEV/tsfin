@@ -195,7 +195,7 @@ class YieldCurveTimeSeries:
                 self.update_curves(date)
             return self.yield_curves[date]
 
-    def spreaded_curve(self, date, spread, compounding, frequency, day_counter=None, **kwargs):
+    def spreaded_curve(self, date, spread, compounding, frequency, day_counter=None):
         """ Get yield curve at a date, added to a spread.
 
         Parameters
@@ -217,11 +217,11 @@ class YieldCurveTimeSeries:
             The spreaded yield curve.
         """
         day_counter = day_counter if day_counter is not None else self.day_counter
-        curve_handle = ql.YieldTermStructureHandle(self.yield_curve(date=date, **kwargs))
+        curve_handle = ql.YieldTermStructureHandle(self.yield_curve(date=date))
         spread_handle = ql.QuoteHandle(ql.SimpleQuote(spread))
         return ql.ZeroSpreadedTermStructure(curve_handle, spread_handle, compounding, frequency, day_counter)
 
-    def spreaded_interpolated_curve(self, date, spread_dict, compounding, frequency, day_counter=None, **kwargs):
+    def spreaded_interpolated_curve(self, date, spread_dict, compounding, frequency, day_counter=None):
         """ Get yield curve at a date, added to a spread.
 
         Parameters
@@ -243,7 +243,7 @@ class YieldCurveTimeSeries:
         """
 
         date = to_ql_date(date)
-        curve_handle = self.yield_curve_handle(date=date, **kwargs)
+        curve_handle = self.yield_curve_handle(date=date)
         day_counter = day_counter if day_counter is not None else self.day_counter
         spreads = list()
         dates = list()
@@ -260,7 +260,7 @@ class YieldCurveTimeSeries:
 
         return spreaded_curve
 
-    def yield_curve_handle(self, date, **kwargs):
+    def yield_curve_handle(self, date):
         """ Handle for a yield curve at a given date.
 
         Parameters
@@ -273,9 +273,9 @@ class YieldCurveTimeSeries:
         QuantLib.YieldTermStructureHandle
             A handle to the yield term structure object.
         """
-        return ql.YieldTermStructureHandle(self.yield_curve(date, **kwargs))
+        return ql.YieldTermStructureHandle(self.yield_curve(date))
 
-    def spreaded_interpolated_curve_handle(self, date, spread_dict, compounding, frequency, day_counter=None, **kwargs):
+    def spreaded_interpolated_curve_handle(self, date, spread_dict, compounding, frequency, day_counter=None):
         """ Handle for a spreaded interpolated yield curve at a given date.
 
         Parameters
@@ -298,11 +298,11 @@ class YieldCurveTimeSeries:
 
         spreaded_curve = self.spreaded_interpolated_curve(date=date, spread_dict=spread_dict,
                                                           compounding=compounding, frequency=frequency,
-                                                          day_counter=day_counter, **kwargs)
+                                                          day_counter=day_counter)
 
         return ql.YieldTermStructureHandle(spreaded_curve)
 
-    def yield_curve_relinkable_handle(self, date, **kwargs):
+    def yield_curve_relinkable_handle(self, date):
         """ A relinkable handle for a yield curve at a given date.
 
         Parameters
@@ -314,10 +314,10 @@ class YieldCurveTimeSeries:
         QuantLib.RelinkableYieldTermStructureHandle
             A relinkable handle to the yield term structure object.
         """
-        return ql.RelinkableYieldTermStructureHandle(self.yield_curve(date, **kwargs))
+        return ql.RelinkableYieldTermStructureHandle(self.yield_curve(date))
 
     @conditional_vectorize('future_date')
-    def implied_term_structure(self, date, future_date, **kwargs):
+    def implied_term_structure(self, date, future_date):
         """ A relinkable handle for a yield curve at a given date.
 
         Parameters
@@ -330,10 +330,10 @@ class YieldCurveTimeSeries:
             The implied term structure at the future date from date
         """
         future_date = to_ql_date(future_date)
-        return ql.ImpliedTermStructure(self.yield_curve_handle(date, **kwargs), future_date)
+        return ql.ImpliedTermStructure(self.yield_curve_handle(date), future_date)
 
     @conditional_vectorize('date', 'to_date')
-    def discount_to_date(self, date, to_date, extrapolate=True, **kwargs):
+    def discount_to_date(self, date, to_date, extrapolate=True):
         """
         Parameters
         ----------
@@ -350,10 +350,10 @@ class YieldCurveTimeSeries:
             The discount rate for `to_date` implied by the yield curve at `date`.
         """
         to_date = to_ql_date(to_date)
-        return self.yield_curve(date, **kwargs).discount(to_date, extrapolate)
+        return self.yield_curve(date).discount(to_date, extrapolate)
 
     @conditional_vectorize('date', 'to_time')
-    def discount_to_time(self, date, to_time, extrapolate=True, **kwargs):
+    def discount_to_time(self, date, to_time, extrapolate=True):
         """
         Parameters
         ----------
@@ -369,10 +369,10 @@ class YieldCurveTimeSeries:
         scalar
             The discount rate for `to_date` implied by the yield curve at `date`.
         """
-        return self.yield_curve(date, **kwargs).discount(to_time, extrapolate)
+        return self.yield_curve(date).discount(to_time, extrapolate)
 
     @conditional_vectorize('date', 'to_date')
-    def zero_rate_to_date(self, date, to_date, compounding, frequency, extrapolate=True, day_counter=None, **kwargs):
+    def zero_rate_to_date(self, date, to_date, compounding, frequency, extrapolate=True, day_counter=None):
         """
         Parameters
         ----------
@@ -396,12 +396,12 @@ class YieldCurveTimeSeries:
         """
         to_date = to_ql_date(to_date)
         day_counter = day_counter if day_counter is not None else self.day_counter
-        return self.yield_curve(date, **kwargs).zeroRate(to_date, day_counter, compounding, frequency,
-                                                         extrapolate).rate()
+        return self.yield_curve(date).zeroRate(to_date, day_counter, compounding, frequency,
+                                               extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date')
     def spreaded_zero_rate_to_date(self, date, to_date, compounding, frequency, spread_dict, extrapolate=True,
-                                   day_counter=None, **kwargs):
+                                   day_counter=None):
         """
         Parameters
         ----------
@@ -428,12 +428,12 @@ class YieldCurveTimeSeries:
         to_date = to_ql_date(to_date)
         day_counter = day_counter if day_counter is not None else self.day_counter
         spread_curve = self.spreaded_interpolated_curve(date=date, spread_dict=spread_dict, compounding=compounding,
-                                                        frequency=frequency, day_counter=day_counter, **kwargs)
+                                                        frequency=frequency, day_counter=day_counter)
 
         return spread_curve.zeroRate(to_date, day_counter, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_time')
-    def zero_rate_to_time(self, date, to_time, compounding, frequency, extrapolate=True, **kwargs):
+    def zero_rate_to_time(self, date, to_time, compounding, frequency, extrapolate=True):
         """
         Parameters
         ----------
@@ -454,11 +454,11 @@ class YieldCurveTimeSeries:
             Zero rate for `to_time`, implied by the yield curve at `date`.
         """
         to_time = float(to_time)
-        return self.yield_curve(date, **kwargs).zeroRate(to_time, compounding, frequency, extrapolate).rate()
+        return self.yield_curve(date).zeroRate(to_time, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date1', 'to_date2')
     def forward_rate_date_to_date(self, date, to_date1, to_date2, compounding, frequency, extrapolate=True,
-                                  day_counter=None, **kwargs):
+                                  day_counter=None):
         """
         Parameters
         ----------
@@ -485,12 +485,12 @@ class YieldCurveTimeSeries:
         to_date1 = to_ql_date(to_date1)
         to_date2 = to_ql_date(to_date2)
         day_counter = day_counter if day_counter is not None else self.day_counter
-        return self.yield_curve(date, **kwargs).forwardRate(to_date1, to_date2, day_counter, compounding, frequency,
-                                                            extrapolate).rate()
+        return self.yield_curve(date).forwardRate(to_date1, to_date2, day_counter, compounding, frequency,
+                                                  extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date', 'to_time')
     def forward_rate_date_to_time(self, date, to_date, to_time, compounding, frequency, extrapolate=True,
-                                  day_counter=None, **kwargs):
+                                  day_counter=None):
         """
         Parameters
         ----------
@@ -517,11 +517,11 @@ class YieldCurveTimeSeries:
         to_date = to_ql_date(to_date)
         day_counter = day_counter if day_counter is not None else self.day_counter
         to_date2 = self.calendar.advance(to_date, to_time, ql.Years)
-        return self.yield_curve(date, **kwargs).forwardRate(to_date, to_date2, day_counter, compounding, frequency,
-                                                            extrapolate).rate()
+        return self.yield_curve(date).forwardRate(to_date, to_date2, day_counter, compounding, frequency,
+                                                  extrapolate).rate()
 
     @conditional_vectorize('date', 'to_time1', 'to_time2')
-    def forward_rate_time_to_time(self, date, to_time1, to_time2, compounding, frequency, extrapolate=True, **kwargs):
+    def forward_rate_time_to_time(self, date, to_time1, to_time2, compounding, frequency, extrapolate=True):
         """
         Parameters
         ----------
@@ -543,12 +543,12 @@ class YieldCurveTimeSeries:
         scalar
             Forward rate between `to_time1` and `to_time2`, implied by the yield curve at `date`.
         """
-        return self.yield_curve(date, **kwargs).forwardRate(to_time1, to_time2, compounding, frequency,
-                                                            extrapolate).rate()
+        return self.yield_curve(date).forwardRate(to_time1, to_time2, compounding, frequency,
+                                                  extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date')
     def implied_zero_rate_to_date(self, date, future_date, to_date, compounding, frequency, extrapolate=True,
-                                  day_counter=None,  **kwargs):
+                                  day_counter=None):
         """
         Parameters
         ----------
@@ -574,11 +574,11 @@ class YieldCurveTimeSeries:
         """
         to_date = to_ql_date(to_date)
         day_counter = day_counter if day_counter is not None else self.day_counter
-        return self.implied_term_structure(date, future_date, **kwargs).zeroRate(to_date, day_counter, compounding,
-                                                                                 frequency, extrapolate).rate()
+        return self.implied_term_structure(date, future_date).zeroRate(to_date, day_counter, compounding,
+                                                                       frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_time')
-    def implied_zero_rate_to_time(self, date, future_date, to_time, compounding, frequency, extrapolate=True, **kwargs):
+    def implied_zero_rate_to_time(self, date, future_date, to_time, compounding, frequency, extrapolate=True):
         """
         Parameters
         ----------
@@ -601,8 +601,8 @@ class YieldCurveTimeSeries:
             Zero rate for `to_time`, implied by the yield curve at `date`.
         """
         to_time = float(to_time)
-        return self.implied_term_structure(date, future_date, **kwargs).zeroRate(to_time, compounding, frequency,
-                                                                                 extrapolate).rate()
+        return self.implied_term_structure(date, future_date).zeroRate(to_time, compounding, frequency,
+                                                                       extrapolate).rate()
 
     @staticmethod
     def _date_to_month_year(dt_object):

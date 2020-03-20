@@ -66,7 +66,7 @@ class TimeGrid:
 class PathGenerator:
 
     def __init__(self, process_list, correlation_matrix, start_date, end_date, tenor='1D', calendar='NULL',
-                 day_counter='ACTUAL365', low_discrepancy=False, seed=0):
+                 day_counter='ACTUAL365', low_discrepancy=False, brownian_bridge=True, seed=0):
         """
 
         :param process_list: list of QuantLib.StochasticProcess1D
@@ -97,6 +97,7 @@ class PathGenerator:
         self.day_counter = day_counter.upper()
         self.time_grid = TimeGrid(self.start_date, self.end_date, self.tenor, self.calendar, self.day_counter)
         self.low_discrepancy = low_discrepancy
+        self.brownian_bridge = brownian_bridge
         self.seed = seed
         if len(self.process_list) == 1:
             self.process = process_list[0]
@@ -104,82 +105,59 @@ class PathGenerator:
             self.process = ql.StochasticProcessArray(self.process_list, self.correlation_matrix)
         else:
             raise print("No process")
-        self.paths = None
-
-    def generate_paths(self, n):
-        """
-            Path generator method for uncorrelated and correlated 1-D stochastic processes
-        :param n: int
-            Number of samples
-        :return: np.array
-            The numpy array with the generated paths.
-        """
-
-        process_size = self.process.size()
-        n_grid_steps = self.time_grid.get_steps() * process_size
-        gaussian_sequence_generator = self._gaussian_random_sequence_generator(dimensionality=n_grid_steps,
-                                                                               low_discrepancy=self.low_discrepancy,
-                                                                               seed=self.seed)
-        if isinstance(self.process, ql.StochasticProcessArray):
-            self.paths = self._gaussian_multi_path_generator(process=self.process, process_size=process_size,
-                                                             n=n, time_grid=self.time_grid,
-                                                             gaussian_sequence_generator=gaussian_sequence_generator)
-        # uncorrelated processes, use GaussianPathGenerator
-        else:
-            self.paths = self._gaussian_path_generator(process=self.process, n=n, time_grid=self.time_grid,
-                                                       gaussian_sequence_generator=gaussian_sequence_generator)
-        return self.paths
 
     def initial_values(self):
 
         return self.process.initialValues()
 
-    @staticmethod
-    def _gaussian_random_sequence_generator(dimensionality, low_discrepancy=False, seed=0):
+    def _generator(self):
 
-        if low_discrepancy:
+        dimensionality = self.time_grid.get_steps() * self.process.size()
+        if self.low_discrepancy:
             uniform_sequence = ql.UniformLowDiscrepancySequenceGenerator(dimensionality)
             generator = ql.GaussianLowDiscrepancySequenceGenerator(uniform_sequence)
         else:
-            uniform_sequence = ql.UniformRandomSequenceGenerator(dimensionality, ql.UniformRandomGenerator(seed=seed))
+            uniform_sequence = ql.UniformRandomSequenceGenerator(dimensionality, ql.UniformRandomGenerator(self.seed))
             generator = ql.GaussianRandomSequenceGenerator(uniform_sequence)
         return generator
 
-    @staticmethod
-    def _gaussian_multi_path_generator(process, process_size, n, time_grid, gaussian_sequence_generator,
-                                       brownian_bridge=False):
-        path_generator = ql.GaussianMultiPathGenerator(process, time_grid.get_times(), gaussian_sequence_generator,
-                                                       brownian_bridge)
-        paths = np.zeros(shape=(2 * n, process_size, time_grid.get_size()))
-        # loop through number of paths
-        k = 0
-        for i in range(n):
-            # request multiPath, which contains the list of paths for each process
-            multi_path = path_generator.next().value()
-            multi_antithetic = path_generator.antithetic().value()
-            # loop through number of processes
-            for j in range(multi_path.assetNumber()):
-                # request path, which contains the list of simulated prices for a process
-                path = np.array(multi_path[j])
-                antithetic = np.array(multi_antithetic[j])
-                # push prices to array
-                paths[k, j, :] = np.array(path)
-                paths[k + 1, j, :] = np.array(antithetic)
-                if j == multi_path.assetNumber() - 1:
-                    k = k + 2
-        return paths
+    def generate_paths(self, n):
 
-    @staticmethod
-    def _gaussian_path_generator(process, n, time_grid, gaussian_sequence_generator, brownian_bridge=False):
-        path_generator = ql.GaussianPathGenerator(process, time_grid.get_time_grid(), gaussian_sequence_generator,
-                                                  brownian_bridge)
-        paths = np.zeros(shape=(2 * n, time_grid.get_size()))
-        k = 0
-        for i in range(n):
-            path = path_generator.next().value()
-            antithetic_path = path_generator.antithetic().value()
-            paths[k, :] = path
-            paths[k + 1, :] = antithetic_path
-            k = k + 2
+        if isinstance(self.process, ql.StochasticProcessArray):
+            path_generator = ql.GaussianMultiPathGenerator(self.process, self.time_grid.get_times(), self._generator(),
+                                                           self.brownian_bridge)
+            paths = np.zeros(shape=(2 * n, self.process.size(), self.time_grid.get_size()))
+            # loop through number of paths
+            k = 0
+            for i in range(n):
+                # request multiPath, which contains the list of paths for each process
+                multi_path = path_generator.next().value()
+                multi_antithetic = path_generator.antithetic().value()
+                # loop through number of processes
+                for j in range(multi_path.assetNumber()):
+                    # request path, which contains the list of simulated prices for a process
+                    path = np.array(multi_path[j])
+                    antithetic = np.array(multi_antithetic[j])
+                    # push prices to array
+                    paths[k, j, :] = np.array(path)
+                    paths[k + 1, j, :] = np.array(antithetic)
+                    if j == multi_path.assetNumber() - 1:
+                        k = k + 2
+        else:
+            if self.low_discrepancy:
+                path_generator = ql.GaussianSobolPathGenerator(self.process, self.time_grid.get_time_grid(),
+                                                               self._generator(), self.brownian_bridge)
+            else:
+                path_generator = ql.GaussianPathGenerator(self.process, self.time_grid.get_time_grid(),
+                                                          self._generator(),
+                                                          self.brownian_bridge)
+            paths = np.zeros(shape=(2 * n, self.time_grid.get_size()))
+            k = 0
+            for i in range(n):
+                path = path_generator.next().value()
+                antithetic_path = path_generator.antithetic().value()
+                paths[k, :] = path
+                paths[k + 1, :] = antithetic_path
+                k = k + 2
         # resulting array dimension: n, len(timeGrid)
         return paths
