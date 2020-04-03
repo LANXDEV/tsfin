@@ -660,3 +660,19 @@ def to_ql_interpolated_curve(node_dates, node_rates, day_counter, calendar, inte
         return ql.MonotonicCubicZeroCurve(node_dates, node_rates, day_counter, calendar)
     else:
         return ql.ZeroCurve(node_dates, node_rates, day_counter, calendar)
+
+
+def to_ql_position_side(side):
+    """Return the QuantLib object representing if a position is long or short
+
+    :param side: str
+        The position side, LONG or SHORT
+    :return: QuantLib.Position
+    """
+
+    side = str(side).upper()
+    if side == 'LONG':
+        return ql.Position.Long
+    elif side == 'SHORT':
+        return ql.Position.Short
+
