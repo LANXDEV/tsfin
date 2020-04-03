@@ -23,6 +23,7 @@ from operator import attrgetter
 import QuantLib as ql
 import numpy as np
 from tsfin.base import to_ql_date, to_list, conditional_vectorize, find_le, find_gt
+from tsfin.constants import RECOVERY_RATE
 
 
 # ExtRateHelpers are a named tuples containing QuantLib RateHelpers objects and other meta-information.
@@ -242,9 +243,24 @@ class CDSCurveTimeSeries:
         return self.hazard_curve(date).survivalProbability(to_date)
 
     @conditional_vectorize('date')
-    def default_probability_to_date(self, date, to_date):
+    def survival_probability_to_time(self, date, time):
         """
         The survival probability given a date and period
+
+        :param date: Date of the yield curve.
+        :param time: float
+            Time expressed as a fraction of a year
+        :return: The % chance of survival given the date and tenor.
+        """
+
+        date = to_ql_date(date)
+        ql.Settings.instance().evaluationDate = date
+        return self.hazard_curve(date).survivalProbability(time, True)
+
+    @conditional_vectorize('date')
+    def default_probability_to_date(self, date, to_date):
+        """
+        The default probability given a date and period
 
         :param date: Date of the yield curve.
         :param to_date: The target date
@@ -259,7 +275,7 @@ class CDSCurveTimeSeries:
     @conditional_vectorize('date')
     def default_probability_to_tenor(self, date, tenor):
         """
-        The survival probability given a date and period
+        The default probability given a date and period
 
         :param date: Date of the yield curve.
         :param tenor: The tenor for the maturity.
@@ -271,6 +287,21 @@ class CDSCurveTimeSeries:
         to_date = self.calendar.advance(date, ql_period)
         ql.Settings.instance().evaluationDate = date
         return self.hazard_curve(date).defaultProbability(to_date)
+
+    @conditional_vectorize('date')
+    def default_probability_to_time(self, date, time):
+        """
+        The default probability given a date and period
+
+        :param date: Date of the yield curve.
+        :param time: float
+            Time expressed as a fraction of a year
+        :return: The % chance of default given the date and tenor.
+        """
+
+        date = to_ql_date(date)
+        ql.Settings.instance().evaluationDate = date
+        return self.hazard_curve(date).defaultProbability(time, True)
 
     @conditional_vectorize('date')
     def hazard_rate_to_date(self, date, to_date):
@@ -304,7 +335,41 @@ class CDSCurveTimeSeries:
         return self.hazard_curve(date).hazardRate(to_date)
 
     @conditional_vectorize('date')
-    def implied_spread_to_tenor(self, date, tenor, recovery_rate):
+    def hazard_rate_to_time(self, date, time):
+        """
+        The hazard rate of a given date
+
+        :param date: Date of the yield curve.
+        :param time: float
+            Time expressed as a fraction of a year
+        :return: The % chance of default given the date and tenor.
+        """
+
+        date = to_ql_date(date)
+        ql.Settings.instance().evaluationDate = date
+        return self.hazard_curve(date).hazardRate(time, True)
+
+    @conditional_vectorize('date')
+    def implied_spread_to_time(self, date, time, recovery_rate=None):
+        """
+        The hazard rate of a given date
+
+        :param date: Date of the yield curve.
+        :param time: float
+            Time expressed as a fraction of a year
+        :param recovery_rate: float
+            The expected recovery rate
+        :return: The % chance of default given the date and tenor.
+        """
+        date = to_ql_date(date)
+        ql.Settings.instance().evaluationDate = date
+        if recovery_rate is None:
+            recovery_rate = float(self.ts_collection[0].ts_attributes[RECOVERY_RATE])
+        survival = self.survival_probability_to_time(date=date, time=time)
+        return ((recovery_rate - 1)/time)*np.log(survival)
+
+    @conditional_vectorize('date')
+    def implied_spread_to_tenor(self, date, tenor, recovery_rate=None):
         """
         The hazard rate of a given date
 
@@ -316,6 +381,8 @@ class CDSCurveTimeSeries:
         """
         date = to_ql_date(date)
         ql.Settings.instance().evaluationDate = date
+        if recovery_rate is None:
+            recovery_rate = float(self.ts_collection[0].ts_attributes[RECOVERY_RATE])
         ql_period = ql.PeriodParser.parse(str(tenor).upper())
         to_date = self.calendar.advance(date, ql_period)
         t = self.day_counter.yearFraction(date, to_date)
