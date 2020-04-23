@@ -76,11 +76,13 @@ class Equity(Instrument):
         else:
             return ts_dividends[(ts_dividends.index >= start_date) & (ts_dividends.index <= date)]
 
-    def security(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
+    def security(self, date, quote=None, last_available=False, dividend_adjusted=False, *args, **kwargs):
         """ Return the QuantLib Object representing a Stock
 
         :param date: date-like, optional
             The date.
+        :param quote: float, optional
+            The quote of the instrument at `date`. Defaults to the quote at `date`.
         :param last_available: bool, optional
             Whether to use last available data in case dates are missing
         :param dividend_adjusted: bool
@@ -89,8 +91,9 @@ class Equity(Instrument):
         :param kwargs:
         :return: QuantLib.Stock
         """
-        price = self.spot_prices(dividend_adjusted=dividend_adjusted)(index=date, last_available=last_available)
-        return ql.Stock(ql.QuoteHandle(ql.SimpleQuote(price)))
+        if quote is None:
+            quote = self.spot_prices(dividend_adjusted=dividend_adjusted)(index=date, last_available=last_available)
+        return ql.Stock(ql.QuoteHandle(ql.SimpleQuote(quote)))
 
     @conditional_vectorize('start_date', 'date')
     def cash_flow_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):

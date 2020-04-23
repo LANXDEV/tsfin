@@ -16,6 +16,7 @@
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 
 import QuantLib as ql
+import numpy as np
 from tsfin.base import conditional_vectorize, to_datetime,  to_ql_date, to_ql_short_rate_model
 from tsfin.instruments.bonds._basebond import _BaseBond, default_arguments, create_call_component, \
     create_schedule_for_component
@@ -123,6 +124,7 @@ class CallableFixedRateBond(_BaseBond):
 
         date = to_ql_date(date)
         bond_components = self.bond_components.copy()
+        yield_curve = yield_curve_time_series.yield_curve_handle(date=date)
         bond_components[self.maturity_date] = ql.FixedRateBond(self.settlement_days, self.face_amount, self.schedule,
                                                                self.coupons, self.day_counter, self.business_convention,
                                                                self.redemption, self.issue_date)
@@ -130,14 +132,13 @@ class CallableFixedRateBond(_BaseBond):
             maturity = self.maturity_date
         else:
             maturity = to_ql_date(maturity)
-        yield_curve = yield_curve_time_series.yield_curve_handle(date=date)
         bond_components[maturity].setPricingEngine(ql.DiscountingBondEngine(yield_curve))
         return bond_components[maturity]
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def oas(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding, frequency,
-            settlement_days, **kwargs):
+    def oas(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, calendar,
+            business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Warning
         -------
@@ -170,6 +171,12 @@ class CallableFixedRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -189,6 +196,10 @@ class CallableFixedRateBond(_BaseBond):
 
         bond = self.bond
         date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, business_convention=business_convention,
+                                               settlement_days=settlement_days)
+        if self.is_expired(settlement_date):
+            return np.nan
         if yield_curve_timeseries.calendar.isHoliday(date):
             yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
             yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
@@ -205,13 +216,12 @@ class CallableFixedRateBond(_BaseBond):
             ql_model = ql_model(yield_curve_relinkable_handle, *model_params)
         engine = ql.TreeCallableFixedRateBondEngine(ql_model, 40)
         bond.setPricingEngine(engine)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
         return bond.OAS(quote, yield_curve_relinkable_handle, day_counter, compounding, frequency, settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def oas_clean_price(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding,
-                        frequency, settlement_days, **kwargs):
+    def oas_clean_price(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, calendar,
+                        business_convention, compounding, frequency, settlement_days, oas_spread=None, **kwargs):
         """
         Warning
         -------
@@ -244,6 +254,12 @@ class CallableFixedRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -254,32 +270,50 @@ class CallableFixedRateBond(_BaseBond):
         settlement_days: int, optional
             Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
+        oas_spread: float, optional
+            The spread to be used in the calculation, will self calculate the oas_spread if none is passed.
 
         Returns
         -------
         scalar
             Bond's clean price from the option-adjusted spread relative to `yield_curve_timeseries`.
         """
-
         bond = self.bond
         date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, business_convention=business_convention,
+                                               settlement_days=settlement_days)
+        if self.is_expired(settlement_date):
+            return np.nan
+
+        if oas_spread is None:
+            oas_spread = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params,
+                                  last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                  business_convention=business_convention, compounding=compounding,
+                                  frequency=frequency, settlement_days=settlement_days, **kwargs)
+
         if yield_curve_timeseries.calendar.isHoliday(date):
             yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
-            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+            yield_curve = ql.ImpliedTermStructure(yield_curve_timeseries.yield_curve_handle(date=yield_date),
+                                                  date)
         else:
             yield_curve = yield_curve_timeseries.yield_curve(date=date)
         yield_curve_handle = ql.YieldTermStructureHandle(yield_curve)
-        oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
-                       quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
-                       settlement_days=settlement_days, **kwargs)
         ql.Settings.instance().evaluationDate = date
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
-        return bond.cleanPriceOAS(float(oas), yield_curve_handle, day_counter, compounding, frequency, settlement_date)
+        ql_model = to_ql_short_rate_model(model_name=model)
+        if isinstance(model_params, dict):
+            # Assumes model parameters are given for each date.
+            ql_model = ql_model(yield_curve_handle, *model_params[date])
+        else:
+            # Only one set of model parameters are given (calibrated for, say, a specific date).
+            ql_model = ql_model(yield_curve_handle, *model_params)
+        engine = ql.TreeCallableFixedRateBondEngine(ql_model, 40)
+        bond.setPricingEngine(engine)
+        return bond.cleanPriceOAS(oas_spread, yield_curve_handle, day_counter, compounding, frequency, settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def oas_duration(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding,
-                     frequency, settlement_days, **kwargs):
+    def oas_dirty_price(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, calendar,
+                        business_convention, compounding, frequency, settlement_days, oas_spread=None, **kwargs):
         """
         Warning
         -------
@@ -312,6 +346,106 @@ class CallableFixedRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            Compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            Compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
+            Default: see :py:func:`default_arguments`.
+        oas_spread: float, optional
+            The spread to be used in the calculation, will self calculate the oas_spread if none is passed.
+
+        Returns
+        -------
+        scalar
+            Bond's clean price from the option-adjusted spread relative to `yield_curve_timeseries`.
+        """
+        bond = self.bond
+        date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, business_convention=business_convention,
+                                               settlement_days=settlement_days)
+        if self.is_expired(settlement_date):
+            return np.nan
+
+        if oas_spread is None:
+            oas_spread = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params,
+                                  last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                  business_convention=business_convention, compounding=compounding,
+                                  frequency=frequency, settlement_days=settlement_days, **kwargs)
+
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = ql.ImpliedTermStructure(yield_curve_timeseries.yield_curve_handle(date=yield_date),
+                                                  date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        yield_curve_handle = ql.YieldTermStructureHandle(yield_curve)
+        ql.Settings.instance().evaluationDate = date
+        ql_model = to_ql_short_rate_model(model_name=model)
+        if isinstance(model_params, dict):
+            # Assumes model parameters are given for each date.
+            ql_model = ql_model(yield_curve_handle, *model_params[date])
+        else:
+            # Only one set of model parameters are given (calibrated for, say, a specific date).
+            ql_model = ql_model(yield_curve_handle, *model_params)
+        engine = ql.TreeCallableFixedRateBondEngine(ql_model, 40)
+        bond.setPricingEngine(engine)
+        clean_price = bond.cleanPriceOAS(oas_spread, yield_curve_handle, day_counter, compounding, frequency,
+                                         settlement_date)
+        return clean_price + self.accrued_interest(date=settlement_date)
+
+    @default_arguments
+    @conditional_vectorize('quote', 'date')
+    def oas_duration(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, calendar,
+                     business_convention, compounding, frequency, settlement_days, **kwargs):
+        """
+        Warning
+        -------
+        This method has only been tested with ``model=QuantLib.HullWhite``.
+
+        Parameters
+        ----------
+        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
+            The yield curve object against which the z-spreads will be calculated.
+        model: str
+            A string representing one of QuantLib Short Rate models, for simulating evolution of rates.
+            **Currently only tested with QuantLib.HullWhite.**
+        model_params: tuple, dict
+            Parameter set for the model.
+            * tuple format: (param1, param2, ...)
+                If a tuple is passed, assumes the model parameters are fixed for all possibly vectorized calculation
+                dates.
+            * dict format: {date1: (param1, param2, ...), date2: (param1, param2, ...), ... }
+                If a dict is passed, assumes it contains a parameter set for each date of the possibly vectorized
+                calculation dates.
+
+        last: bool, optional
+            Whether to last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional
+            Bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional
+            Date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -331,22 +465,29 @@ class CallableFixedRateBond(_BaseBond):
 
         bond = self.bond
         date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, business_convention=business_convention,
+                                               settlement_days=settlement_days)
+        if self.is_expired(settlement_date):
+            return np.nan
+
         if yield_curve_timeseries.calendar.isHoliday(date):
             yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
-            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+            yield_curve = ql.ImpliedTermStructure(yield_curve_timeseries.yield_curve_handle(date=yield_date),
+                                                  date)
         else:
             yield_curve = yield_curve_timeseries.yield_curve(date=date)
         yield_curve_handle = ql.YieldTermStructureHandle(yield_curve)
-        oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
-                       quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
-                       settlement_days=settlement_days, **kwargs)
+        oas_spread = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params,
+                              last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                              business_convention=business_convention, compounding=compounding,
+                              frequency=frequency, settlement_days=settlement_days, **kwargs)
         ql.Settings.instance().evaluationDate = date
-        return bond.effectiveDuration(float(oas), yield_curve_handle, day_counter, compounding, frequency)
+        return bond.effectiveDuration(float(oas_spread), yield_curve_handle, day_counter, compounding, frequency)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def oas_convexity(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding,
-                      frequency, settlement_days, **kwargs):
+    def oas_convexity(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, calendar,
+                      business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Warning
         -------
@@ -380,6 +521,12 @@ class CallableFixedRateBond(_BaseBond):
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
             Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
             Default: see :py:func:`default_arguments`.
@@ -398,14 +545,21 @@ class CallableFixedRateBond(_BaseBond):
 
         bond = self.bond
         date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, business_convention=business_convention,
+                                               settlement_days=settlement_days)
+        if self.is_expired(settlement_date):
+            return np.nan
+
         if yield_curve_timeseries.calendar.isHoliday(date):
             yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
-            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+            yield_curve = ql.ImpliedTermStructure(yield_curve_timeseries.yield_curve_handle(date=yield_date),
+                                                  date)
         else:
             yield_curve = yield_curve_timeseries.yield_curve(date=date)
         yield_curve_handle = ql.YieldTermStructureHandle(yield_curve)
-        oas = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params, last=last,
-                       quote=quote, date=date, day_counter=day_counter, compounding=compounding, frequency=frequency,
-                       settlement_days=settlement_days, **kwargs)
+        oas_spread = self.oas(yield_curve_timeseries=yield_curve_timeseries, model=model, model_params=model_params,
+                              last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                              business_convention=business_convention, compounding=compounding,
+                              frequency=frequency, settlement_days=settlement_days, **kwargs)
         ql.Settings.instance().evaluationDate = date
-        return bond.effectiveConvexity(float(oas), yield_curve_handle, day_counter, compounding, frequency)
+        return bond.effectiveConvexity(float(oas_spread), yield_curve_handle, day_counter, compounding, frequency)

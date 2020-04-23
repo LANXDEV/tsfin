@@ -302,28 +302,6 @@ class EquityOption(Instrument):
         date = to_ql_date(date)
         if start_date <= self._maturity <= date:
             intrinsic = self.intrinsic(self._maturity, spot_price)
-            return intrinsic
-        else:
-            return []
-
-    @conditional_vectorize('date')
-    @option_default_values
-    def cash_flow_to_date(self, start_date, date, spot_price, **kwargs):
-        """ return the cash between the start_date and date if any.
-
-        :param start_date: Date-Like
-            The start date of the cash flow
-        :param date: Date-Like
-            The final date of the cash flow
-        :param spot_price: float
-            The underlying spot price
-        :param kwargs:
-        :return: list of tuples (date, date, value)
-        """
-        start_date = to_ql_date(start_date)
-        date = to_ql_date(date)
-        if start_date <= self._maturity <= date:
-            intrinsic = self.intrinsic(self._maturity, spot_price)
             return [(self._maturity, self._maturity, intrinsic*self.contract_size)]
         else:
             return []
