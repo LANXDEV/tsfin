@@ -69,12 +69,18 @@ def default_arguments(f):
     def new_f(self, **kwargs):
         if kwargs.get('day_counter', None) is None:
             kwargs['day_counter'] = getattr(self, 'day_counter')
+        if kwargs.get('calendar', None) is None:
+            kwargs['calendar'] = getattr(self, 'calendar')
+        if kwargs.get('business_convention', None) is None:
+            kwargs['business_convention'] = getattr(self, 'business_convention')
         if kwargs.get('compounding', None) is None:
             kwargs['compounding'] = getattr(self, 'yield_quote_compounding')
         if kwargs.get('frequency', None) is None:
             kwargs['frequency'] = getattr(self, 'yield_quote_frequency')
         if kwargs.get('settlement_days', None) is None:
             kwargs['settlement_days'] = getattr(self, 'settlement_days')
+        else:
+            kwargs['settlement_days'] = int(kwargs['settlement_days'])
         if kwargs.get('last', None) is None:
             kwargs['last'] = False
 
@@ -405,6 +411,12 @@ class _BaseBond(Instrument):
         """
         return self.maturity_date
 
+    @default_arguments
+    @conditional_vectorize('date')
+    def settlement_date(self, date, calendar, settlement_days, business_convention, *args, **kwargs):
+
+        return calendar.advance(to_ql_date(date), ql.Period(int(settlement_days), ql.Days), business_convention)
+
     def set_pricing_engine(self, pricing_engine):
         """Set pricing engine of the QuantLib bond object.
 
@@ -476,8 +488,7 @@ class _BaseBond(Instrument):
         if reference_date_for_worst_date is not None:
             reference_date_for_worst_date = to_ql_date(reference_date_for_worst_date)
             reference_quote_for_worst_date = self.price.get_values(index=reference_date_for_worst_date,
-                                                                   last_available=last_available,
-                                                                   fill_value=np.nan)
+                                                                   last_available=last_available, fill_value=np.nan)
         else:
             reference_date_for_worst_date = date
             reference_quote_for_worst_date = quote
@@ -501,18 +512,13 @@ class _BaseBond(Instrument):
         elif curve_type == 'par':
 
             if yield_type == 'ytw':
-                maturity = self.worst_date(date=reference_date_for_worst_date,
-                                           quote=reference_quote_for_worst_date)
-                yld = self.yield_to_date(to_date=maturity,
-                                         date=date,
-                                         quote=quote)
+                maturity = self.worst_date(date=reference_date_for_worst_date,  quote=reference_quote_for_worst_date)
+                yld = self.yield_to_date(to_date=maturity, date=date, quote=quote)
 
             elif yield_type == 'ytw_rolling_call':
                 maturity = self.worst_date_rolling_call(date=reference_date_for_worst_date,
                                                         quote=reference_quote_for_worst_date)
-                yld = self.yield_to_date(to_date=maturity,
-                                         date=date,
-                                         quote=quote)
+                yld = self.yield_to_date(to_date=maturity, date=date, quote=quote)
             else:
                 yld, maturity = self.ytm(date=date, quote=quote), self.maturity_date
             time = self.day_counter.yearFraction(date, maturity)
@@ -603,7 +609,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def clean_price(self, last, quote, date, settlement_days, quote_type=None, yield_curve=None, **kwargs):
+    def clean_price(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                    settlement_days, quote_type=None, yield_curve=None, **kwargs):
         """
         Parameters
         ----------
@@ -615,6 +622,21 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         date: QuantLib.Date, optional, (c-vectorized)
             The date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            The compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            The compounding frequency.
             Default: see :py:func:`default_arguments`.
         settlement_days: int, optional
             Number of days for trade settlement.
@@ -636,30 +658,18 @@ class _BaseBond(Instrument):
 
         if quote_type == CLEAN_PRICE:
             return quote
+        date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
+        if self.is_expired(settlement_date):
+            return np.nan
         elif quote_type == DIRTY_PRICE:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
-            if self.is_expired(settlement_date):
-                return np.nan
             return quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
         elif quote_type == DISCOUNT:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
-            return self.face_amount - quote * 100 * self.day_counter.yearFraction(settlement_date, self.maturity_date)
+            return self.face_amount - quote * 100 * day_counter.yearFraction(settlement_date, self.maturity_date)
         elif quote_type == YIELD:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
-            if self.is_expired(settlement_date):
-                return np.nan
-            return self.bond.cleanPrice(quote, self.day_counter, self.yield_quote_compounding,
-                                        self.yield_quote_frequency, settlement_date)
+            return self.bond.cleanPrice(quote, day_counter, compounding, frequency, settlement_date)
         elif quote_type == YIELD_CURVE:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
             yield_curve = yield_curve.yield_curve(date=date)
             if self.is_expired(settlement_date):
                 return np.nan
@@ -667,7 +677,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def dirty_price(self, last, quote, date, settlement_days, quote_type=None, yield_curve=None, **kwargs):
+    def dirty_price(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                    settlement_days, quote_type=None, yield_curve=None, **kwargs):
         """
         Parameters
         ----------
@@ -679,6 +690,21 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         date: QuantLib.Date, optional, (c-vectorized)
             The date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            The compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            The compounding frequency.
             Default: see :py:func:`default_arguments`.
         settlement_days: int, optional
             Number of days for trade settlement.
@@ -698,41 +724,29 @@ class _BaseBond(Instrument):
         if quote_type is None:
             quote_type = self.quote_type
 
+        date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
+        if self.is_expired(settlement_date):
+            return np.nan
+
         if quote_type == CLEAN_PRICE:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
-            if self.is_expired(settlement_date):
-                return np.nan
             return quote + self.accrued_interest(last=last, date=settlement_date, **kwargs)
         elif quote_type == DIRTY_PRICE:
             return quote
         elif quote_type == DISCOUNT:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
-            return self.face_amount - quote * 100 * self.day_counter.yearFraction(settlement_date, self.maturity_date)
+            return self.face_amount - quote * 100 * day_counter.yearFraction(settlement_date, self.maturity_date)
         elif quote_type == YIELD:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
-            if self.is_expired(settlement_date):
-                return np.nan
-            return self.bond.dirtyPrice(quote, self.day_counter, self.yield_quote_compounding,
-                                        self.yield_quote_frequency, settlement_date)
+            return self.bond.dirtyPrice(quote, day_counter, compounding, frequency, settlement_date)
         elif quote_type == YIELD_CURVE:
-            date = to_ql_date(date)
-            settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                    self.business_convention)
             yield_curve = yield_curve.yield_curve(date=date)
-            if self.is_expired(settlement_date):
-                return np.nan
             clean_price = ql.BondFunctions.cleanPrice(self.bond, yield_curve, settlement_date)
             return clean_price + self.accrued_interest(last=last, date=settlement_date, **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def value(self, last, quote, date, last_available=False, clean_price=False, **kwargs):
+    def value(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+              settlement_days, last_available=False, clean_price=False, **kwargs):
         """
         Parameters
         ----------
@@ -744,6 +758,24 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         date: QuantLib.Date, optional, (c-vectorized)
             The date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            The compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            The compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
         last_available: bool, optional
             Whether to use last available data.
@@ -760,22 +792,31 @@ class _BaseBond(Instrument):
         if last_available:
             quote = self.quotes.get_values(index=date, last_available=last_available)
             if clean_price:
-                return self.clean_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+                return self.clean_price(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                        business_convention=business_convention, compounding=compounding,
+                                        frequency=frequency, settlement_days=settlement_days) / self.face_amount
             else:
-                return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+                return self.dirty_price(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                        business_convention=business_convention, compounding=compounding,
+                                        frequency=frequency, settlement_days=settlement_days) / self.face_amount
         if date > self.quotes.ts_values.last_valid_index():
             return np.nan
         if date < self.quotes.ts_values.first_valid_index():
             return np.nan
 
         if clean_price:
-            return self.clean_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+            return self.clean_price(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                    business_convention=business_convention, compounding=compounding,
+                                    frequency=frequency, settlement_days=settlement_days) / self.face_amount
         else:
-            return self.dirty_price(last=last, quote=quote, date=date, settlement_days=0) / self.face_amount
+            return self.dirty_price(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                    business_convention=business_convention, compounding=compounding,
+                                    frequency=frequency, settlement_days=settlement_days) / self.face_amount
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def risk_value(self, last, quote, date, last_available=False, clean_price=False, **kwargs):
+    def risk_value(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                   settlement_days, last_available=False, clean_price=False, **kwargs):
         """
         Parameters
         ----------
@@ -787,6 +828,24 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         date: QuantLib.Date, optional, (c-vectorized)
             The date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            The compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            The compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
             Default: see :py:func:`default_arguments`.
         last_available: bool, optional
             Whether to use last available data.
@@ -800,7 +859,8 @@ class _BaseBond(Instrument):
             The dirty value of the bond as of `date`.
         """
         return self.value(last=last, quote=quote, date=date, last_available=last_available, clean_price=clean_price,
-                          **kwargs)
+                          day_counter=day_counter, calendar=calendar, business_convention=business_convention,
+                          compounding=compounding, frequency=frequency, settlement_days=settlement_days, **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
@@ -845,7 +905,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def ytm(self, last, quote, date, day_counter, compounding, frequency, settlement_days, quote_type=None, **kwargs):
+    def ytm(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+            settlement_days, quote_type=None, **kwargs):
         """
         Parameters
         ----------
@@ -860,6 +921,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -881,8 +948,8 @@ class _BaseBond(Instrument):
         """
         bond = kwargs.get('bond', self.bond)  # Useful to pass bonds other than self as arguments.
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             # input("Returning nan because its expired date: {0}, settlement {1}".format(date, settlement_date))
             return np.nan
@@ -892,7 +959,6 @@ class _BaseBond(Instrument):
         if quote_type == CLEAN_PRICE:
             return bond.bondYield(quote, day_counter, compounding, frequency, settlement_date)
         elif quote_type == DIRTY_PRICE:
-            # TODO: This part needs testing.
             clean_quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
             return bond.bondYield(clean_quote, day_counter, compounding, frequency, settlement_date)
         elif quote_type == YIELD:
@@ -903,8 +969,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def ytw_and_worst_date(self, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                           quote_type=None, **kwargs):
+    def ytw_and_worst_date(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                           settlement_days, quote_type=None, **kwargs):
         """
         Parameters
         ----------
@@ -919,6 +985,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -939,19 +1011,20 @@ class _BaseBond(Instrument):
             The bond's yield to worst and worst date.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             # input("Returning nan because its expired date: {0}, settlement {1}".format(date, settlement_date))
             return np.nan, np.nan
-        return min(((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                              frequency=frequency, settlement_days=settlement_days, bond=bond, quote_type=quote_type,
-                              **kwargs), key)
+        return min(((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                              business_convention=business_convention, compounding=compounding, frequency=frequency,
+                              settlement_days=settlement_days, bond=bond, quote_type=quote_type, **kwargs), key)
                     for key, bond in self.bond_components.items() if key > settlement_date), key=itemgetter(0))
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def ytw(self, last, quote, date, day_counter, compounding, frequency, settlement_days, quote_type=None, **kwargs):
+    def ytw(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+            settlement_days, quote_type=None, **kwargs):
         """
         Parameters
         ----------
@@ -966,6 +1039,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -991,15 +1070,15 @@ class _BaseBond(Instrument):
         if self.is_expired(settlement_date):
             # input("Returning nan because its expired date: {0}, settlement {1}".format(date, settlement_date))
             return np.nan
-        return min((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                             frequency=frequency, settlement_days=settlement_days, bond=bond,
-                             quote_type=quote_type, **kwargs)
+        return min((self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                             business_convention=business_convention, compounding=compounding, frequency=frequency,
+                             settlement_days=settlement_days, bond=bond, quote_type=quote_type, **kwargs)
                     for key, bond in self.bond_components.items() if key > settlement_date))
 
     @default_arguments
     @conditional_vectorize('quote', 'date', 'rolling_call_date')
-    def ytw_to_custom_worst_date(self, last, quote, date, rolling_call_date, day_counter, compounding, frequency,
-                                 settlement_days, **kwargs):
+    def ytw_to_custom_worst_date(self, last, quote, date, rolling_call_date, day_counter, calendar, business_convention,
+                                 compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1017,6 +1096,12 @@ class _BaseBond(Instrument):
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
             Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
             Default: see :py:func:`default_arguments`.
@@ -1037,6 +1122,7 @@ class _BaseBond(Instrument):
         if date < list(self.bond_components.keys())[0]:
             # If date is before the first call dates, rolling calls are NOT possible.
             return self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
+                                           calendar=calendar, business_convention=business_convention,
                                            compounding=compounding, frequency=frequency,
                                            settlement_days=settlement_days, **kwargs)
         else:
@@ -1049,16 +1135,17 @@ class _BaseBond(Instrument):
                 if component_date < rolling_call_date:
                     self.bond_components.pop(component_date)
             yield_value, worst_date = self.ytw_and_worst_date(last=last, quote=quote, date=date,
-                                                              day_counter=day_counter, compounding=compounding,
-                                                              frequency=frequency, settlement_days=settlement_days,
-                                                              **kwargs)
+                                                              day_counter=day_counter, calendar=calendar,
+                                                              business_convention=business_convention,
+                                                              compounding=compounding, frequency=frequency,
+                                                              settlement_days=settlement_days, **kwargs)
             self._restore_bond_components()
             return yield_value, worst_date
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def ytw_and_worst_date_rolling_call(self, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                                        **kwargs):
+    def ytw_and_worst_date_rolling_call(self, last, quote, date, day_counter, calendar, business_convention,
+                                        compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1073,6 +1160,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1094,11 +1187,12 @@ class _BaseBond(Instrument):
         if date < list(self.bond_components.keys())[0]:
             # If date is before the first call dates, rolling calls are NOT possible.
             return self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
+                                           calendar=calendar, business_convention=business_convention,
                                            compounding=compounding, frequency=frequency,
                                            settlement_days=settlement_days, **kwargs)
         else:
             # Then rolling calls are possible.
-            rolling_call_date = self.calendar.advance(date, 1, ql.Months, self.business_convention)
+            rolling_call_date = calendar.advance(date, 1, ql.Months, self.business_convention)
             rolling_call_component = self._create_call_component(to_date=rolling_call_date)
             self._insert_bond_component(rolling_call_date, rolling_call_component)
             components = list(self.bond_components.keys())
@@ -1106,14 +1200,16 @@ class _BaseBond(Instrument):
                 if component_date < rolling_call_date:
                     self.bond_components.pop(component_date)
             yield_value, worst_date = self.ytw_and_worst_date(last=last, quote=quote, date=date,
-                                                              day_counter=day_counter, compounding=compounding,
-                                                              frequency=frequency, settlement_days=settlement_days,
-                                                              **kwargs)
+                                                              day_counter=day_counter, calendar=calendar,
+                                                              business_convention=business_convention,
+                                                              compounding=compounding, frequency=frequency,
+                                                              settlement_days=settlement_days, **kwargs)
             self._restore_bond_components()
             return yield_value, worst_date
 
     @default_arguments
-    def ytw_rolling_call(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def ytw_rolling_call(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                         settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1128,6 +1224,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1146,11 +1248,13 @@ class _BaseBond(Instrument):
             schedule, the issuer can call the bond with a 30 days notice.
         """
         return self.ytw_and_worst_date_rolling_call(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                    calendar=calendar, business_convention=business_convention,
                                                     compounding=compounding, frequency=frequency,
                                                     settlement_days=settlement_days, **kwargs)[0]
 
     @default_arguments
-    def yield_to_date(self, to_date, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def yield_to_date(self, to_date, last, quote, date, day_counter, calendar, business_convention, compounding,
+                      frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1167,6 +1271,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1185,13 +1295,15 @@ class _BaseBond(Instrument):
         """
         to_date = to_ql_date(to_date)
         self.bond_components = {to_date: self._create_call_component(to_date=to_date)}
-        result = self.ytw(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                          frequency=frequency, settlement_days=settlement_days, **kwargs)
+        result = self.ytw(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                          business_convention=business_convention, compounding=compounding, frequency=frequency,
+                          settlement_days=settlement_days, **kwargs)
         self._restore_bond_components()
         return result
 
     @default_arguments
-    def worst_date(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def worst_date(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                   settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1206,6 +1318,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1222,13 +1340,13 @@ class _BaseBond(Instrument):
          QuantLib.Date
             The bond's worst date.
         """
-        return self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
-                                       compounding=compounding, frequency=frequency, settlement_days=settlement_days,
-                                       **kwargs)[1]
+        return self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                       business_convention=business_convention, compounding=compounding,
+                                       frequency=frequency, settlement_days=settlement_days, **kwargs)[1]
 
     @default_arguments
-    def worst_date_rolling_call(self, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                                **kwargs):
+    def worst_date_rolling_call(self, last, quote, date, day_counter, calendar, business_convention, compounding,
+                                frequency, settlement_days, *kwargs):
         """
         Parameters
         ----------
@@ -1243,6 +1361,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1261,12 +1385,14 @@ class _BaseBond(Instrument):
             schedule, the issuer can call the bond with a 30 days notice.
         """
         return self.ytw_and_worst_date_rolling_call(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                    calendar=calendar, business_convention=business_convention,
                                                     compounding=compounding, frequency=frequency,
                                                     settlement_days=settlement_days, **kwargs)[1]
 
     @default_arguments
     @conditional_vectorize('ytm', 'date')
-    def clean_price_from_ytm(self, last, ytm, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def clean_price_from_ytm(self, last, ytm, date, day_counter, calendar, business_convention, compounding, frequency,
+                             settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1280,6 +1406,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1297,16 +1429,16 @@ class _BaseBond(Instrument):
             The bond's clean price given its yield to maturity.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(date) or self.is_expired(settlement_date):
             return np.nan
         return self.bond.cleanPrice(ytm, day_counter, compounding, frequency, settlement_date)
 
     @default_arguments
     @conditional_vectorize('yield_to_date', 'date')
-    def clean_price_from_yield_to_date(self, to_date, last, yield_to_date, date, day_counter, compounding, frequency,
-                                       settlement_days, **kwargs):
+    def clean_price_from_yield_to_date(self, to_date, last, yield_to_date, date, day_counter, calendar,
+                                       business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1322,6 +1454,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1339,7 +1477,8 @@ class _BaseBond(Instrument):
             The bond's clean price given its yield to `to_date`.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         to_date = to_ql_date(to_date)
@@ -1348,7 +1487,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('ytm', 'date')
-    def dirty_price_from_ytm(self, last, ytm, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def dirty_price_from_ytm(self, last, ytm, date, day_counter, calendar, business_convention, compounding, frequency,
+                             settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1362,6 +1502,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
@@ -1379,16 +1525,16 @@ class _BaseBond(Instrument):
             The bond's clean price given its yield to maturity.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(self.settlement_days, ql.Days),
-                                                self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(date) or self.is_expired(settlement_date):
             return np.nan
         return self.bond.dirtyPrice(ytm, day_counter, compounding, frequency, settlement_date)
 
     @default_arguments
     @conditional_vectorize('yield_to_date', 'date')
-    def dirty_price_from_yield_to_date(self, to_date, last, yield_to_date, date, day_counter, compounding, frequency,
-                                       settlement_days, **kwargs):
+    def dirty_price_from_yield_to_date(self, to_date, last, yield_to_date, date, day_counter, calendar,
+                                       business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1406,6 +1552,12 @@ class _BaseBond(Instrument):
         day_counter: QuantLib.DayCounter, optional
             The day counter for the calculation.
             Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             The compounding convention for the calculation.
             Default: see :py:func:`default_arguments`.
@@ -1422,7 +1574,8 @@ class _BaseBond(Instrument):
             The bonds' implied dirty price.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         to_date = to_ql_date(to_date)
@@ -1431,8 +1584,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def duration_to_mat(self, duration_type, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                        **kwargs):
+    def duration_to_mat(self, duration_type, last, quote, date, day_counter, calendar, business_convention, compounding,
+                        frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1449,6 +1602,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -1466,21 +1625,22 @@ class _BaseBond(Instrument):
             Bond's duration to maturity.
         """
         date = to_ql_date(date)
-        ytm = self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                       frequency=frequency, settlement_days=settlement_days, bypass_set_floating_rate_index=True,
-                       **kwargs)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        ytm = self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                       business_convention=business_convention, compounding=compounding, frequency=frequency,
+                       settlement_days=settlement_days, bypass_set_floating_rate_index=True, **kwargs)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         if self.yield_quote_compounding == ql.Simple:
             duration_type = ql.Duration.Simple
-        return ql.BondFunctions_duration(self.bond, ytm, self.day_counter, self.yield_quote_compounding,
-                                         self.yield_quote_frequency, duration_type, settlement_date)
+        return ql.BondFunctions_duration(self.bond, ytm, day_counter, compounding, frequency, duration_type,
+                                         settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def duration_to_worst(self, duration_type, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                          **kwargs):
+    def duration_to_worst(self, duration_type, last, quote, date, day_counter, calendar, business_convention,
+                          compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1497,6 +1657,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -1515,22 +1681,23 @@ class _BaseBond(Instrument):
         """
         date = to_ql_date(date)
         ytw, worst_date = self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                  calendar=calendar, business_convention=business_convention,
                                                   compounding=compounding, frequency=frequency,
                                                   settlement_days=settlement_days,
                                                   bypass_set_floating_rate_index=True, **kwargs)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         if self.yield_quote_compounding == ql.Simple:
             duration_type = ql.Duration.Simple
-        return ql.BondFunctions_duration(self.bond_components[worst_date], ytw, self.day_counter,
-                                         self.yield_quote_compounding, self.yield_quote_frequency,
+        return ql.BondFunctions_duration(self.bond_components[worst_date], ytw, day_counter, compounding, frequency,
                                          duration_type, settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def duration_to_worst_rolling_call(self, duration_type, last, quote, date, day_counter, compounding, frequency,
-                                       settlement_days, **kwargs):
+    def duration_to_worst_rolling_call(self, duration_type, last, quote, date, day_counter, calendar,
+                                       business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1547,6 +1714,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -1565,21 +1738,24 @@ class _BaseBond(Instrument):
         """
         date = to_ql_date(date)
         ytw, worst_date = self.ytw_and_worst_date_rolling_call(last=last, quote=quote, date=date,
-                                                               day_counter=day_counter, compounding=compounding,
-                                                               frequency=frequency, settlement_days=settlement_days,
+                                                               day_counter=day_counter, calendar=calendar,
+                                                               business_convention=business_convention,
+                                                               compounding=compounding, frequency=frequency,
+                                                               settlement_days=settlement_days,
                                                                bypass_set_floating_rate_index=True, **kwargs)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         bond = self._create_call_component(to_date=worst_date)
         if self.yield_quote_compounding == ql.Simple:
             duration_type = ql.Duration.Simple
-        return ql.BondFunctions_duration(bond, ytw, self.day_counter, self.yield_quote_compounding,
-                                         self.yield_quote_frequency, duration_type, settlement_date)
+        return ql.BondFunctions_duration(bond, ytw, day_counter, compounding, frequency, duration_type, settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def convexity_to_mat(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def convexity_to_mat(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                         settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1594,6 +1770,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -1611,18 +1793,19 @@ class _BaseBond(Instrument):
             Bond's convexity to maturity.
         """
         date = to_ql_date(date)
-        ytm = self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, compounding=compounding,
-                       frequency=frequency, settlement_day=settlement_days, bypass_set_floating_rate_index=True,
-                       **kwargs)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        ytm = self.ytm(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                       business_convention=business_convention, compounding=compounding, frequency=frequency,
+                       settlement_day=settlement_days, bypass_set_floating_rate_index=True, **kwargs)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
-        return ql.BondFunctions_convexity(self.bond, ytm, self.day_counter, self.yield_quote_compounding,
-                                          self.yield_quote_frequency, settlement_date)
+        return ql.BondFunctions_convexity(self.bond, ytm, day_counter, compounding, frequency, settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def convexity_to_worst(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def convexity_to_worst(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                           settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1637,6 +1820,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -1655,10 +1844,12 @@ class _BaseBond(Instrument):
         """
         date = to_ql_date(date)
         ytw, worst_date = self.ytw_and_worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                  calendar=calendar, business_convention=business_convention,
                                                   compounding=compounding, frequency=frequency,
-                                                  settlement_days=settlement_days,
-                                                  bypass_set_floating_rate_index=True, **kwargs)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+                                                  settlement_days=settlement_days, bypass_set_floating_rate_index=True,
+                                                  **kwargs)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         return ql.BondFunctions_convexity(self.bond_components[worst_date], ytw, day_counter, compounding, frequency,
@@ -1666,8 +1857,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def convexity_to_worst_rolling_call(self, last, quote, date, day_counter, compounding, frequency,
-                                        settlement_days, **kwargs):
+    def convexity_to_worst_rolling_call(self, last, quote, date, day_counter, calendar, business_convention,
+                                        compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1682,6 +1873,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -1700,11 +1897,13 @@ class _BaseBond(Instrument):
         """
         date = to_ql_date(date)
         ytw, worst_date = self.ytw_and_worst_date_rolling_call(last=last, quote=quote, date=date,
-                                                               day_counter=day_counter, compounding=compounding,
-                                                               frequency=frequency, settlement_days=settlement_days,
-                                                               bypass_set_floating_rate_index=True,
-                                                               **kwargs)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+                                                               day_counter=day_counter, calendar=calendar,
+                                                               business_convention=business_convention,
+                                                               compounding=compounding, frequency=frequency,
+                                                               settlement_days=settlement_days,
+                                                               bypass_set_floating_rate_index=True, **kwargs)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         bond = self._create_call_component(to_date=worst_date)
@@ -1712,8 +1911,8 @@ class _BaseBond(Instrument):
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def zspread_to_mat(self, yield_curve_timeseries, last, quote, date, day_counter, compounding, frequency,
-                       settlement_days, **kwargs):
+    def zspread_to_mat(self, yield_curve_timeseries, last, quote, date, day_counter, calendar, business_convention,
+                       compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1730,6 +1929,12 @@ class _BaseBond(Instrument):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -1747,13 +1952,13 @@ class _BaseBond(Instrument):
             Bond's z-spread to maturity relative to `yield_curve_timeseries`.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days),
-                                                self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
         if yield_curve_timeseries.calendar.isHoliday(date):
             yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
-            yield_curve = yield_curve_timeseries.implied_term_structure(date=yield_date, future_date=date)
+            yield_curve = ql.ImpliedTermStructure(yield_curve_timeseries.yield_curve_handle(date=yield_date), date)
         else:
             yield_curve = yield_curve_timeseries.yield_curve(date=date)
 
@@ -1764,16 +1969,16 @@ class _BaseBond(Instrument):
             quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
         elif self.quote_type == YIELD:
             quote = self.clean_price_from_ytm(last=last, quote=quote, date=date, day_counter=day_counter,
+                                              calendar=calendar, business_convention=business_convention,
                                               compounding=compounding, frequency=frequency,
-                                              bypass_set_floating_rate_index=True,
-                                              settlement_days=settlement_days)
+                                              bypass_set_floating_rate_index=True, settlement_days=settlement_days)
         return ql.BondFunctions_zSpread(self.bond, quote, yield_curve, day_counter, compounding, frequency,
                                         settlement_date)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def zspread_to_worst(self, yield_curve_timeseries, last, quote, date, day_counter, compounding, frequency,
-                         settlement_days, **kwargs):
+    def zspread_to_worst(self, yield_curve_timeseries, last, quote, date, day_counter, calendar, business_convention,
+                         compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1791,6 +1996,12 @@ class _BaseBond(Instrument):
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
             Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
             Default: see :py:func:`default_arguments`.
@@ -1807,22 +2018,24 @@ class _BaseBond(Instrument):
             Bond's z-spread to worst, relative to `yield_curve_timeseries`.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
-        worst_date = self.worst_date(last=last, quote=quote, date=date, day_counter=day_counter,
-                                     compounding=compounding, frequency=frequency,
-                                     settlement_days=settlement_days, bypass_set_floating_rate_index=True, **kwargs)
+        worst_date = self.worst_date(last=last, quote=quote, date=date, day_counter=day_counter, calendar=calendar,
+                                     business_convention=business_convention, compounding=compounding,
+                                     frequency=frequency, settlement_days=settlement_days,
+                                     bypass_set_floating_rate_index=True, **kwargs)
         bond = self.bond_components[worst_date]
         return self.zspread_to_mat(yield_curve_timeseries=yield_curve_timeseries, last=last, quote=quote, date=date,
-                                   day_counter=day_counter, compounding=compounding, frequency=frequency,
-                                   settlement_days=settlement_days, bond=bond, bypass_set_floating_rate_index=True,
-                                   **kwargs)
+                                   day_counter=day_counter, calendar=calendar, business_convention=business_convention,
+                                   compounding=compounding, frequency=frequency, settlement_days=settlement_days,
+                                   bond=bond, bypass_set_floating_rate_index=True, **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def zspread_to_worst_rolling_call(self, yield_curve_timeseries, last, quote, date, day_counter, compounding,
-                                      frequency, settlement_days, **kwargs):
+    def zspread_to_worst_rolling_call(self, yield_curve_timeseries, last, quote, date, day_counter,  calendar,
+                                      business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -1840,6 +2053,12 @@ class _BaseBond(Instrument):
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
             Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
             Default: see :py:func:`default_arguments`.
@@ -1856,24 +2075,25 @@ class _BaseBond(Instrument):
             Bond's z-spread to worst, considering rolling calls, relative to `yield_curve_timeseries`.
         """
         date = to_ql_date(date)
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
-        worst_date = self.worst_date_rolling_call(last=last, quote=quote, date=date,
-                                                  day_counter=day_counter, compounding=compounding,
-                                                  frequency=frequency, settlement_days=settlement_days,
-                                                  bypass_set_floating_rate_index=True,
+        worst_date = self.worst_date_rolling_call(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                  calendar=calendar, business_convention=business_convention,
+                                                  compounding=compounding, frequency=frequency,
+                                                  settlement_days=settlement_days, bypass_set_floating_rate_index=True,
                                                   **kwargs)
         bond = self._create_call_component(to_date=worst_date)
         return self.zspread_to_mat(yield_curve_timeseries=yield_curve_timeseries, last=last, quote=quote, date=date,
-                                   day_counter=day_counter, compounding=compounding, frequency=frequency,
-                                   settlement_days=settlement_days, bond=bond, bypass_set_floating_rate_index=True,
-                                   **kwargs)
+                                   day_counter=day_counter, calendar=calendar, business_convention=business_convention,
+                                   compounding=compounding, frequency=frequency, settlement_days=settlement_days,
+                                   bond=bond, bypass_set_floating_rate_index=True, **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def oas(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, compounding, frequency,
-            settlement_days, **kwargs):
+    def oas(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter, calendar,
+            business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Warning
         -------
@@ -1900,6 +2120,12 @@ class _BaseBond(Instrument):
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
             Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
             Default: see :py:func:`default_arguments`.
@@ -1915,7 +2141,171 @@ class _BaseBond(Instrument):
         scalar
             Bond's z-spread relative to `yield_curve_timeseries`.
         """
-        return self.zspread_to_mat(yield_curve_timeseries=yield_curve_timeseries, last=last, quote=quote,
-                                   date=date, day_counter=day_counter, compounding=compounding,
-                                   frequency=frequency, settlement_days=settlement_days,
+        return self.zspread_to_mat(yield_curve_timeseries=yield_curve_timeseries, last=last, quote=quote, date=date,
+                                   day_counter=day_counter, calendar=calendar, business_convention=business_convention,
+                                   compounding=compounding, frequency=frequency, settlement_days=settlement_days,
                                    bypass_set_floating_rate_index=True,  **kwargs)
+
+    @default_arguments
+    @conditional_vectorize('quote', 'date')
+    def oas_clean_price(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter,
+                        calendar, business_convention, compounding, frequency, settlement_days, oas_spread=None,
+                        **kwargs):
+        """
+        Warning
+        -------
+        This method has only been tested with ``model=QuantLib.HullWhite``.
+
+        Parameters
+        ----------
+        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
+            The yield curve object against which the z-spreads will be calculated.
+        model: str
+            A string representing one of QuantLib Short Rate models, for simulating evolution of rates.
+            **Currently only tested with QuantLib.HullWhite.**
+        model_params: tuple, dict
+            Parameter set for the model.
+            * tuple format: (param1, param2, ...)
+                If a tuple is passed, assumes the model parameters are fixed for all possibly vectorized calculation
+                dates.
+            * dict format: {date1: (param1, param2, ...), date2: (param1, param2, ...), ... }
+                If a dict is passed, assumes it contains a parameter set for each date of the possibly vectorized
+                calculation dates.
+
+        last: bool, optional
+            Whether to last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional
+            Bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional
+            Date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            Compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            Compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
+            Default: see :py:func:`default_arguments`.
+        oas_spread: float, optional
+            The spread to be used in the calculation, will self calculate the z-spread if none is passed.
+
+        Returns
+        -------
+        scalar
+            Bond's clean price from the option-adjusted spread relative to `yield_curve_timeseries`.
+        """
+        date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
+        if self.is_expired(settlement_date):
+            return np.nan
+        if oas_spread is None:
+            oas_spread = self.zspread_to_mat(yield_curve_timeseries=yield_curve_timeseries, last=last, quote=quote,
+                                             date=date, day_counter=day_counter, calendar=calendar,
+                                             business_convention=business_convention, compounding=compounding,
+                                             frequency=frequency, settlement_days=settlement_days)
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = ql.ImpliedTermStructure(yield_curve_timeseries.yield_curve_handle(date=yield_date),
+                                                  date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        ql.Settings.instance().evaluationDate = date
+        dirty_price = ql.CashFlows.npv(self.bond.cashflows(), yield_curve, oas_spread, day_counter, compounding,
+                                       frequency, False, settlement_date)
+        return dirty_price - self.accrued_interest(date=settlement_date)
+
+    @default_arguments
+    @conditional_vectorize('quote', 'date')
+    def oas_dirty_price(self, yield_curve_timeseries, model, model_params, last, quote, date, day_counter,
+                        calendar, business_convention, compounding, frequency, settlement_days, oas_spread=None,
+                        **kwargs):
+        """
+        Warning
+        -------
+        This method has only been tested with ``model=QuantLib.HullWhite``.
+
+        Parameters
+        ----------
+        yield_curve_timeseries: :py:func:`YieldCurveTimeSeries`
+            The yield curve object against which the z-spreads will be calculated.
+        model: str
+            A string representing one of QuantLib Short Rate models, for simulating evolution of rates.
+            **Currently only tested with QuantLib.HullWhite.**
+        model_params: tuple, dict
+            Parameter set for the model.
+            * tuple format: (param1, param2, ...)
+                If a tuple is passed, assumes the model parameters are fixed for all possibly vectorized calculation
+                dates.
+            * dict format: {date1: (param1, param2, ...), date2: (param1, param2, ...), ... }
+                If a dict is passed, assumes it contains a parameter set for each date of the possibly vectorized
+                calculation dates.
+
+        last: bool, optional
+            Whether to last data.
+            Default: see :py:func:`default_arguments`.
+        quote: scalar, optional
+            Bond's quote.
+            Default: see :py:func:`default_arguments`.
+        date: QuantLib.Date, optional
+            Date of the calculation.
+            Default: see :py:func:`default_arguments`.
+        day_counter: QuantLib.DayCounter, optional
+            Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
+            Default: see :py:func:`default_arguments`.
+        compounding: QuantLib.Compounding, optional
+            Compounding convention for the calculation.
+            Default: see :py:func:`default_arguments`.
+        frequency: QuantLib.Frequency, optional
+            Compounding frequency.
+            Default: see :py:func:`default_arguments`.
+        settlement_days: int, optional
+            Number of days for trade settlement.
+            Default: see :py:func:`default_arguments`.
+        oas_spread: float, optional
+            The spread to be used in the calculation, will self calculate the z-spread if none is passed.
+
+        Returns
+        -------
+        scalar
+            Bond's clean price from the option-adjusted spread relative to `yield_curve_timeseries`.
+        """
+        date = to_ql_date(date)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
+        if self.is_expired(settlement_date):
+            return np.nan
+        if oas_spread is None:
+            oas_spread = self.zspread_to_mat(yield_curve_timeseries=yield_curve_timeseries, last=last, quote=quote,
+                                             date=date, day_counter=day_counter, calendar=calendar,
+                                             business_convention=business_convention, compounding=compounding,
+                                             frequency=frequency, settlement_days=settlement_days)
+        if yield_curve_timeseries.calendar.isHoliday(date):
+            yield_date = yield_curve_timeseries.calendar.adjust(date, ql.Preceding)
+            yield_curve = ql.ImpliedTermStructure(yield_curve_timeseries.yield_curve_handle(date=yield_date),
+                                                  date)
+        else:
+            yield_curve = yield_curve_timeseries.yield_curve(date=date)
+        ql.Settings.instance().evaluationDate = date
+        dirty_price = ql.CashFlows.npv(self.bond.cashflows(), yield_curve, oas_spread, day_counter, compounding,
+                                       frequency, False, settlement_date)
+        return dirty_price

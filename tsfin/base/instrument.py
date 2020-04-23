@@ -191,6 +191,14 @@ class Instrument:
                 return None
 
     @conditional_vectorize('date')
+    def settlement_date(self, date, calendar, settlement_days, business_convention, *args, **kwargs):
+
+        date = to_ql_date(date)
+        if self.is_expired(date=date):
+            return np.nan
+        return calendar.advance(date, ql.Period(settlement_days, ql.Days), business_convention)
+
+    @conditional_vectorize('date')
     def cash_flow_to_date(self, start_date, date, **kwargs):
         """
         Parameters
