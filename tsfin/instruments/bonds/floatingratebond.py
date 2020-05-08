@@ -168,8 +168,8 @@ class FloatingRateBond(_BaseBond):
         self.index_reference_curve.linkTo(reference_curve)
 
     @set_floating_rate_index
-    def minor_price_change(self, last, quote, date, day_counter, compounding, frequency, settlement_days, dy,
-                           to_worst=False, rolling_call=False, **kwargs):
+    def minor_price_change(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                           settlement_days, dy, to_worst=False, rolling_call=False, **kwargs):
 
         date = to_ql_date(date)
         forecast_curve_timeseries = self.reference_curve
@@ -179,46 +179,50 @@ class FloatingRateBond(_BaseBond):
         if to_worst:
             if rolling_call:
                 ytw, worst_date = self.ytw_and_worst_date_rolling_call(last=last, quote=P, date=date,
-                                                                       day_counter=day_counter, compounding=compounding,
-                                                                       frequency=frequency,
+                                                                       day_counter=day_counter, calendar=calendar,
+                                                                       business_convention=business_convention,
+                                                                       compounding=compounding, frequency=frequency,
                                                                        settlement_days=settlement_days,
                                                                        quote_type='DIRTY_PRICE',
                                                                        **kwargs)
             else:
                 ytw, worst_date = self.ytw_and_worst_date(last=last, quote=P, date=date, day_counter=day_counter,
+                                                          calendar=calendar, business_convention=business_convention,
                                                           compounding=compounding, frequency=frequency,
                                                           settlement_days=settlement_days,
                                                           quote_type='DIRTY_PRICE', **kwargs)
             ytm = ytw
         else:
-            ytm = self.ytm(last=last, quote=P, date=date, day_counter=day_counter, compounding=compounding,
+            ytm = self.ytm(last=last, quote=P, date=date, day_counter=day_counter, calendar=calendar,
+                           business_convention=business_convention, compounding=compounding,
                            frequency=frequency, settlement_days=settlement_days, bypass_set_floating_rate_index=True,
                            quote_type='DIRTY_PRICE', **kwargs)
 
-        settlement_date = self.calendar.advance(date, ql.Period(settlement_days, ql.Days), self.business_convention)
+        settlement_date = self.settlement_date(date=date, calendar=calendar, settlement_days=settlement_days,
+                                               business_convention=business_convention)
         if self.is_expired(settlement_date):
             return np.nan
 
         lower_shifted_curve = forecast_curve_timeseries.spreaded_curve(date=date, spread=-dy,
-                                                                       compounding=self.yield_quote_compounding,
-                                                                       frequency=self.yield_quote_frequency)
+                                                                       compounding=compounding,
+                                                                       frequency=frequency)
         upper_shifted_curve = forecast_curve_timeseries.spreaded_curve(date=date, spread=dy,
-                                                                       compounding=self.yield_quote_compounding,
-                                                                       frequency=self.yield_quote_frequency)
+                                                                       compounding=compounding,
+                                                                       frequency=frequency)
 
         self.forecast_curve.linkTo(lower_shifted_curve)
         P_m = ql.CashFlows.npv(self.bond.cashflows(),
                                ql.InterestRate(ytm - dy,
-                                               self.day_counter,
-                                               self.yield_quote_compounding,
-                                               self.yield_quote_frequency),
+                                               day_counter,
+                                               compounding,
+                                               frequency),
                                True, settlement_date, settlement_date)
         self.forecast_curve.linkTo(upper_shifted_curve)
         P_p = ql.CashFlows.npv(self.bond.cashflows(),
                                ql.InterestRate(ytm + dy,
-                                               self.day_counter,
-                                               self.yield_quote_compounding,
-                                               self.yield_quote_frequency),
+                                               day_counter,
+                                               compounding,
+                                               frequency),
                                True, settlement_date, settlement_date)
 
         return P, P_m, P_p, ytm
@@ -226,8 +230,8 @@ class FloatingRateBond(_BaseBond):
     @default_arguments
     @conditional_vectorize('quote', 'date')
     @set_floating_rate_index
-    def duration_to_mat(self, duration_type, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                        **kwargs):
+    def duration_to_mat(self, duration_type, last, quote, date, day_counter, calendar, business_convention, compounding,
+                        frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -244,6 +248,12 @@ class FloatingRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -268,12 +278,13 @@ class FloatingRateBond(_BaseBond):
         date = to_ql_date(date)
         dy = 0.0001
         P, P_m, P_p, ytm = self.minor_price_change(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                   calendar=calendar, business_convention=business_convention,
                                                    compounding=compounding, frequency=frequency,
                                                    settlement_days=settlement_days, dy=dy, to_worst=False, **kwargs)
 
         mac_duration = -(1 / P) * (P_p - P_m)/(2 * dy)
         if duration_type == ql.Duration.Modified:
-            duration = (1 + ytm / self.yield_quote_frequency) * mac_duration
+            duration = (1 + ytm / self.frequency) * mac_duration
         else:
             duration = mac_duration
         return duration
@@ -281,8 +292,8 @@ class FloatingRateBond(_BaseBond):
     @default_arguments
     @conditional_vectorize('quote', 'date')
     @set_floating_rate_index
-    def duration_to_worst(self, duration_type, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                          **kwargs):
+    def duration_to_worst(self, duration_type, last, quote, date, day_counter, calendar, business_convention,
+                          compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -299,6 +310,12 @@ class FloatingRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -324,20 +341,21 @@ class FloatingRateBond(_BaseBond):
         date = to_ql_date(date)
         dy = 0.0001
         P, P_m, P_p, ytm = self.minor_price_change(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                   calendar=calendar, business_convention=business_convention,
                                                    compounding=compounding, frequency=frequency,
-                                                   settlement_days=settlement_days, dy=dy, to_worst=True, **kwargs)
+                                                   settlement_days=settlement_days, dy=dy, to_worst=False, **kwargs)
 
         mac_duration = -(1 / P) * (P_p - P_m)/(2 * dy)
         if duration_type == ql.Duration.Modified:
-            duration = (1 + ytm / self.yield_quote_frequency) * mac_duration
+            duration = (1 + ytm / frequency) * mac_duration
         else:
             duration = mac_duration
         return duration
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def duration_to_worst_rolling_call(self, duration_type, last, quote, date, day_counter, compounding, frequency,
-                                       settlement_days, **kwargs):
+    def duration_to_worst_rolling_call(self,duration_type, last, quote, date, day_counter, calendar,
+                                       business_convention, compounding, frequency, settlement_days, **kwargs):
         """
         Parameters
         ----------
@@ -354,6 +372,12 @@ class FloatingRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -376,18 +400,16 @@ class FloatingRateBond(_BaseBond):
         See Balaraman G., Ballabio L. QuantLib Python Cookbook [ch. Duration of floating-rate bonds].
         """
         return self.duration_to_worst(duration_type=duration_type, last=last, quote=quote, day_counter=day_counter,
+                                      calendar=calendar, business_convention=business_convention,
                                       compounding=compounding, frequency=frequency, settlement_days=settlement_days,
                                       rolling_call=True, **kwargs)
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
     @set_floating_rate_index
-    def convexity_to_mat(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def convexity_to_mat(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                         settlement_days, **kwargs):
         """
-        Warnings
-        --------
-        This method is not yet implemented. Returns Numpy.nan by default.
-
         Parameters
         ----------
         last: bool, optional
@@ -401,6 +423,12 @@ class FloatingRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -416,11 +444,11 @@ class FloatingRateBond(_BaseBond):
         -------
         scalar
             Bond's convexity to maturity.
-        TODO: Needs more testing
         """
         date = to_ql_date(date)
         dy = 0.0001
         P, P_m, P_p, ytm = self.minor_price_change(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                   calendar=calendar, business_convention=business_convention,
                                                    compounding=compounding, frequency=frequency,
                                                    settlement_days=settlement_days, dy=dy, to_worst=False, **kwargs)
         convexity = (P_m + P_p - 2*P)/(2 * P * (dy*dy))
@@ -429,12 +457,9 @@ class FloatingRateBond(_BaseBond):
     @default_arguments
     @conditional_vectorize('quote', 'date')
     @set_floating_rate_index
-    def convexity_to_worst(self, last, quote, date, day_counter, compounding, frequency, settlement_days, **kwargs):
+    def convexity_to_worst(self, last, quote, date, day_counter, calendar, business_convention, compounding, frequency,
+                           settlement_days, **kwargs):
         """
-        Warnings
-        --------
-        This method is not yet implemented. Returns Numpy.nan by default.
-
         Parameters
         ----------
         last: bool, optional
@@ -448,6 +473,12 @@ class FloatingRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -463,25 +494,21 @@ class FloatingRateBond(_BaseBond):
         -------
         scalar
             Bond's convexity to worst.
-        TODO: Needs more testing
         """
         date = to_ql_date(date)
         dy = 0.0001
         P, P_m, P_p, ytm = self.minor_price_change(last=last, quote=quote, date=date, day_counter=day_counter,
+                                                   calendar=calendar, business_convention=business_convention,
                                                    compounding=compounding, frequency=frequency,
-                                                   settlement_days=settlement_days, dy=dy, to_worst=True, **kwargs)
+                                                   settlement_days=settlement_days, dy=dy, to_worst=False, **kwargs)
         convexity = (P_m + P_p - 2*P)/(2 * P * (dy*dy))
         return convexity
 
     @default_arguments
     @conditional_vectorize('quote', 'date')
-    def convexity_to_worst_rolling_call(self, last, quote, date, day_counter, compounding, frequency, settlement_days,
-                                        **kwargs):
+    def convexity_to_worst_rolling_call(self, last, quote, date, day_counter, calendar, business_convention,
+                                        compounding, frequency, settlement_days, **kwargs):
         """
-        Warnings
-        --------
-        This method is not yet implemented. Returns Numpy.nan by default.
-
         Parameters
         ----------
         last: bool, optional
@@ -495,6 +522,12 @@ class FloatingRateBond(_BaseBond):
             Default: see :py:func:`default_arguments`.
         day_counter: QuantLib.DayCounter, optional
             Day counter for the calculation.
+            Default: see :py:func:`default_arguments`.
+        calendar: QuantLib.Calendar, optional
+            The calendar used for calculation.
+            Default: see :py:func:`default_arguments`.
+        business_convention: QuantLib.BusinessDayConvention
+            The business day convention used for calculation.
             Default: see :py:func:`default_arguments`.
         compounding: QuantLib.Compounding, optional
             Compounding convention for the calculation.
@@ -510,9 +543,9 @@ class FloatingRateBond(_BaseBond):
         -------
         scalar
             Bond's convexity to worst.
-        TODO: Needs more testing
         """
-        return self.convexity_to_worst(last=last, quote=quote, day_counter=day_counter, compounding=compounding,
+        return self.convexity_to_worst(last=last, quote=quote, day_counter=day_counter, calendar=calendar,
+                                       business_convention=business_convention, compounding=compounding,
                                        frequency=frequency, settlement_days=settlement_days, rolling_call=True,
                                        **kwargs)
 
@@ -548,6 +581,8 @@ methods_to_redecorate = ['accrued_interest',
                          'zspread_to_worst',
                          'zspread_to_worst_rolling_call',
                          'oas',
+                         'oas_clean_price',
+                         'oas_dirty_price'
                          ]
 
 
