@@ -106,11 +106,9 @@ class G2Process(BaseInterestRateProcess):
         beta = beta_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
         eta = eta_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
         rho = rho_timeseries.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        return self.process(date=date, yield_curve=yield_curve, mean=mean, sigma=sigma, beta=beta, eta=eta,
-                            rho=rho)
+        return self.process(date=date, yield_curve=yield_curve, mean=mean, sigma=sigma, beta=beta, eta=eta, rho=rho)
 
     def update_model(self, date, yield_curve, mean, sigma, beta, eta, rho, **kwargs):
 
         self.yield_curve_update(date=date, yield_curve=yield_curve)
         return self.model(self.yield_curve_handle, mean, sigma, beta, eta, rho)
-

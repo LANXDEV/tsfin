@@ -120,6 +120,8 @@ def to_ql_calendar(arg):
         return ql.UnitedKingdom(ql.UnitedKingdom.Exchange)
     elif arg.upper() == "BZ":
         return ql.Brazil()
+    elif arg.upper() == "B2":
+        return ql.Brazil(ql.Brazil.Exchange)
     elif arg.upper() in ["TE", 'TARGET']:
         return ql.TARGET()
     elif arg.upper() in ['C%', 'C+']:

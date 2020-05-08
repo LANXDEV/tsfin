@@ -495,7 +495,11 @@ class EquityOption(Instrument):
             discount_risk_free = base_equity_process.risk_free_handle.discount(self._maturity)
             fwd_spot_price = spot_price * discount_dvd / discount_risk_free
             option_price = self.intrinsic(date=date, spot_price=fwd_spot_price) + 0.01
-            implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
+            try:
+                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
+            except RuntimeError:
+                option_price += 0.01
+                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
 
         self._implied_volatility[date].setValue(implied_vol)
 
