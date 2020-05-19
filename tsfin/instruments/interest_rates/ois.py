@@ -46,8 +46,12 @@ class OISRate(BaseInterestRate):
         self.fixing_days = self.index.fixingDays()
         self.month_end = self.index.endOfMonth()
         # Rate Helper
-        self.helper_rate = ql.SimpleQuote(100)
+        self.helper_rate = ql.SimpleQuote(0)
         self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
-        self._rate_helper = ql.OISRateHelper(self.settlement_days, self._tenor, ql.QuoteHandle(self.helper_rate),
-                                             self.index, self.term_structure, self.telescopic_value_dates)
+
+    def set_rate_helper(self):
+
+        if self._rate_helper is None:
+            self._rate_helper = ql.OISRateHelper(self.settlement_days, self._tenor, ql.QuoteHandle(self.helper_rate),
+                                                 self.index, self.term_structure, self.telescopic_value_dates)

@@ -23,10 +23,10 @@ from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_frequency, to_ql_weekday, to_ql_option_engine, \
     to_ql_equity_model, to_ql_swaption_engine, to_ql_short_rate_model
 from tsfin.instruments.interest_rates import DepositRate, ZeroRate, OISRate, SwapRate, Swaption, CDSRate, \
-    EurodollarFuture
+    EurodollarFuture, DepositRateFuture
 from tsfin.instruments.equities import Equity, EquityOption
 from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond
-from tsfin.instruments import CurrencyFuture, Currency
+from tsfin.instruments import CurrencyFuture, Currency, Cash
 from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackScholes, Heston, GJRGARCH
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
@@ -86,8 +86,10 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
                 instrument_list.append(ts)
                 continue
 
-        elif ts_type in (DEPOSIT_RATE, DEPOSIT_RATE_FUTURE):
+        elif ts_type == DEPOSIT_RATE:
             instrument = DepositRate(ts)
+        elif ts_type == DEPOSIT_RATE_FUTURE:
+            instrument = DepositRateFuture(ts)
         elif ts_type == ZERO_RATE:
             instrument = ZeroRate(ts)
         elif ts_type == CURRENCY_FUTURE:
@@ -698,3 +700,24 @@ def nth_weekday_of_month(start_year, n_years, frequency, weekday, nth_day, min_d
         dates = [date for date in dates if min_date <= date <= max_date]
 
     return dates
+
+
+def create_cash_instrument(name, currency, currency_ts):
+    """Simple function to create a Cash Instrument
+
+    Cash instrument are instances of the currency class with the currency TimeSeries as an attribute.
+    This is useful for modelling cash accounts fx movements with different names but the same underlying security.
+
+    :param name: str
+        The name of the new Cash TimeSeries
+    :param currency: currency
+        The Cash Account Currency
+    :param currency_ts: :py:obj:`TimeSeries`
+        The currency TimeSeries
+    :return: :py:obj:'Cash'
+    """
+    base_attributes = ['CURRENCY', 'BASE_CURRENCY', 'CALENDAR', 'BASE_CALENDAR', 'COUNTRY']
+    new_ts = TimeSeries(f'{name.upper()}_{currency.upper()}')
+    for attribute in base_attributes:
+        new_ts.ts_attributes[attribute] = currency_ts.ts_attributes[attribute]
+    return Cash(new_ts, currency_ts)
