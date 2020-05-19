@@ -118,6 +118,32 @@ class BaseInterestRate(Instrument):
         if self.calculate_convexity:
             self.convexity_bias(date=date, future_price=rate, sigma=sigma, mean=mean)
 
+    def fixing_date(self, date):
+        """The index fixing date
+
+        :param date: ql.Date
+            Reference date for calculation
+        :return: ql.Date
+        """
+        date = to_ql_date(date)
+        if self.index is not None:
+            return self.index.fixingDate(date)
+        else:
+            return self.calendar.advance(date, -self.fixing_days, ql.Days, self.business_convention)
+
+    def value_date(self, date):
+        """The index value date
+
+        :param date: ql.Date
+            Reference date for calculation
+        :return: ql.Date
+        """
+        date = to_ql_date(date)
+        if self.index is not None:
+            return self.index.valueDate(date)
+        else:
+            return self.calendar.advance(date, self.fixing_days, ql.Days, self.business_convention)
+
     def _convexity(self, future_price, date, sigma, mean):
         """ Helper function to calculate the convexity bias
 
@@ -198,15 +224,11 @@ class BaseInterestRate(Instrument):
         if self._maturity is not None:
             return self._maturity
         date = self.calendar.adjust(to_ql_date(date), self.business_convention)
-        if self.index is not None:
-            date = self.index.valueDate(date)
-            if self.is_deposit_rate:
-                return self.index.maturityDate(date)
-            else:
-                return self.calendar.advance(date, self._tenor, self.business_convention, self.month_end)
+        value_date = self.value_date(date=date)
+        if (self.index is not None) and self.is_deposit_rate:
+            return self.index.maturityDate(value_date)
         else:
-            date = self.calendar.advance(date, self.fixing_days, ql.Days, self.business_convention, self.month_end)
-            return self.calendar.advance(date, self._tenor, self.business_convention, self.month_end)
+            return self.calendar.advance(value_date, self._tenor, self.business_convention, self.month_end)
 
     def is_expired(self, date, *args, **kwargs):
         """Check if the deposit rate is expired.
@@ -248,13 +270,13 @@ class BaseInterestRate(Instrument):
         if fixing_at_start_date:
             fixing_date = start_date
         else:
-            fixing_date = self.index.fixingDate(start_date)
-        maturity_date = self.index.maturityDate(self.index.valueDate(fixing_date))
+            fixing_date = self.fixing_date(start_date)
+        maturity_date = self.maturity(self.value_date(fixing_date))
         while maturity_date < end_date:
             fixing_dates.append(fixing_date)
             maturity_dates.append(maturity_date)
-            fixing_date = self.index.fixingDate(maturity_date)
-            maturity_date = self.index.maturityDate(self.index.valueDate(fixing_date))
+            fixing_date = self.fixing_date(maturity_date)
+            maturity_date = self.maturity(self.value_date(fixing_date))
         fixing_dates.append(fixing_date)
         maturity_dates.append(end_date)
         return fixing_dates, maturity_dates
@@ -294,9 +316,9 @@ class BaseInterestRate(Instrument):
             fixings += spread
         return np.prod([ql.InterestRate(
             fixing, self.day_counter, self.compounding, self.frequency).compoundFactor(
-                self.index.valueDate(fixing_date), maturity_date, start_date, date)
+                self.value_date(fixing_date), maturity_date, start_date, date)
                     for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)
-                    if self.index.valueDate(fixing_date) <= maturity_date]) - 1
+                    if self.value_date(fixing_date) <= maturity_date]) - 1
 
     def rate_helper(self, date, last_available=True, spread=None, sigma=None, mean=None, **other_args):
         """Helper for yield curve construction.
