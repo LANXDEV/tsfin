@@ -66,18 +66,16 @@ class BaseInterestRate(Instrument):
         self.interest_maturity_date = None
         # Rate Helper
         self.helper_rate = None
-        self.helper_spread = None
         self.helper_convexity = None
         # Defined
         self._rate_helper = None
 
-    def set_rate_helper(self):
+    def _rate_helper(self, date=None, rate=None, sigma=None, mean=None, **kwargs):
         """ Defines the rate helper of the Class, to be overridden in the child Class
 
         :return:
         """
-        if self._rate_helper is None:
-            self._rate_helper = None
+        return None
 
     def link_to_term_structure(self, date, yield_curve):
         """ link a yield curve to self.term_structure
@@ -113,8 +111,6 @@ class BaseInterestRate(Instrument):
             rate = ql.InterestRate(rate, self.day_counter, self.compounding,
                                    self.frequency).equivalentRate(ql.Simple, ql.Annual, time).rate()
         self.helper_rate.setValue(float(rate))
-        if spread is not None:
-            self.helper_spread.setValue(float(spread))
         if self.calculate_convexity:
             self.convexity_bias(date=date, future_price=rate, sigma=sigma, mean=mean)
 
@@ -337,15 +333,13 @@ class BaseInterestRate(Instrument):
             Rate helper for yield curve construction.
         """
         # Returns None if impossible to obtain a rate helper from this time series
+        date = to_ql_date(date)
         if self.is_expired(date, **other_args):
             return None
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
-        self.set_rate_helper()
-        date = to_ql_date(date)
-        self.set_rate(date=date, rate=rate, spread=spread, sigma=sigma, mean=mean, **other_args)
-        return self._rate_helper
+        return None
 
     def spread_rate(self, date, last_available=True, **kwargs):
         """ Returns the QuantLib.InterestRate representing the spread at date

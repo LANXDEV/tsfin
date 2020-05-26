@@ -48,6 +48,8 @@ class Currency(Instrument):
         currency = self.currency if currency is None else to_upper_list(currency)
         if len(currency) != 3:
             return np.nan
+        if self.currency == self.base_currency:
+            return 1
         if currency == self.currency:
             return self.quotes.get_values(index=date, last_available=last_available)
         elif currency == self.base_currency:
@@ -110,6 +112,8 @@ class Cash(Currency):
         currency_quotes = self.currency_timeseries.quotes
         if len(currency) != 3:
             return np.nan
+        if self.currency == self.base_currency:
+            return 1
         if currency == self.currency:
             return currency_quotes.get_values(index=date, last_available=last_available)
         elif currency == self.base_currency:
@@ -128,6 +132,8 @@ class Cash(Currency):
         currency_quotes = self.currency_timeseries.quotes
         if currency == self.base_currency:
             price = 1/currency_quotes.get_values(index=date, last_available=last_available)
+        elif self.currency == self.base_currency:
+            price = 1
         else:
             price = currency_quotes.get_values(index=date, last_available=last_available)
 

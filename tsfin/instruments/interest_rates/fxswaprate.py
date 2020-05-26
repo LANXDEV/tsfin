@@ -15,17 +15,17 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Time Series Finance (tsfin). If not, see <https://www.gnu.org/licenses/>.
 """
-A class for modelling interest rate swaps.
+A class for modelling FX swaps.
 """
 import QuantLib as ql
 import numpy as np
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
-from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_rate_index, to_ql_date
-from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, FIXED_LEG_TENOR, INDEX, \
-    INDEX_TENOR
+from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_date
+from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, TENOR_PERIOD, FIXING_DAYS, COUNTRY, \
+    BASE_CURRENCY, BASE_CALENDAR
 
 
-class SwapRate(BaseInterestRate):
+class FxSwapRate(BaseInterestRate):
     """ Model for rolling interest rate swap rates (fixed tenor, like the ones quoted in Bloomberg).
 
     Parameters
@@ -36,30 +36,25 @@ class SwapRate(BaseInterestRate):
     ----
     See the :py:mod:`constants` for required attributes in `timeseries` and their possible values.
     """
-    def __init__(self, timeseries):
+    def __init__(self, timeseries, currency_ts):
         super().__init__(timeseries)
         self._maturity = None
         # Swap Database Attributes
-        self._index_tenor = ql.PeriodParser.parse(self.ts_attributes[INDEX_TENOR])
-        self.fixed_business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
-        self.settlement_days = int(self.ts_attributes[SETTLEMENT_DAYS])
-        self.fixed_calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
-        self.fixed_leg_tenor = ql.PeriodParser.parse(self.ts_attributes[FIXED_LEG_TENOR])
-        self.fixed_leg_day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
-        # QuantLib Objects
-        self.index = to_ql_rate_index(self.ts_attributes[INDEX], self._index_tenor, self.term_structure)
-        # QuantLib Attributes
-        self.calendar = ql.JointCalendar(self.fixed_calendar, self.index.fixingCalendar())
-        self.day_counter = self.index.dayCounter()
-        self.business_convention = self.index.businessDayConvention()
-        self.fixing_days = self.index.fixingDays()
-        self.month_end = self.index.endOfMonth()
-        # Swap Index
-        self.swap_index = ql.SwapIndex(self.ts_name, self._tenor, self.settlement_days, self.currency, self.calendar,
-                                       self.fixed_leg_tenor, self.fixed_business_convention, self.fixed_leg_day_counter,
-                                       self.index)
+        self.currency_ts = currency_ts
+        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
+        self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
+        self.base_currency = self.ts_attributes[BASE_CURRENCY]
+        self.base_calendar = to_ql_calendar(self.ts_attributes[BASE_CALENDAR])
+        self.country = self.ts_attributes[COUNTRY]
+        self.month_end = False
         # Rate Helper
+        self.currency_spot_rate = ql.SimpleQuote(1)
+        self.currency_spot_handle = ql.RelinkableQuoteHandle(self.currency_spot_rate)
         self.helper_rate = ql.SimpleQuote(0)
+        self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
 
     def is_expired(self, date, *args, **kwargs):
@@ -97,8 +92,20 @@ class SwapRate(BaseInterestRate):
         date = to_ql_date(date)
         if self.is_expired(date, **other_args):
             return None
-        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        fx_spot = self.currency_ts.price.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if np.isnan(fx_spot):
+            return None
+        self.currency_spot_rate.setValue(fx_spot)
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)/10000
         if np.isnan(rate):
             return None
         self.helper_rate.setValue(float(rate))
-        return ql.SwapRateHelper(ql.QuoteHandle(self.helper_rate), self.swap_index)
+        return ql.FxSwapRateHelper(ql.QuoteHandle(self.helper_rate),
+                                   self.currency_spot_handle,
+                                   self._tenor,
+                                   self.fixing_days,
+                                   self.calendar,
+                                   self.business_convention,
+                                   self.month_end,
+                                   True,
+                                   self.term_structure)

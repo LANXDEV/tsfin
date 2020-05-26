@@ -23,7 +23,7 @@ from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_frequency, to_ql_weekday, to_ql_option_engine, \
     to_ql_equity_model, to_ql_swaption_engine, to_ql_short_rate_model
 from tsfin.instruments.interest_rates import DepositRate, ZeroRate, OISRate, SwapRate, Swaption, CDSRate, \
-    EurodollarFuture, DepositRateFuture
+    EurodollarFuture, DepositRateFuture, FxSwapRate
 from tsfin.instruments.equities import Equity, EquityOption
 from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond
 from tsfin.instruments import CurrencyFuture, Currency, Cash
@@ -31,10 +31,10 @@ from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackSchol
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, CONTINGENTCONVERTIBLE, EXCHANGE_TRADED_FUND,\
-    INSTRUMENT, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH, CURRENCY
+    INSTRUMENT, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH, CURRENCY, BASE_CURRENCY, NDF
 
 
-def generate_instruments(ts_collection, indexes=None, index_curves=None):
+def generate_instruments(ts_collection, indexes=None, index_curves=None, currencies=None):
     """ Given a collection of :py:obj:`TimeSeries`, instantiate instruments with each one of them.
 
     If an element is not an instance of :py:class:`TimeSeries`, does nothing with it.
@@ -50,6 +50,8 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
         (e.g.: libor3m, CDI), in the INDEX attribute of a time series. `index_yield_curve_time_series` is a
         :py:obj:`YieldCurveTimeSeries` representing the yield curve of the index. This is currently
         needed only for floating rate bonds. Default is None.
+    :param currencies: dict, optional
+        Dictionary with {currency_pair: currency_time_series}
 
     :return: :py:obj:`TimeSeriesCollection`
         Time series collection with the created instruments.
@@ -86,6 +88,10 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None):
                 instrument_list.append(ts)
                 continue
 
+        elif ts_type == NDF:
+            currency_pair = f'{ts.get_attribute(BASE_CURRENCY)}{ts.get_attribute(CURRENCY)} CURNCY'
+            currency_ts = currencies[currency_pair]
+            instrument = FxSwapRate(ts, currency_ts)
         elif ts_type == DEPOSIT_RATE:
             instrument = DepositRate(ts)
         elif ts_type == DEPOSIT_RATE_FUTURE:
@@ -716,7 +722,7 @@ def create_cash_instrument(name, currency, currency_ts):
         The currency TimeSeries
     :return: :py:obj:'Cash'
     """
-    base_attributes = ['CURRENCY', 'BASE_CURRENCY', 'CALENDAR', 'BASE_CALENDAR', 'COUNTRY']
+    base_attributes = ['CURRENCY', 'BASE_CURRENCY', 'CALENDAR', 'BASE_CALENDAR', 'COUNTRY', 'TYPE']
     new_ts = TimeSeries(f'{name.upper()}_{currency.upper()}')
     for attribute in base_attributes:
         new_ts.ts_attributes[attribute] = currency_ts.ts_attributes[attribute]

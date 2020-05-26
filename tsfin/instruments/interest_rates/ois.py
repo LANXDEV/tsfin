@@ -18,8 +18,9 @@
 A class for modelling OIS (Overnight Indexed Swap) rates.
 """
 import QuantLib as ql
+import numpy as np
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
-from tsfin.base import to_ql_rate_index
+from tsfin.base import to_ql_rate_index, to_ql_date
 from tsfin.constants import SETTLEMENT_DAYS, INDEX, PAYMENT_LAG, INDEX_TENOR
 
 
@@ -47,11 +48,34 @@ class OISRate(BaseInterestRate):
         self.month_end = self.index.endOfMonth()
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(0)
-        self.helper_spread = ql.SimpleQuote(0)
-        self.helper_convexity = ql.SimpleQuote(0)
 
-    def set_rate_helper(self):
+    def rate_helper(self, date, last_available=True, spread=None, sigma=None, mean=None, **other_args):
+        """Helper for yield curve construction.
 
-        if self._rate_helper is None:
-            self._rate_helper = ql.OISRateHelper(self.settlement_days, self._tenor, ql.QuoteHandle(self.helper_rate),
-                                                 self.index, self.term_structure, self.telescopic_value_dates)
+        :param date: QuantLib.Date
+            Reference date.
+        :param last_available: bool, optional
+            Whether to use last available quotes if missing data.
+        :param spread: float
+            Rate Spread
+        :param sigma: :py:obj:`TimeSeries`
+            The timeseries of the sigma, used for convexity calculation
+        :param mean: :py:obj:`TimeSeries`
+            The timeseries of the mean, used for convexity calculation
+        :return QuantLib.RateHelper
+            Rate helper for yield curve construction.
+        """
+        # Returns None if impossible to obtain a rate helper from this time series
+        date = to_ql_date(date)
+        if self.is_expired(date, **other_args):
+            return None
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if np.isnan(rate):
+            return None
+        self.helper_rate.setValue(float(rate))
+        return ql.OISRateHelper(self.settlement_days,
+                                self._tenor,
+                                ql.QuoteHandle(self.helper_rate),
+                                self.index,
+                                self.term_structure,
+                                self.telescopic_value_dates)

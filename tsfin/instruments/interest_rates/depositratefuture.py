@@ -18,50 +18,57 @@
 DepositRate class, to represent deposit rates.
 """
 import QuantLib as ql
-from tsfin.constants import CALENDAR, MATURITY_DATE, BUSINESS_CONVENTION, DAY_COUNTER, FIXING_DAYS
+import numpy as np
+from tsfin.constants import CALENDAR, MATURITY_DATE, BUSINESS_CONVENTION, DAY_COUNTER, FIXING_DAYS, SPREAD_TAG
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
-from tsfin.base import to_ql_business_convention, to_ql_calendar, to_ql_day_counter, to_ql_date
+from tsfin.base import to_ql_business_convention, to_ql_calendar, to_ql_day_counter, to_ql_date, to_ql_ibor_index
 
 
 class DepositRateFuture(BaseInterestRate):
-    def __init__(self, timeseries, is_deposit_rate=True):
-        super().__init__(timeseries, is_deposit_rate=is_deposit_rate)
+    def __init__(self, timeseries, telescopic_value_dates=True):
+        super().__init__(timeseries, telescopic_value_dates=telescopic_value_dates)
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
         self._maturity = to_ql_date(self.ts_attributes[MATURITY_DATE])
         self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
         self.month_end = False
+        self.index = to_ql_ibor_index(index=self.ts_attributes[SPREAD_TAG], fixing_days=self.fixing_days,
+                                      currency=self.currency, calendar=self.calendar, day_counter=self.day_counter,
+                                      overnight_index=True)
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(0)
-        self.helper_spread = ql.SimpleQuote(0)
-        self.helper_convexity = ql.SimpleQuote(0)
 
-    def set_rate_helper(self):
-        if self._rate_helper is None:
-            self._rate_helper = ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate), self._tenor, self.fixing_days,
-                                                     self.calendar, self.business_convention, self.month_end,
-                                                     self.day_counter)
+    def rate_helper(self, date, last_available=True, spread=None, sigma=None, mean=None, **other_args):
+        """Helper for yield curve construction.
 
-    def _get_fixing_maturity_dates(self, start_date, end_date, fixing_at_start_date=False):
-        start_date = self.calendar.adjust(start_date, self.business_convention)
-        end_date = self.calendar.adjust(end_date, self.business_convention)
-        fixing_dates = list()
-        maturity_dates = list()
-        if fixing_at_start_date:
-            fixing_date = start_date
-        else:
-            fixing_date = self.calendar.advance(start_date, -self.fixing_days, ql.Days, self.business_convention,
-                                                self.month_end)
-        value_date = self.calendar.advance(fixing_date, self.fixing_days, ql.Days, self.business_convention,
-                                           self.month_end)
-        maturity_date = self.calendar.advance(value_date, self._tenor, self.business_convention, self.month_end)
-        while maturity_date < end_date:
-            fixing_dates.append(fixing_date)
-            maturity_dates.append(maturity_date)
-            fixing_date = self.calendar.advance(maturity_date, -self.fixing_days, ql.Days, self.business_convention,
-                                                self.month_end)
-            maturity_date = self.calendar.advance(maturity_date, self._tenor, self.business_convention, self.month_end)
-        fixing_dates.append(fixing_date)
-        maturity_dates.append(end_date)
-        return fixing_dates, maturity_dates
+        :param date: QuantLib.Date
+            Reference date.
+        :param last_available: bool, optional
+            Whether to use last available quotes if missing data.
+        :param spread: float
+            Rate Spread
+        :param sigma: :py:obj:`TimeSeries`
+            The timeseries of the sigma, used for convexity calculation
+        :param mean: :py:obj:`TimeSeries`
+            The timeseries of the mean, used for convexity calculation
+        :return QuantLib.RateHelper
+            Rate helper for yield curve construction.
+        """
+        # Returns None if impossible to obtain a rate helper from this time series
+        date = to_ql_date(date)
+        if self.is_expired(date, **other_args):
+            return None
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if np.isnan(rate):
+            return None
+        time = self.day_counter.yearFraction(date, self.maturity(date))
+        rate = ql.InterestRate(rate, self.day_counter, self.compounding, self.frequency)
+        self.helper_rate.setValue(rate.equivalentRate(ql.Simple, ql.Annual, time).rate())
+        return ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate),
+                                    ql.Period(self.day_counter.dayCount(date, self._maturity), ql.Days),
+                                    self.fixing_days,
+                                    self.calendar,
+                                    self.business_convention,
+                                    self.month_end,
+                                    self.day_counter)

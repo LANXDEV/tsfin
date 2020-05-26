@@ -5,3 +5,4 @@ from tsfin.curves.cdscurve import CDSCurveTimeSeries
 from tsfin.curves.spread_yield_curves import SingleSpreadYieldCurveTimeSeries, InterpolatedSpreadYieldCurveTimeSeries
 from tsfin.curves.impliedcurve import ImpliedYieldCurveTimeSeries
 from tsfin.curves.spread_handle import SpreadHandle
+from tsfin.curves.fxyieldcurve import FxYieldCurveTimeSeries
