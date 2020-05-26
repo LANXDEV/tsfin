@@ -307,8 +307,8 @@ def to_ql_rate_index(index, tenor=None, yield_curve_handle=ql.YieldTermStructure
         return ql.Eonia(tenor, yield_curve_handle)
 
 
-def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
-                     yield_curve_handle):
+def to_ql_ibor_index(index, tenor=None, fixing_days=None, currency=None, calendar=None, business_convention=None,
+                     end_of_month=None, day_counter=None, yield_curve_handle=None, overnight_index=False):
     """Generic constructor of a QuantLib.Index. Mostly useful when you have to create custom calendars.
 
     :param index: str
@@ -332,6 +332,10 @@ def to_ql_ibor_index(index, tenor, fixing_days, currency, calendar, business_con
     :return QuantLib.IborIndex
 
     """
+    if yield_curve_handle is None:
+        yield_curve_handle = ql.YieldTermStructureHandle()
+    if overnight_index:
+        return ql.OvernightIndex(index, fixing_days, currency, calendar, day_counter, yield_curve_handle)
     return ql.IborIndex(index, tenor, fixing_days, currency, calendar, business_convention, end_of_month, day_counter,
                         yield_curve_handle)
 

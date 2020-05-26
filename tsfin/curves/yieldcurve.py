@@ -396,8 +396,7 @@ class YieldCurveTimeSeries:
         """
         to_date = to_ql_date(to_date)
         day_counter = day_counter if day_counter is not None else self.day_counter
-        return self.yield_curve(date).zeroRate(to_date, day_counter, compounding, frequency,
-                                               extrapolate).rate()
+        return self.yield_curve(date).zeroRate(to_date, day_counter, compounding, frequency, extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date')
     def spreaded_zero_rate_to_date(self, date, to_date, compounding, frequency, spread_dict, extrapolate=True,

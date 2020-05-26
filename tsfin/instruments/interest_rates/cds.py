@@ -97,15 +97,6 @@ class CDSRate(BaseInterestRate):
         self.month_end = False
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(0)
-        self.helper_spread = ql.SimpleQuote(0)
-        self.helper_convexity = ql.SimpleQuote(0)
-
-    def set_rate_helper(self):
-
-        if self._rate_helper is None:
-            self._rate_helper = ql.SpreadCdsHelper(ql.QuoteHandle(self.helper_rate), self._tenor, 0, self.calendar,
-                                                   self.frequency, self.business_convention, self.date_generation,
-                                                   self.day_counter, self.recovery_rate, self.term_structure)
 
     @cds_default_values
     def security(self, date, cds_curve_time_series, spread_rate, recovery_rate, first_accrual_date, side, notional,
@@ -158,14 +149,21 @@ class CDSRate(BaseInterestRate):
         rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
         if np.isnan(rate):
             return None
-        self.helper_rate.setValue(rate)
         self.link_to_term_structure(date=date, yield_curve=base_yield_curve)
-        self.set_rate_helper()
-        return self._rate_helper
+        self.helper_rate.setValue(float(rate))
+        return ql.SpreadCdsHelper(ql.QuoteHandle(self.helper_rate),
+                                  self._tenor,
+                                  0,
+                                  self.calendar,
+                                  self.frequency,
+                                  self.business_convention,
+                                  self.date_generation,
+                                  self.day_counter,
+                                  self.recovery_rate,
+                                  self.term_structure)
 
-    def credit_default_swap(self, first_accrual_date, side, notional, spread_rate, maturity, frequency,
-                            calendar, business_convention, date_generation, day_counter, upfront_price=None,
-                            *args, **kwargs):
+    def credit_default_swap(self, first_accrual_date, side, notional, spread_rate, maturity, frequency, calendar,
+                            business_convention, date_generation, day_counter, upfront_price=None, *args, **kwargs):
 
         """
         :param first_accrual_date: pd.Datetime or QuantLib.Date
@@ -207,9 +205,9 @@ class CDSRate(BaseInterestRate):
 
     @conditional_vectorize('date', 'spread_rate')
     @cds_default_values
-    def net_present_value(self, date, spread_rate, cds_curve_time_series, recovery_rate, first_accrual_date,
-                          side, notional, maturity, upfront_price, frequency, calendar, business_convention,
-                          date_generation, day_counter, engine_name='MID_POINT', *args, **kwargs):
+    def net_present_value(self, date, spread_rate, cds_curve_time_series, recovery_rate, first_accrual_date, side,
+                          notional, maturity, upfront_price, frequency, calendar, business_convention, date_generation,
+                          day_counter, engine_name='MID_POINT', *args, **kwargs):
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date
@@ -254,9 +252,9 @@ class CDSRate(BaseInterestRate):
 
     @conditional_vectorize('date', 'spread_rate')
     @cds_default_values
-    def cds_spread(self, date, spread_rate, cds_curve_time_series, recovery_rate, first_accrual_date,
-                   side, notional, maturity, upfront_price, frequency, calendar, business_convention,
-                   date_generation, day_counter, engine_name='MID_POINT', *args, **kwargs):
+    def cds_spread(self, date, spread_rate, cds_curve_time_series, recovery_rate, first_accrual_date, side, notional,
+                   maturity, upfront_price, frequency, calendar, business_convention, date_generation, day_counter,
+                   engine_name='MID_POINT', *args, **kwargs):
         """
         :param date: pd.Datetime or QuantLib.Date
             Reference Date

@@ -57,15 +57,7 @@ class EurodollarFuture(BaseInterestRate):
         self.futures_type = ql.Futures.IMM
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(100)
-        self.helper_spread = ql.SimpleQuote(0)
         self.helper_convexity = ql.SimpleQuote(0)
-
-    def set_rate_helper(self):
-
-        if self._rate_helper is None:
-            self._rate_helper = ql.FuturesRateHelper(ql.QuoteHandle(self.helper_rate), self.interest_start_date,
-                                                     self.index, ql.QuoteHandle(self.helper_convexity),
-                                                     self.futures_type)
 
     def is_expired(self, date, min_future_tenor=None, max_future_tenor=None, *args, **kwargs):
         """Check if the deposit rate is expired.
@@ -150,3 +142,34 @@ class EurodollarFuture(BaseInterestRate):
         value = self.value(quote=quote, date=date)
 
         return (value / start_value) - 1
+
+    def rate_helper(self, date, last_available=True, spread=None, sigma=None, mean=None, **other_args):
+        """Helper for yield curve construction.
+
+        :param date: QuantLib.Date
+            Reference date.
+        :param last_available: bool, optional
+            Whether to use last available quotes if missing data.
+        :param spread: float
+            Rate Spread
+        :param sigma: :py:obj:`TimeSeries`
+            The timeseries of the sigma, used for convexity calculation
+        :param mean: :py:obj:`TimeSeries`
+            The timeseries of the mean, used for convexity calculation
+        :return QuantLib.RateHelper
+            Rate helper for yield curve construction.
+        """
+        # Returns None if impossible to obtain a rate helper from this time series
+        if self.is_expired(date, **other_args):
+            return None
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if np.isnan(rate):
+            return None
+        date = to_ql_date(date)
+        self.helper_rate.setValue(float(rate))
+        self.convexity_bias(date=date, future_price=rate, sigma=sigma, mean=mean)
+        return ql.FuturesRateHelper(ql.QuoteHandle(self.helper_rate),
+                                    self.interest_start_date,
+                                    self.index,
+                                    ql.QuoteHandle(self.helper_convexity),
+                                    self.futures_type)

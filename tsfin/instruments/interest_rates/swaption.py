@@ -18,8 +18,9 @@
 A class for modelling interest rate swaption.
 """
 import QuantLib as ql
+import numpy as np
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
-from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_rate_index
+from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_rate_index, to_ql_date
 from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, SETTLEMENT_DAYS, FIXED_LEG_TENOR, INDEX, \
     MATURITY_TENOR, INDEX_TENOR
 
@@ -47,15 +48,6 @@ class Swaption(BaseInterestRate):
         self.month_end = self.index.endOfMonth()
         # Rate Helper
         self.helper_rate = ql.SimpleQuote(0)
-        self.helper_spread = ql.SimpleQuote(0)
-        self.helper_convexity = ql.SimpleQuote(0)
-
-    def set_rate_helper(self):
-
-        if self._rate_helper is None:
-            self._rate_helper = ql.SwaptionHelper(self.maturity_tenor, self._tenor, ql.QuoteHandle(self.helper_rate),
-                                                  self.index, self.fixed_leg_tenor, self.fixed_leg_day_counter,
-                                                  self.index.dayCounter(), self.term_structure)
 
     def is_expired(self, date, *args, **kwargs):
         """ Returns False.
@@ -71,3 +63,36 @@ class Swaption(BaseInterestRate):
             Always False.
         """
         return False
+
+    def rate_helper(self, date, last_available=True, spread=None, sigma=None, mean=None, **other_args):
+        """Helper for yield curve construction.
+
+        :param date: QuantLib.Date
+            Reference date.
+        :param last_available: bool, optional
+            Whether to use last available quotes if missing data.
+        :param spread: float
+            Rate Spread
+        :param sigma: :py:obj:`TimeSeries`
+            The timeseries of the sigma, used for convexity calculation
+        :param mean: :py:obj:`TimeSeries`
+            The timeseries of the mean, used for convexity calculation
+        :return QuantLib.RateHelper
+            Rate helper for yield curve construction.
+        """
+        # Returns None if impossible to obtain a rate helper from this time series
+        date = to_ql_date(date)
+        if self.is_expired(date, **other_args):
+            return None
+        rate = self.quotes.get_values(index=date, last_available=last_available, fill_value=np.nan)
+        if np.isnan(rate):
+            return None
+        self.helper_rate.setValue(float(rate))
+        return ql.SwaptionHelper(self.maturity_tenor,
+                                 self._tenor,
+                                 ql.QuoteHandle(self.helper_rate),
+                                 self.index,
+                                 self.fixed_leg_tenor,
+                                 self.fixed_leg_day_counter,
+                                 self.index.dayCounter(),
+                                 self.term_structure)
