@@ -70,13 +70,6 @@ class BaseInterestRate(Instrument):
         # Defined
         self._rate_helper = None
 
-    def _rate_helper(self, date=None, rate=None, sigma=None, mean=None, **kwargs):
-        """ Defines the rate helper of the Class, to be overridden in the child Class
-
-        :return:
-        """
-        return None
-
     def link_to_term_structure(self, date, yield_curve):
         """ link a yield curve to self.term_structure
 

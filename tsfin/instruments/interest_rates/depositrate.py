@@ -49,14 +49,6 @@ class DepositRate(BaseInterestRate):
         self.helper_convexity = ql.SimpleQuote(0)
         # Defined
 
-    def _rate_helper(self, date=None, rate=None, sigma=None, mean=None, **kwargs):
-
-        time = self.day_counter.yearFraction(date, self.maturity(date))
-        rate = ql.InterestRate(rate, self.day_counter, self.compounding,
-                               self.frequency).equivalentRate(ql.Simple, ql.Annual, time).rate()
-        self.helper_rate.setValue(rate)
-        return ql.DepositRateHelper(ql.QuoteHandle(self.helper_rate), self.index)
-
     @conditional_vectorize('date')
     def value(*args, **kwargs):
         """Returns zero.
