@@ -23,7 +23,7 @@ from functools import wraps
 from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.constants import CALENDAR, MATURITY_DATE, DAY_COUNTER, EXERCISE_TYPE, OPTION_TYPE, STRIKE_PRICE, \
     UNDERLYING_INSTRUMENT, CONTRACT_SIZE, EARLIEST_DATE, PAYOFF_TYPE, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, \
-    HESTON, GJR_GARCH, MID_PRICE, IMPLIED_VOL, UNADJUSTED_PRICE, DIVIDEND_YIELD
+    HESTON, GJR_GARCH, MID_PRICE, IMPLIED_VOL, UNADJUSTED_PRICE, DIVIDEND_YIELD, FIXING_DAYS
 from tsfin.base import Instrument, to_ql_date, conditional_vectorize, to_ql_calendar, to_ql_day_counter, to_datetime, \
     to_list, to_ql_option_type, to_ql_one_asset_option, to_ql_option_payoff, to_ql_option_engine, \
     to_ql_option_exercise_type
@@ -112,6 +112,8 @@ def option_default_values(f):
             kwargs['engine_name'] = self.engine_name
         # Date setup
         search_date = kwargs['base_date'] if kwargs['date'] > kwargs['base_date'] else kwargs['date']
+        if search_date == self._maturity:
+            search_date = self.calendar.advance(search_date, self.fixing_days, ql.Days, ql.Preceding)
         if kwargs.get('last_available', None) is None:
             kwargs['last_available'] = True
         last = kwargs['last_available']
@@ -157,6 +159,10 @@ class EquityOption(Instrument):
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.exercise_type = self.ts_attributes[EXERCISE_TYPE]
         self.underlying_name = self.ts_attributes[UNDERLYING_INSTRUMENT]
+        try:
+            self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
+        except KeyError:
+            self.fixing_days = 0
         try:
             self.earliest_date = to_ql_date(self.ts_attributes[EARLIEST_DATE])
         except KeyError:
@@ -327,7 +333,7 @@ class EquityOption(Instrument):
             The unit dirty value of the instrument.
         """
         size = self.contract_size
-        if quote is not None:
+        if quote is not None and not np.isnan(quote):
             return float(quote)*size
         else:
             price = self.price(date=date, base_date=base_date, dividend_tax=dividend_tax,
@@ -415,15 +421,11 @@ class EquityOption(Instrument):
         if date > self._maturity:
             return 0
         else:
-            intrinsic = 0
             if self.option_type == 'CALL':
                 intrinsic = spot_price - self.strike
-            elif self.option_type == 'PUT':
-                intrinsic = self.strike - spot_price
-            if intrinsic < 0:
-                return 0
             else:
-                return intrinsic
+                intrinsic = self.strike - spot_price
+            return max([intrinsic, 0])
     
     def ts_mid_price(self, date, last_available=True, fill_value=np.nan):
 
@@ -498,7 +500,7 @@ class EquityOption(Instrument):
             try:
                 implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
             except RuntimeError:
-                option_price += 0.01
+                option_price += 0.05
                 implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
 
         self._implied_volatility[date].setValue(implied_vol)
@@ -593,7 +595,7 @@ class EquityOption(Instrument):
             self.volatility_update(date=date, base_date=base_date, spot_price=spot_price, dividend_yield=dividend_yield,
                                    dividend_tax=dividend_tax, volatility=volatility,
                                    base_equity_process=base_equity_process, **kwargs)
-        return self.option.NPV()
+            return self.option.NPV()
 
     @conditional_vectorize('spot_price')
     @option_default_values

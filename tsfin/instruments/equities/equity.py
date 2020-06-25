@@ -19,8 +19,9 @@ Equity class, to represent Equities and Exchange Traded Funds.
 """
 import numpy as np
 import QuantLib as ql
-from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, DIVIDEND_YIELD, DIVIDENDS
-from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, conditional_vectorize
+from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, DIVIDEND_YIELD, \
+    DIVIDENDS, CURRENCY
+from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_calendar, conditional_vectorize, to_ql_currency
 
 
 class Equity(Instrument):
@@ -35,6 +36,7 @@ class Equity(Instrument):
 
     def __init__(self, timeseries):
         super().__init__(timeseries=timeseries)
+        self.currency = to_ql_currency(self.ts_attributes[CURRENCY])
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         try:
             self.underlying_name = self.ts_attributes[UNDERLYING_INSTRUMENT]
@@ -131,7 +133,7 @@ class Equity(Instrument):
         return dividends*(1-float(tax_adjust))
 
     @conditional_vectorize('date')
-    def value(self, date, last_available=False, dividend_adjusted=False, *args, **kwargs):
+    def value(self, date, last_available=False, *args, **kwargs):
         """Try to deduce dirty value for a unit of the time series (as a financial instrument).
 
         :param date: date-like, optional
@@ -143,7 +145,7 @@ class Equity(Instrument):
         :return scalar, None
             The unit dirty value of the instrument.
         """
-        quotes = self.spot_prices(dividend_adjusted=dividend_adjusted)
+        quotes = self.spot_prices(dividend_adjusted=False)
         date = to_datetime(date)
         if last_available:
             return quotes(index=date, last_available=last_available)
@@ -189,7 +191,7 @@ class Equity(Instrument):
             If true it will use the adjusted price for calculation.
         :return scalar, None
         """
-        quotes = self.spot_prices(dividend_adjusted=dividend_adjusted)
+        quotes = self.spot_prices(dividend_adjusted=False)
 
         first_available_date = quotes.ts_values.first_valid_index()
         if start_date is None:
