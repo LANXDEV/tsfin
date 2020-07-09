@@ -957,12 +957,21 @@ class _BaseBond(Instrument):
         if quote_type is None:
             quote_type = self.quote_type
         if quote_type == CLEAN_PRICE:
-            return bond.bondYield(quote, day_counter, compounding, frequency, settlement_date)
+            for exponent in range(4):
+                accuracy = 1.0e-8*(10**exponent)
+                try:
+                    return bond.bondYield(quote, day_counter, compounding, frequency, settlement_date, accuracy)
+                except RuntimeError:
+                    pass
         elif quote_type == DIRTY_PRICE:
             clean_quote = quote - self.accrued_interest(last=last, date=settlement_date, **kwargs)
-            return bond.bondYield(clean_quote, day_counter, compounding, frequency, settlement_date)
+            for exponent in range(4):
+                accuracy = 1.0e-8*(10**exponent)
+                try:
+                    return bond.bondYield(clean_quote, day_counter, compounding, frequency, settlement_date, accuracy)
+                except RuntimeError:
+                    pass
         elif quote_type == YIELD:
-            # TODO: This part needs testing.
             interest_rate = ql.InterestRate(quote, self.day_counter, self.yield_quote_compounding,
                                             self.yield_quote_frequency)
             return interest_rate.equivalentRate(compounding, frequency, 1)
