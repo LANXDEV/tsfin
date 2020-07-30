@@ -191,7 +191,7 @@ class Equity(Instrument):
             If true it will use the adjusted price for calculation.
         :return scalar, None
         """
-        quotes = self.spot_prices(dividend_adjusted=False)
+        quotes = self.spot_prices(dividend_adjusted=dividend_adjusted)
 
         first_available_date = quotes.ts_values.first_valid_index()
         if start_date is None:

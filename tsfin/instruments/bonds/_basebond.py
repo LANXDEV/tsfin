@@ -414,6 +414,22 @@ class _BaseBond(Instrument):
     @default_arguments
     @conditional_vectorize('date')
     def settlement_date(self, date, calendar, settlement_days, business_convention, *args, **kwargs):
+        """
+
+        date: QuantLib.Date
+            The trade date
+        calendar: QuantLib.Calendar
+            The bond calendar
+        settlement_days: int
+            The number of settlement days
+        business_convention: QuantLib.BusinessConvention
+            The date adjustment business convention
+
+        Returns
+        -------
+        QuantLib.Date
+            The settlement date of the bond
+        """
 
         return calendar.advance(to_ql_date(date), ql.Period(int(settlement_days), ql.Days), business_convention)
 
