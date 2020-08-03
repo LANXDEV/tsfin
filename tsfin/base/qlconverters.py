@@ -121,7 +121,9 @@ def to_ql_calendar(arg):
     elif arg.upper() == "BZ":
         return ql.Brazil(ql.Brazil.Settlement)
     elif arg.upper() == "B2":
-        return ql.Brazil(ql.Brazil.Exchange)
+        bz_calendar = ql.Brazil(ql.Brazil.Exchange)
+        bz_calendar.removeHoliday(ql.Date(9, 7, 2020))
+        return bz_calendar
     elif arg.upper() in ["TE", 'TARGET']:
         return ql.TARGET()
     elif arg.upper() in ['C%', 'C+']:
