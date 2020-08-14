@@ -265,11 +265,6 @@ class BaseInterestRate(Instrument):
         while maturity_date < end_date:
             fixing_dates.append(fixing_date)
             maturity_dates.append(maturity_date)
-            if maturity_date == value_date:
-                maturity_date = self.calendar.advance(maturity_date,
-                                                      ql.Period(1, ql.Days),
-                                                      self.business_convention,
-                                                      self.month_end)
             fixing_date = self.fixing_date(maturity_date)
             value_date = self.value_date(fixing_date)
             maturity_date = self.maturity(value_date)
@@ -312,17 +307,12 @@ class BaseInterestRate(Instrument):
         if spread is not None:
             fixings += spread
 
-        interest = list()
-        for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates):
-            value_date = self.value_date(fixing_date)
-            if value_date <= maturity_date:
-                if value_date == maturity_date:
-                    value_date = fixing_date
-                interest.append(ql.InterestRate(
-                    fixing, self.day_counter, self.compounding, self.frequency).compoundFactor(
-                    value_date, maturity_date, start_date, date))
-
-        return np.prod(interest) - 1
+        return np.prod([
+            ql.InterestRate(fixing, self.day_counter, self.compounding, self.frequency).compoundFactor(
+                self.value_date(fixing_date), maturity_date, start_date, date)
+            for fixing, fixing_date, maturity_date in zip(fixings, fixing_dates, maturity_dates)
+            if self.value_date(fixing_date) <= maturity_date
+        ]) - 1
 
     def rate_helper(self, date, last_available=True, spread=None, sigma=None, mean=None, **other_args):
         """Helper for yield curve construction.
