@@ -47,11 +47,14 @@ def to_datetime(arg):
             return pd.to_datetime(arg)
     else:
         # arg is not vectorizable.
-        try:
-            # Works if arg is a ql.Date object.
-            return datetime(day=arg.dayOfMonth(), month=arg.month(), year=arg.year())
-        except AttributeError:
-            return pd.to_datetime(arg)
+        if isinstance(arg, datetime):
+            return arg
+        else:
+            try:
+                # Works if arg is a ql.Date object.
+                return datetime(day=arg.dayOfMonth(), month=arg.month(), year=arg.year())
+            except AttributeError:
+                return pd.to_datetime(arg)
 
 
 def collapse_intraday_ts_values(ts_list, initial_date=None, final_date=None):
