@@ -111,8 +111,11 @@ class Equity(Instrument):
             Return the ex-date, pay-date and dividend value
         """
         ts_dividends = self._dividends_to_date(start_date=start_date, date=date, *args, **kwargs)
-        return list((to_ql_date(date), to_ql_date(to_datetime(value[0])), value[1]*(1-float(tax_adjust)))
-                    for date, value in ts_dividends.iteritems())
+        return [
+            (to_ql_date(dvd_date), to_ql_date(dividend[0]), dividend[1]*(1-float(tax_adjust)))
+            for dvd_date, dividends in ts_dividends.iteritems()
+            for dividend in dividends
+        ]
 
     @conditional_vectorize('start_date', 'date')
     def cash_to_date(self, start_date, date, tax_adjust=0, *args, **kwargs):
@@ -127,10 +130,11 @@ class Equity(Instrument):
         :return float
         """
         ts_dividends = self._dividends_to_date(start_date=start_date, date=date, *args, **kwargs)
-        dividends = 0
-        for date, value in ts_dividends.iteritems():
-            dividends += value[1]
-        return dividends*(1-float(tax_adjust))
+        total_dividends = 0
+        for date, dividends in ts_dividends.iteritems():
+            for dividend in dividends:
+                total_dividends += dividend[1]
+        return total_dividends*(1-float(tax_adjust))
 
     @conditional_vectorize('date')
     def value(self, date, last_available=False, *args, **kwargs):
@@ -140,8 +144,6 @@ class Equity(Instrument):
             The date.
         :param last_available: bool, optional
             Whether to use last available data in case dates are missing in ``quotes``.
-        :param dividend_adjusted: bool
-            If true it will use the adjusted price for calculation.
         :return scalar, None
             The unit dirty value of the instrument.
         """
