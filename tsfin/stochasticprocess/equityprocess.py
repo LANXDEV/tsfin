@@ -19,6 +19,7 @@ A class for modelling volatility processes and its different implementations
 """
 import QuantLib as ql
 import numpy as np
+from collections import namedtuple
 
 
 class BaseEquityProcess:
@@ -89,6 +90,10 @@ class BlackScholes(BaseEquityProcess):
                                       volatility_handle)
 
 
+heston_constants = namedtuple('heston_constants', ['long_term_variance', 'mean_reversion', 'vol_of_vol', 'correlation',
+                                                   'spot_variance'])
+
+
 class Heston(BaseEquityProcess):
     """
     Model for the Heston model used to evaluate options.
@@ -98,28 +103,64 @@ class Heston(BaseEquityProcess):
     :param day_counter: QuantLib.DayCounter
         The option day count used to evaluate the model
     """
-    def __init__(self, calendar=None, day_counter=None, variance_ts=None, kappa_ts=None, theta_ts=None,
-                 sigma_ts=None, rho_ts=None):
+    def __init__(self, calendar=None, day_counter=None, spot_variance_ts=None, mean_reversion_ts=None,
+                 long_term_variance_ts=None, volatility_of_volatility_ts=None, correlation_ts=None):
         super().__init__(calendar=calendar, day_counter=day_counter)
         self.process_name = "HESTON"
         # Heston Model parameters timeseries
-        self.variance_ts = variance_ts  # spot variance
-        self.kappa_ts = kappa_ts  # mean reversion strength
-        self.theta_ts = theta_ts  # mean reversion variance
-        self.sigma_ts = sigma_ts  # volatility of volatility
-        self.rho_ts = rho_ts  # correlation between the asset price and its variance
+        self.spot_variance_ts = spot_variance_ts  # spot variance
+        self.mean_reversion_ts = mean_reversion_ts  # mean reversion strength
+        self.long_term_variance_ts = long_term_variance_ts  # mean reversion variance
+        self.volatility_of_volatility_ts = volatility_of_volatility_ts  # volatility of volatility
+        self.correlation_ts = correlation_ts  # correlation between the asset price and its variance
 
-    def process(self, variance=None, kappa=None, theta=None, sigma=None, rho=None, **kwargs):
+    @staticmethod
+    def volatility_zero_test(kappa, theta, sigma):
+
+        if 2*kappa*theta > sigma**2:
+            return True
+        else:
+            return False
+
+    def process(self, spot_variance=None, mean_reversion=None, long_term_variance=None,
+                volatility_of_volatility=None, correlation=None, discretization=None, **kwargs):
+
+        if discretization is None:
+            discretization = ql.HestonProcess.QuadraticExponentialMartingale
+
         return ql.HestonProcess(self.risk_free_handle, self.dividend_handle, self.spot_price_handle,
-                                variance, kappa, theta, sigma, rho)
+                                spot_variance, mean_reversion, long_term_variance, volatility_of_volatility,
+                                correlation, discretization)
 
     def get_constant_values(self, date, last_available=True, fill_value=np.nan):
-        variance = self.variance_ts.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        kappa = self.kappa_ts.get_values(index=date, last_available=last_available,  fill_value=fill_value)
-        theta = self.theta_ts.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        sigma = self.sigma_ts.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        rho = self.rho_ts.get_values(index=date, last_available=last_available, fill_value=fill_value)
-        return variance, kappa, theta, sigma, rho
+        return heston_constants(self.long_term_variance_ts.get_values(date, last_available, fill_value),
+                                self.mean_reversion_ts.get_values(date, last_available, fill_value),
+                                self.volatility_of_volatility_ts.get_values(date, last_available, fill_value),
+                                self.correlation_ts.get_values(date, last_available, fill_value),
+                                self.spot_variance_ts.get_values(date, last_available, fill_value))
+
+    def heston_black_vol_surface(self, date, spot_volatility=None, spot_variance=None, last_available=True,
+                                 fill_value=np.nan, discretization=None):
+
+        constants = self.get_constant_values(date, last_available, fill_value)
+        if spot_volatility is not None:
+            variance = spot_volatility * spot_volatility
+            long_term_variance = variance
+        elif spot_variance is not None:
+            variance = spot_variance
+            long_term_variance = variance
+        else:
+            variance = constants.spot_variance
+            long_term_variance = constants.long_term_variance
+
+        heston_process = self.process(spot_variance=variance,
+                                      mean_reversion=constants.mean_reversion,
+                                      long_term_variance=long_term_variance,
+                                      volatility_of_volatility=constants.vol_of_vol,
+                                      correlation=constants.correlation,
+                                      discretization=discretization)
+        heston_model = ql.HestonModel(heston_process)
+        return ql.HestonBlackVolSurface(ql.HestonModelHandle(heston_model))
 
 
 class GJRGARCH(BaseEquityProcess):
@@ -154,3 +195,41 @@ class GJRGARCH(BaseEquityProcess):
         q2 = 1 + lambda_value * lambda_value
         m1 = beta + (alpha + gamma * normal_cdf_lambda) * q2 + gamma * lambda_value * n
         return omega / (1 - m1)
+
+
+class Bates(BaseEquityProcess):
+    """
+    Model for the Heston model used to evaluate options.
+
+    :param calendar: QuantLib.Calendar
+        The option calendar used to evaluate the model
+    :param day_counter: QuantLib.DayCounter
+        The option day count used to evaluate the model
+    """
+    def __init__(self, calendar=None, day_counter=None, spot_variance_ts=None, mean_reversion_ts=None,
+                 long_term_variance_ts=None, volatility_of_volatility_ts=None, correlation_ts=None,
+                 bates_lambda_ts=None, bates_nu_ts=None, bates_delta_ts=None):
+        super().__init__(calendar=calendar, day_counter=day_counter)
+        self.process_name = "BATES"
+        # Heston Model parameters timeseries
+        self.spot_variance_ts = spot_variance_ts  # spot variance
+        self.mean_reversion_ts = mean_reversion_ts  # mean reversion strength
+        self.long_term_variance_ts = long_term_variance_ts  # mean reversion variance
+        self.volatility_of_volatility_ts = volatility_of_volatility_ts  # volatility of volatility
+        self.correlation_ts = correlation_ts  # correlation between the asset price and its variance
+
+    @staticmethod
+    def volatility_zero_test(kappa, theta, sigma):
+
+        if 2*kappa*theta > sigma**2:
+            return True
+        else:
+            return False
+
+    def process(self, spot_variance=None, mean_reversion=None, long_term_variance=None,
+                volatility_of_volatility=None, correlation=None, bates_lambda=None, bates_nu=None, bates_delta=None,
+                **kwargs):
+
+        return ql.BatesProcess(self.risk_free_handle, self.dividend_handle, self.spot_price_handle,
+                               spot_variance, mean_reversion, long_term_variance, volatility_of_volatility,
+                               correlation, bates_lambda, bates_nu, bates_delta)
