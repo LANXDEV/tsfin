@@ -18,6 +18,7 @@
 Equity class, to represent Equities and Exchange Traded Funds.
 """
 import numpy as np
+import pandas as pd
 import QuantLib as ql
 from tsfin.constants import CALENDAR, UNDERLYING_INSTRUMENT, TICKER, QUOTES, UNADJUSTED_PRICE, DIVIDEND_YIELD, \
     DIVIDENDS, CURRENCY
@@ -42,6 +43,12 @@ class Equity(Instrument):
             self.underlying_name = self.ts_attributes[UNDERLYING_INSTRUMENT]
         except KeyError:
             self.underlying_name = self.ts_attributes[TICKER]
+        try:
+            prices = getattr(self.timeseries, QUOTES)
+            self.log_returns = np.log(prices.ts_values / prices.ts_values.shift(1))
+            self.log_returns.dropna(inplace=True)
+        except (ValueError, AttributeError):
+            self.log_returns = pd.Series()
 
     def spot_prices(self, dividend_adjusted=False):
         """ Return a the dividend adjusted or unadjusted price series.
