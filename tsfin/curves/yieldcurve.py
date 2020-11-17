@@ -385,8 +385,8 @@ class SimpleYieldCurve:
                                                   extrapolate).rate()
 
     @conditional_vectorize('date', 'to_date', 'to_time')
-    def forward_rate_date_to_time(self, date, to_date, to_time, compounding, frequency, extrapolate=True,
-                                  day_counter=None):
+    def forward_rate_date_to_time(self, date, to_date, to_time, compounding, frequency, to_period=None,
+                                  extrapolate=True, day_counter=None):
         """
         Parameters
         ----------
@@ -400,6 +400,8 @@ class SimpleYieldCurve:
             Compounding convention for the rate.
         frequency: QuantLib.Frequency
             Frequency convention for the rate.
+        to_period: QuantLib.Period, optional
+            The period of the to_time
         extrapolate: bool, optional
             Whether to enable extrapolation.
         day_counter: QuantLib.DayCounter, optional
@@ -412,7 +414,8 @@ class SimpleYieldCurve:
         """
         to_date = to_ql_date(to_date)
         day_counter = day_counter if day_counter is not None else self.day_counter
-        to_date2 = self.calendar.advance(to_date, to_time, ql.Years)
+        to_period = to_period if to_period is not None else ql.Years
+        to_date2 = self.calendar.advance(to_date, to_time, to_period)
         return self.yield_curve(date).forwardRate(to_date, to_date2, day_counter, compounding, frequency,
                                                   extrapolate).rate()
 

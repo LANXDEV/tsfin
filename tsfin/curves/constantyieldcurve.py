@@ -40,7 +40,7 @@ class ConstantYieldCurve(SimpleYieldCurve):
             self.forward_rates = list()
             for t, (forward_rate, forward_date) in enumerate(zip(forward_rates, self.forward_dates)):
                 interest_rate = ql.InterestRate(forward_rate, self.day_counter, self.compounding, ql.Annual)
-                if t ==0:
+                if t == 0:
                     time = 0
                 else:
                     time = self.day_counter.yearFraction(self.forward_dates[t-1], forward_date)
