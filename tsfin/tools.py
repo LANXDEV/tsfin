@@ -415,7 +415,7 @@ def cost_function_generator(model, helpers, norm=False):
 
 def calibrate_ql_model(date, model_name, model, helpers, initial_conditions=None, use_scipy=False, solver_name=None,
                        bounds=None, max_iteration=1000, max_stationary_state_iteration=200, ql_constraint=None,
-                       ql_weights=None, fix_parameters=None):
+                       ql_weights=None, fix_parameters=None, my_bound=None, show_basin_results=False):
 
     """ Returns the QuantLib model calibrated.
 
@@ -485,17 +485,19 @@ def calibrate_ql_model(date, model_name, model, helpers, initial_conditions=None
             initial_conditions = np.array(initial_conditions)
             if bounds is None:
                 raise print("Please specify the parameters bounds")
-            min_list, max_list = zip(*bounds)
-            my_bound = MyBounds(xmin=list(min_list), xmax=list(max_list))
+            if my_bound is None:
+                min_list, max_list = zip(*bounds)
+                my_bound = MyBounds(xmin=list(min_list), xmax=list(max_list))
             minimizer_kwargs = {'method': 'L-BFGS-B', 'bounds': bounds}
             cost_function = cost_function_generator(model, helpers, norm=True)
             my_step = MyTakeStep(step_size=0.005)
             sol = basinhopping(cost_function, initial_conditions, niter=100, minimizer_kwargs=minimizer_kwargs,
                                take_step=my_step, accept_test=my_bound, niter_success=20)
-            print("result array {0} \nmin failures {1} \nniter {2} \nfun {3}".format(sol.x,
-                                                                                     sol.minimization_failures,
-                                                                                     sol.nit,
-                                                                                     sol.fun))
+            if show_basin_results:
+                print("result array {0} \nmin failures {1} \nniter {2} \nfun {3}".format(sol.x,
+                                                                                         sol.minimization_failures,
+                                                                                         sol.nit,
+                                                                                         sol.fun))
     else:
         end_criteria = ql.EndCriteria(maxIteration=max_iteration,
                                       maxStationaryStateIterations=max_stationary_state_iteration,

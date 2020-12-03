@@ -352,6 +352,35 @@ class SimpleYieldCurve:
         to_time = float(to_time)
         return self.yield_curve(date).zeroRate(to_time, compounding, frequency, extrapolate).rate()
 
+    @conditional_vectorize('date', 'tenor')
+    def zero_rate_to_tenor(self, date, tenor, compounding, frequency, extrapolate=True, day_counter=None):
+        """
+        Parameters
+        ----------
+        date: QuantLib.Date, (c-vectorized)
+            Date of the yield curve.
+        tenor: str, (c-vectorized)
+            String representing a Quantlib Tenor
+        compounding: QuantLib.Compounding
+            Compounding convention for the rate.
+        frequency: QuantLib.Frequency
+            Frequency convention for the rate.
+        extrapolate: bool, optional
+            Whether to enable extrapolation.
+        day_counter: QuantLib.DayCounter, optional
+            The day counter for the calculation.
+
+        Returns
+        -------
+        scalar
+            Zero rate for `to_time`, implied by the yield curve at `date`.
+        """
+        date = to_ql_date(date)
+        ql_tenor = ql.PeriodParser.parse(str(tenor).upper())
+        to_date = self.calendar.advance(date, ql_tenor)
+        day_counter = day_counter if day_counter is not None else self.day_counter
+        return self.yield_curve(date).zeroRate(to_date, day_counter, compounding, frequency, extrapolate).rate()
+
     @conditional_vectorize('date', 'to_date1', 'to_date2')
     def forward_rate_date_to_date(self, date, to_date1, to_date2, compounding, frequency, extrapolate=True,
                                   day_counter=None):
