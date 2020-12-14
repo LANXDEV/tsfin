@@ -488,7 +488,6 @@ class EquityOption(Instrument):
         self._implied_volatility_prices[date] = option_price
         process = base_equity_process.process(volatility=self._implied_volatility[date])
         self.set_pricing_engine(engine_name=engine_name, process=process)
-
         try:
             implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
         except RuntimeError:
@@ -498,7 +497,7 @@ class EquityOption(Instrument):
             fwd_spot_price = spot_price * discount_dvd / discount_risk_free
             new_option_price = self.intrinsic(date=date, spot_price=fwd_spot_price) + 0.01
             if new_option_price < option_price:
-                option_price += self.intrinsic(date=date, spot_price=spot_price) + 0.01
+                option_price = self.intrinsic(date=date, spot_price=spot_price) + 0.01
             else:
                 option_price = new_option_price
             try:
