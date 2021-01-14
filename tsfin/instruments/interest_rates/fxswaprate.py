@@ -19,10 +19,12 @@ A class for modelling FX swaps.
 """
 import QuantLib as ql
 import numpy as np
+from tsio.constants import COMPONENTS
 from tsfin.instruments.interest_rates.base_interest_rate import BaseInterestRate
-from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_date
+from tsfin.base import to_ql_calendar, to_ql_day_counter, to_ql_business_convention, to_ql_date, to_datetime, \
+    conditional_vectorize, Instrument
 from tsfin.constants import CALENDAR, DAY_COUNTER, BUSINESS_CONVENTION, TENOR_PERIOD, FIXING_DAYS, COUNTRY, \
-    BASE_CURRENCY, BASE_CALENDAR
+    BASE_CURRENCY, BASE_CALENDAR, MATURITY_DATE, QUANTITY, TRADE_PRICE, ISSUE_DATE
 
 
 class FxSwapRate(BaseInterestRate):
@@ -41,7 +43,10 @@ class FxSwapRate(BaseInterestRate):
         self._maturity = None
         # Swap Database Attributes
         self.currency_ts = currency_ts
-        self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        try:
+            self._tenor = ql.PeriodParser.parse(self.ts_attributes[TENOR_PERIOD])
+        except AttributeError:
+            self._tenor = None
         self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
         self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
         self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
@@ -109,3 +114,91 @@ class FxSwapRate(BaseInterestRate):
                                    self.month_end,
                                    True,
                                    self.term_structure)
+
+
+class NonDeliverableForward(Instrument):
+    """
+    Non Deliverable Forward
+    Class still being tested
+    """
+
+    def __init__(self, timeseries, currency_ts, fx_swap_curve=None):
+        super().__init__(timeseries=timeseries)
+        self.currency_ts = currency_ts
+        self.fx_swap_curve = fx_swap_curve
+        self.calendar = to_ql_calendar(self.ts_attributes[CALENDAR])
+        self.day_counter = to_ql_day_counter(self.ts_attributes[DAY_COUNTER])
+        self.business_convention = to_ql_business_convention(self.ts_attributes[BUSINESS_CONVENTION])
+        self.fixing_days = int(self.ts_attributes[FIXING_DAYS])
+        self.base_currency = self.ts_attributes[BASE_CURRENCY]
+        self.base_calendar = to_ql_calendar(self.ts_attributes[BASE_CALENDAR])
+        self.country = self.ts_attributes[COUNTRY]
+        self._maturity = to_ql_date(to_datetime(self.ts_attributes[MATURITY_DATE]))
+        self.issue_date = to_ql_date(to_datetime(self.ts_attributes[ISSUE_DATE]))
+        self.ts_quantity = self.ts_attributes[COMPONENTS][QUANTITY]
+        self.ts_trade_price = self.ts_attributes[COMPONENTS][TRADE_PRICE]
+
+    def set_fx_swap_curve(self, fx_swap_curve):
+
+        self.fx_swap_curve = fx_swap_curve
+
+    @conditional_vectorize('date')
+    def maturity(self, date, *args, **kwargs):
+
+        return self._maturity
+
+    @conditional_vectorize('date')
+    def value(self, date, fx_swap_curve=None, *args, **kwargs):
+
+        date = to_ql_date(date)
+
+        maturity = self.maturity(date=date)
+        if date > maturity:
+            return 0
+
+        if fx_swap_curve is None:
+            fx_swap_curve = self.fx_swap_curve
+
+        fx_rate = fx_swap_curve.implied_fx_rate_to_date(date=date, to_date=self.maturity(date=date))
+        filtered_quantity = self.ts_quantity.ts_values[self.ts_quantity.ts_values.index <= to_datetime(date)].values
+        filtered_trade_price = self.ts_trade_price.ts_values[
+            self.ts_trade_price.ts_values.index <= to_datetime(date)].values
+
+        total_value = 0
+        for quantity, trade_price in zip(filtered_quantity, filtered_trade_price):
+            total_value += quantity/fx_rate - quantity/trade_price
+
+        return total_value
+
+    @conditional_vectorize('date', 'quote')
+    def risk_value(self, date, quote=None, fx_swap_curve=None, *args, **kwargs):
+
+        date = to_ql_date(date)
+
+        maturity = self.maturity(date=date)
+        if date > maturity:
+            return 0
+
+        if fx_swap_curve is None and quote is None:
+            fx_swap_curve = self.fx_swap_curve
+
+        if quote is None and fx_swap_curve is not None:
+            quote = fx_swap_curve.implied_fx_rate_to_date(date=date, to_date=self.maturity(date=date))
+
+        filtered_quantity = self.ts_quantity.ts_values[self.ts_quantity.ts_values.index <= to_datetime(date)].values
+        filtered_trade_price = self.ts_trade_price.ts_values[
+            self.ts_trade_price.ts_values.index <= to_datetime(date)].values
+
+        total_value = 0
+        base_value = 0
+
+        for quantity, trade_price in zip(filtered_quantity, filtered_trade_price):
+            base_value += -quantity/trade_price
+            total_value += quantity/quote
+
+        if np.round(total_value, 2) == 0:
+            return 0
+        elif np.round(base_value, 2) == 0:
+            return 0
+        else:
+            return total_value / base_value

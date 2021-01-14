@@ -64,7 +64,7 @@ def to_ql_frequency(arg):
         return ql.Weekly
     elif arg.upper() == "DAILY":
         return ql.Daily
-    elif arg.upper() == 'NOFREQUENCY':
+    elif arg.upper() in ['NOFREQUENCY', 'NO_FREQUENCY']:
         return ql.NoFrequency
     else:
         raise ValueError("Unable to convert {} to a QuantLib frequency".format(arg))
