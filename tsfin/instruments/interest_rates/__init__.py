@@ -7,4 +7,4 @@ from tsfin.instruments.interest_rates.swaprate import SwapRate
 from tsfin.instruments.interest_rates.swaption import Swaption
 from tsfin.instruments.interest_rates.ois import OISRate
 from tsfin.instruments.interest_rates.depositratefuture import DepositRateFuture
-from tsfin.instruments.interest_rates.fxswaprate import FxSwapRate
+from tsfin.instruments.interest_rates.fxswaprate import FxSwapRate, NonDeliverableForward

@@ -129,8 +129,8 @@ class Heston(BaseEquityProcess):
             discretization = ql.HestonProcess.QuadraticExponentialMartingale
 
         return ql.HestonProcess(self.risk_free_handle, self.dividend_handle, self.spot_price_handle,
-                                spot_variance, mean_reversion, long_term_variance, volatility_of_volatility,
-                                correlation, discretization)
+                                float(spot_variance), float(mean_reversion), float(long_term_variance),
+                                float(volatility_of_volatility), float(correlation), discretization)
 
     def get_constant_values(self, date, last_available=True, fill_value=np.nan):
         return heston_constants(self.long_term_variance_ts.get_values(date, last_available, fill_value),

@@ -19,6 +19,7 @@ Custom Class wrapper for QuantLib Schedule Class
 TODO: More testing needed
 """
 import QuantLib as ql
+from tsfin.base.basetools import to_datetime
 
 
 def to_bus_day_name(bus_day_convention):
@@ -108,3 +109,7 @@ class Schedule(ql.Schedule):
                                       to_bus_day_name(self.terminationDateBusinessDayConvention()), self.tenor(),
                                       to_date_generation_name(self.rule()),
                                       'End Of Month={}'.format(self.endOfMonth())])
+
+    def to_datetime(self):
+
+        return to_datetime(list(self))

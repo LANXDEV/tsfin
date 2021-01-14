@@ -23,7 +23,7 @@ from tsio import TimeSeries, TimeSeriesCollection
 from tsfin.base import Instrument, to_datetime, to_ql_date, to_ql_frequency, to_ql_weekday, to_ql_option_engine, \
     to_ql_equity_model, to_ql_swaption_engine, to_ql_short_rate_model
 from tsfin.instruments.interest_rates import DepositRate, ZeroRate, OISRate, SwapRate, Swaption, CDSRate, \
-    EurodollarFuture, DepositRateFuture, FxSwapRate
+    EurodollarFuture, DepositRateFuture, FxSwapRate, NonDeliverableForward
 from tsfin.instruments.equities import Equity, EquityOption
 from tsfin.instruments.bonds import FixedRateBond, CallableFixedRateBond, FloatingRateBond, ContingentConvertibleBond
 from tsfin.instruments import CurrencyFuture, Currency, Cash
@@ -31,10 +31,11 @@ from tsfin.stochasticprocess.equityprocess import BlackScholesMerton, BlackSchol
 from tsfin.constants import TYPE, BOND, BOND_TYPE, FIXEDRATE, CALLABLEFIXEDRATE, FLOATINGRATE, INDEX, DEPOSIT_RATE, \
     DEPOSIT_RATE_FUTURE, CURRENCY_FUTURE, SWAP_RATE, OIS_RATE, EQUITY_OPTION, FUND, EQUITY, CDS, \
     INDEX_TIME_SERIES, ZERO_RATE, SWAP_VOL, CDX, EURODOLLAR_FUTURE, CONTINGENTCONVERTIBLE, EXCHANGE_TRADED_FUND,\
-    INSTRUMENT, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH, CURRENCY, BASE_CURRENCY, NDF
+    INSTRUMENT, BLACK_SCHOLES_MERTON, BLACK_SCHOLES, HESTON, GJR_GARCH, CURRENCY, BASE_CURRENCY, NDF, SUBTYPE, \
+    FIXED_DATE
 
 
-def generate_instruments(ts_collection, indexes=None, index_curves=None, currencies=None):
+def generate_instruments(ts_collection, indexes=None, index_curves=None, currencies=None, fx_swap_curves=None):
     """ Given a collection of :py:obj:`TimeSeries`, instantiate instruments with each one of them.
 
     If an element is not an instance of :py:class:`TimeSeries`, does nothing with it.
@@ -89,9 +90,19 @@ def generate_instruments(ts_collection, indexes=None, index_curves=None, currenc
                 continue
 
         elif ts_type == NDF:
+            ndf_type = str(ts.get_attribute(SUBTYPE)).upper()
             currency_pair = f'{ts.get_attribute(BASE_CURRENCY)}{ts.get_attribute(CURRENCY)} CURNCY'
             currency_ts = currencies[currency_pair]
-            instrument = FxSwapRate(ts, currency_ts)
+            fx_swap_curve_tag = f'FXSWAP.{ts.get_attribute(CURRENCY)}'
+            if ndf_type == FIXED_DATE:
+                fx_swap_curve = None
+                if fx_swap_curves is not None:
+                    if fx_swap_curve_tag in fx_swap_curves.keys():
+                        fx_swap_curve = fx_swap_curves[fx_swap_curve_tag]
+
+                instrument = NonDeliverableForward(ts, currency_ts, fx_swap_curve)
+            else:
+                instrument = FxSwapRate(ts, currency_ts)
         elif ts_type == DEPOSIT_RATE:
             instrument = DepositRate(ts)
         elif ts_type == DEPOSIT_RATE_FUTURE:
