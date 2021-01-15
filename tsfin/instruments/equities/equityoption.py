@@ -491,20 +491,23 @@ class EquityOption(Instrument):
         try:
             implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
         except RuntimeError:
-            # almost all errors are due to the option price being lower than the intrinsic value.
-            discount_dvd = base_equity_process.dividend_handle.discount(self._maturity)
-            discount_risk_free = base_equity_process.risk_free_handle.discount(self._maturity)
-            fwd_spot_price = spot_price * discount_dvd / discount_risk_free
-            new_option_price = self.intrinsic(date=date, spot_price=fwd_spot_price) + 0.01
-            if new_option_price < option_price:
-                option_price = self.intrinsic(date=date, spot_price=spot_price) + 0.01
-            else:
-                option_price = new_option_price
             try:
-                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
+                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process, maxVol=20)
             except RuntimeError:
-                option_price += 0.05
-                implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process)
+                # Error can be due the option price being lower than the intrinsic value.
+                discount_dvd = base_equity_process.dividend_handle.discount(self._maturity)
+                discount_risk_free = base_equity_process.risk_free_handle.discount(self._maturity)
+                fwd_spot_price = spot_price * discount_dvd / discount_risk_free
+                new_option_price = self.intrinsic(date=date, spot_price=fwd_spot_price) + 0.01
+                if new_option_price < option_price:
+                    option_price = self.intrinsic(date=date, spot_price=spot_price) + 0.01
+                else:
+                    option_price = new_option_price
+                try:
+                    implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process, maxVol=20)
+                except RuntimeError:
+                    option_price += 0.02
+                    implied_vol = self.option.impliedVolatility(targetValue=option_price, process=process, maxVol=20)
 
         self._implied_volatility[date].setValue(implied_vol)
 
